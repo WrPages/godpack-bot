@@ -63,8 +63,35 @@ client.on("interactionCreate", async (interaction) => {
   }
 
   // 🔹 CHANGE
-  if (interaction.commandName === "change") {
-    const id = interaction.options.getString("id")
+ if (interaction.commandName === "change") {
+  const newId = interaction.options.getString("id")
+
+  // 🔒 validar ID (16 dígitos)
+  if (!/^\d{16}$/.test(newId)) {
+    return interaction.reply("❌ ID must be exactly 16 digits (numbers only)")
+  }
+
+  const oldUserData = users[userId]
+
+  // 🔥 si estaba online → poner offline el ID anterior
+  if (onlineUsers[userId]) {
+    const oldId = onlineUsers[userId].id
+
+    await fetch(`${API_URL}?action=offline&id=${oldId}`)
+
+    delete onlineUsers[userId]
+  }
+
+  // 🔹 guardar nuevo ID
+  users[userId] = {
+    id: newId,
+    name: interaction.user.tag
+  }
+
+  await saveUsers(users)
+
+  return interaction.reply(`🔄 ID updated to ${newId} (${interaction.user.tag})`)
+}
 
     users[userId] = {
       id: id,
