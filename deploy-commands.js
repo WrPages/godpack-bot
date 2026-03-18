@@ -4,6 +4,16 @@ const TOKEN = process.env.TOKEN
 const CLIENT_ID = process.env.CLIENT_ID // application id
 
 const commands = [
+  
+new SlashCommandBuilder()
+  .setName('gp')
+  .setDescription('Add VIP GP ID')
+  .addStringOption(option =>
+    option.setName('id')
+      .setDescription('GP ID')
+      .setRequired(true)
+  ),
+  
   new SlashCommandBuilder()
     .setName('register')
     .setDescription('Register your ID')
