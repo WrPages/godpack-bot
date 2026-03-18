@@ -9,6 +9,9 @@ const API_URL = "https://add-ids.netlify.app/.netlify/functions/api"
 const USERS_GIST_ID = "312803a8e6964070593081d99a705d19"
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
 
+// 🔥 online users (temporary)
+let onlineUsers = {}
+
 async function getUsers() {
   const res = await fetch(`https://api.github.com/gists/${USERS_GIST_ID}`)
   const data = await res.json()
@@ -33,7 +36,7 @@ async function saveUsers(users) {
 }
 
 client.on("ready", () => {
-  console.log("Bot listo 🔥")
+  console.log("Bot ready 🔥")
 })
 
 client.on("interactionCreate", async (interaction) => {
@@ -42,8 +45,8 @@ client.on("interactionCreate", async (interaction) => {
   const userId = interaction.user.id
   let users = await getUsers()
 
-  // 🔹 REGISTRAR
-  if (interaction.commandName === "registrar") {
+  // 🔹 REGISTER
+  if (interaction.commandName === "register") {
     const id = interaction.options.getString("id")
 
     users[userId] = {
@@ -53,11 +56,11 @@ client.on("interactionCreate", async (interaction) => {
 
     await saveUsers(users)
 
-    return interaction.reply(`✅ ID registrado: ${id} (${interaction.user.tag})`)
+    return interaction.reply(`✅ ID registered: ${id} (${interaction.user.tag})`)
   }
 
-  // 🔹 CAMBIAR
-  if (interaction.commandName === "cambiar") {
+  // 🔹 CHANGE
+  if (interaction.commandName === "change") {
     const id = interaction.options.getString("id")
 
     users[userId] = {
@@ -67,7 +70,7 @@ client.on("interactionCreate", async (interaction) => {
 
     await saveUsers(users)
 
-    return interaction.reply(`🔄 ID actualizado: ${id} (${interaction.user.tag})`)
+    return interaction.reply(`🔄 ID updated: ${id} (${interaction.user.tag})`)
   }
 
   // 🔹 ONLINE
@@ -75,11 +78,13 @@ client.on("interactionCreate", async (interaction) => {
     const userData = users[userId]
     const id = userData?.id
 
-    if (!id) return interaction.reply("❌ Usa /registrar primero")
+    if (!id) return interaction.reply("❌ You must register first using /register")
 
     await fetch(`${API_URL}?action=online&id=${id}`)
 
-    return interaction.reply(`🟢 ${userData.name} está ONLINE con ID ${id}`)
+    onlineUsers[userId] = userData
+
+    return interaction.reply(`🟢 ${userData.name} is now ONLINE with ID ${id}`)
   }
 
   // 🔹 OFFLINE
@@ -87,11 +92,43 @@ client.on("interactionCreate", async (interaction) => {
     const userData = users[userId]
     const id = userData?.id
 
-    if (!id) return interaction.reply("❌ No tienes ID")
+    if (!id) return interaction.reply("❌ No ID registered")
 
     await fetch(`${API_URL}?action=offline&id=${id}`)
 
-    return interaction.reply(`🔴 ${userData.name} está OFFLINE con ID ${id}`)
+    delete onlineUsers[userId]
+
+    return interaction.reply(`🔴 ${userData.name} is now OFFLINE with ID ${id}`)
+  }
+
+  // 🔹 LIST ALL USERS
+  if (interaction.commandName === "list") {
+    if (Object.keys(users).length === 0) {
+      return interaction.reply("📭 No users registered")
+    }
+
+    let msg = "📋 **Registered users:**\n\n"
+
+    for (const uid in users) {
+      msg += `👤 ${users[uid].name} → ID: ${users[uid].id}\n`
+    }
+
+    return interaction.reply(msg)
+  }
+
+  // 🔹 ONLINE USERS
+  if (interaction.commandName === "online_list") {
+    if (Object.keys(onlineUsers).length === 0) {
+      return interaction.reply("⚫ No users are online")
+    }
+
+    let msg = "🟢 **Online users:**\n\n"
+
+    for (const uid in onlineUsers) {
+      msg += `🟢 ${onlineUsers[uid].name} → ID: ${onlineUsers[uid].id}\n`
+    }
+
+    return interaction.reply(msg)
   }
 })
 
