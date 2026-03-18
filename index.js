@@ -74,8 +74,12 @@ client.on("interactionCreate", async (interaction) => {
   }
 
   // 🔹 ONLINE
-  if (interaction.commandName === "online") {
-    const userData = users[userId]
+ if (interaction.commandName === "online") {
+
+  // 🔥 recargar usuarios para evitar delay del gist
+  users = await getUsers()
+
+  const userData = users[userId]
     const id = userData?.id
 
     if (!id) return interaction.reply("❌ You must register first using /register")
