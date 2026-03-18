@@ -35,6 +35,7 @@ async function getUsers() {
   }
 }
 
+
 async function saveUsers(users) {
   await fetch(`https://api.github.com/gists/${USERS_GIST_ID}`, {
     method: "PATCH",
@@ -50,6 +51,47 @@ async function saveUsers(users) {
       }
     })
   })
+}
+
+async function addVipID(id) {
+  try {
+    const res = await fetch(`https://api.github.com/gists/${process.env.VIP_GIST_ID}?t=${Date.now()}`, {
+      headers: {
+        Authorization: `Bearer ${GITHUB_TOKEN}`,
+        Accept: "application/vnd.github+json",
+        "Cache-Control": "no-cache"
+      }
+    })
+
+    const data = await res.json()
+
+    let content = data.files["vip_ids.txt"]?.content || ""
+
+    // evitar duplicados
+    if (content.includes(id)) return
+
+    content += (content ? "\n" : "") + id
+
+    await fetch(`https://api.github.com/gists/${process.env.VIP_GIST_ID}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${GITHUB_TOKEN}`,
+        Accept: "application/vnd.github+json"
+      },
+      body: JSON.stringify({
+        files: {
+          "vip_ids.txt": {
+            content: content
+          }
+        }
+      })
+    })
+
+    console.log("VIP añadido:", id)
+
+  } catch (err) {
+    console.error("Error VIP:", err)
+  }
 }
 
 client.on("ready", () => {
