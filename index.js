@@ -48,6 +48,9 @@ client.on("interactionCreate", async (interaction) => {
   // 🔹 REGISTER
   if (interaction.commandName === "register") {
     const id = interaction.options.getString("id")
+    if (!/^\d{16}$/.test(id)) {
+  return interaction.reply("❌ ID must be exactly 16 digits (numbers only)")
+}
 
     users[userId] = {
       id: id,
