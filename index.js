@@ -9,7 +9,6 @@ const API_URL = "https://add-ids.netlify.app/.netlify/functions/api"
 const USERS_GIST_ID = "312803a8e6964070593081d99a705d19"
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
 
-// 🔥 online users (temporary)
 let onlineUsers = {}
 
 async function getUsers() {
@@ -48,9 +47,10 @@ client.on("interactionCreate", async (interaction) => {
   // 🔹 REGISTER
   if (interaction.commandName === "register") {
     const id = interaction.options.getString("id")
+
     if (!/^\d{16}$/.test(id)) {
-  return interaction.reply("❌ ID must be exactly 16 digits (numbers only)")
-}
+      return interaction.reply("❌ ID must be exactly 16 digits (numbers only)")
+    }
 
     users[userId] = {
       id: id,
@@ -62,54 +62,41 @@ client.on("interactionCreate", async (interaction) => {
     return interaction.reply(`✅ ID registered: ${id} (${interaction.user.tag})`)
   }
 
-// 🔹 CHANGE
-if (interaction.commandName === "change") {
-  const newId = interaction.options.getString("id")
+  // 🔹 CHANGE
+  if (interaction.commandName === "change") {
+    const newId = interaction.options.getString("id")
 
-  if (!/^\d{16}$/.test(newId)) {
-    return interaction.reply("❌ ID must be exactly 16 digits (numbers only)")
-  }
+    if (!/^\d{16}$/.test(newId)) {
+      return interaction.reply("❌ ID must be exactly 16 digits (numbers only)")
+    }
 
-  // 🔥 si estaba online → poner offline el ID anterior
-  if (onlineUsers[userId]) {
-    const oldId = onlineUsers[userId].id
-
-    await fetch(`${API_URL}?action=offline&id=${oldId}`)
-
-    delete onlineUsers[userId]
-  }
-
-  // 🔹 guardar nuevo ID
-  users[userId] = {
-    id: newId,
-    name: interaction.user.tag
-  }
-
-  await saveUsers(users)
-
-  return interaction.reply(`🔄 ID updated to ${newId} (${interaction.user.tag})`)
-}
+    // 🔥 si estaba online → poner offline el anterior
+    if (onlineUsers[userId]) {
+      const oldId = onlineUsers[userId].id
+      await fetch(`${API_URL}?action=offline&id=${oldId}`)
+      delete onlineUsers[userId]
+    }
 
     users[userId] = {
-      id: id,
+      id: newId,
       name: interaction.user.tag
     }
 
     await saveUsers(users)
 
-    return interaction.reply(`🔄 ID updated: ${id} (${interaction.user.tag})`)
+    return interaction.reply(`🔄 ID updated to ${newId} (${interaction.user.tag})`)
   }
 
   // 🔹 ONLINE
- if (interaction.commandName === "online") {
+  if (interaction.commandName === "online") {
+    users = await getUsers()
 
-  // 🔥 recargar usuarios para evitar delay del gist
-  users = await getUsers()
-
-  const userData = users[userId]
+    const userData = users[userId]
     const id = userData?.id
 
-    if (!id) return interaction.reply("❌ You must register first using /register")
+    if (!id) {
+      return interaction.reply("❌ You must register first using /register")
+    }
 
     await fetch(`${API_URL}?action=online&id=${id}`)
 
@@ -123,7 +110,9 @@ if (interaction.commandName === "change") {
     const userData = users[userId]
     const id = userData?.id
 
-    if (!id) return interaction.reply("❌ No ID registered")
+    if (!id) {
+      return interaction.reply("❌ No ID registered")
+    }
 
     await fetch(`${API_URL}?action=offline&id=${id}`)
 
@@ -132,7 +121,7 @@ if (interaction.commandName === "change") {
     return interaction.reply(`🔴 ${userData.name} is now OFFLINE with ID ${id}`)
   }
 
-  // 🔹 LIST ALL USERS
+  // 🔹 LIST
   if (interaction.commandName === "list") {
     if (Object.keys(users).length === 0) {
       return interaction.reply("📭 No users registered")
@@ -147,7 +136,7 @@ if (interaction.commandName === "change") {
     return interaction.reply(msg)
   }
 
-  // 🔹 ONLINE USERS
+  // 🔹 ONLINE LIST
   if (interaction.commandName === "online_list") {
     if (Object.keys(onlineUsers).length === 0) {
       return interaction.reply("⚫ No users are online")
@@ -164,3 +153,5 @@ if (interaction.commandName === "change") {
 })
 
 client.login(TOKEN)
+
+
