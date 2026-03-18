@@ -103,7 +103,19 @@ client.on("interactionCreate", async (interaction) => {
 
   const userId = interaction.user.id
   let users = await getUsers()
+// 🔹 VIP ids
+if (interaction.commandName === "gp") {
+  const id = interaction.options.getString("id")
 
+  if (!/^\d{16}$/.test(id)) {
+    return interaction.reply("❌ ID must be 16 digits")
+  }
+
+  await addVipID(id)
+
+  return interaction.reply(`🔥 VIP ID añadido: ${id}`)
+}
+  
   // 🔹 REGISTER
   if (interaction.commandName === "register") {
     const id = interaction.options.getString("id")
