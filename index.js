@@ -12,9 +12,27 @@ const GITHUB_TOKEN = process.env.GITHUB_TOKEN
 let onlineUsers = {}
 
 async function getUsers() {
-  const res = await fetch(`https://api.github.com/gists/${USERS_GIST_ID}`)
-  const data = await res.json()
-  return JSON.parse(data.files["users.json"].content)
+  try {
+    const res = await fetch(`https://api.github.com/gists/${USERS_GIST_ID}?t=${Date.now()}`, {
+      headers: {
+        Authorization: `Bearer ${GITHUB_TOKEN}`,
+        Accept: "application/vnd.github+json",
+        "Cache-Control": "no-cache"
+      }
+    })
+
+    const data = await res.json()
+
+    if (!data.files || !data.files["users.json"]) {
+      return {}
+    }
+
+    return JSON.parse(data.files["users.json"].content || "{}")
+
+  } catch (err) {
+    console.error("Error loading users:", err)
+    return {}
+  }
 }
 
 async function saveUsers(users) {
@@ -63,28 +81,30 @@ client.on("interactionCreate", async (interaction) => {
   }
 
   // 🔹 CHANGE
-  if (interaction.commandName === "change") {
-    const newId = interaction.options.getString("id")
+ if (interaction.commandName === "change") {
+  const newId = interaction.options.getString("id")
 
-    if (!/^\d{16}$/.test(newId)) {
-      return interaction.reply("❌ ID must be exactly 16 digits (numbers only)")
-    }
+  if (!/^\d{16}$/.test(newId)) {
+    return interaction.reply("❌ ID must be exactly 16 digits (numbers only)")
+  }
 
-    // 🔥 si estaba online → poner offline el anterior
-    if (onlineUsers[userId]) {
-      const oldId = onlineUsers[userId].id
-      await fetch(`${API_URL}?action=offline&id=${oldId}`)
-      delete onlineUsers[userId]
-    }
+  if (onlineUsers[userId]) {
+    const oldId = onlineUsers[userId].id
+    await fetch(`${API_URL}?action=offline&id=${oldId}`)
+    delete onlineUsers[userId]
+  }
 
-    users[userId] = {
-      id: newId,
-      name: interaction.user.tag
-    }
+  users[userId] = {
+    id: newId,
+    name: interaction.user.tag
+  }
 
-    await saveUsers(users)
+  await saveUsers(users)
 
-    return interaction.reply(`🔄 ID updated to ${newId} (${interaction.user.tag})`)
+  // 🔥 SOLO aquí recargar si quieres
+  users = await getUsers()
+
+  return interaction.reply(`🔄 ID updated to ${newId} (${interaction.user.tag})`)
   }
 
   // 🔹 ONLINE
