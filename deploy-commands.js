@@ -5,40 +5,52 @@ const CLIENT_ID = process.env.CLIENT_ID // application id
 
 const commands = [
   new SlashCommandBuilder()
-    .setName('registrar')
-    .setDescription('Registrar tu ID')
+    .setName('register')
+    .setDescription('Register your ID')
     .addStringOption(option =>
-      option.setName('id').setDescription('Tu ID').setRequired(true)
+      option.setName('id')
+        .setDescription('Your ID')
+        .setRequired(true)
     ),
 
   new SlashCommandBuilder()
-    .setName('cambiar')
-    .setDescription('Cambiar tu ID')
+    .setName('change')
+    .setDescription('Change your ID')
     .addStringOption(option =>
-      option.setName('id').setDescription('Nuevo ID').setRequired(true)
+      option.setName('id')
+        .setDescription('New ID')
+        .setRequired(true)
     ),
 
   new SlashCommandBuilder()
     .setName('online')
-    .setDescription('Ponerte online'),
+    .setDescription('Set yourself as online'),
 
   new SlashCommandBuilder()
     .setName('offline')
-    .setDescription('Ponerte offline')
+    .setDescription('Set yourself as offline'),
+
+  new SlashCommandBuilder()
+    .setName('list')
+    .setDescription('Show all registered users'),
+
+  new SlashCommandBuilder()
+    .setName('online_list')
+    .setDescription('Show users currently online')
 ]
 
 const rest = new REST({ version: '10' }).setToken(TOKEN)
 
 async function deploy() {
   try {
-    console.log('Registrando comandos...')
+    console.log('Registering commands...')
 
     await rest.put(
       Routes.applicationCommands(CLIENT_ID),
       { body: commands }
     )
 
-    console.log('Comandos registrados 🔥')
+    console.log('Commands registered successfully 🔥')
   } catch (error) {
     console.error(error)
   }
