@@ -62,16 +62,13 @@ client.on("interactionCreate", async (interaction) => {
     return interaction.reply(`✅ ID registered: ${id} (${interaction.user.tag})`)
   }
 
-  // 🔹 CHANGE
- if (interaction.commandName === "change") {
+// 🔹 CHANGE
+if (interaction.commandName === "change") {
   const newId = interaction.options.getString("id")
 
-  // 🔒 validar ID (16 dígitos)
   if (!/^\d{16}$/.test(newId)) {
     return interaction.reply("❌ ID must be exactly 16 digits (numbers only)")
   }
-
-  const oldUserData = users[userId]
 
   // 🔥 si estaba online → poner offline el ID anterior
   if (onlineUsers[userId]) {
