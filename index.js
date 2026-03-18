@@ -42,34 +42,56 @@ client.on("interactionCreate", async (interaction) => {
   const userId = interaction.user.id
   let users = await getUsers()
 
+  // 🔹 REGISTRAR
   if (interaction.commandName === "registrar") {
     const id = interaction.options.getString("id")
-    users[userId] = id
+
+    users[userId] = {
+      id: id,
+      name: interaction.user.tag
+    }
+
     await saveUsers(users)
-    return interaction.reply(`✅ ID registrado: ${id}`)
+
+    return interaction.reply(`✅ ID registrado: ${id} (${interaction.user.tag})`)
   }
 
+  // 🔹 CAMBIAR
   if (interaction.commandName === "cambiar") {
     const id = interaction.options.getString("id")
-    users[userId] = id
+
+    users[userId] = {
+      id: id,
+      name: interaction.user.tag
+    }
+
     await saveUsers(users)
-    return interaction.reply(`🔄 ID actualizado: ${id}`)
+
+    return interaction.reply(`🔄 ID actualizado: ${id} (${interaction.user.tag})`)
   }
 
+  // 🔹 ONLINE
   if (interaction.commandName === "online") {
-    const id = users[userId]
+    const userData = users[userId]
+    const id = userData?.id
+
     if (!id) return interaction.reply("❌ Usa /registrar primero")
 
     await fetch(`${API_URL}?action=online&id=${id}`)
-    return interaction.reply(`🟢 ID ${id} ONLINE`)
+
+    return interaction.reply(`🟢 ${userData.name} está ONLINE con ID ${id}`)
   }
 
+  // 🔹 OFFLINE
   if (interaction.commandName === "offline") {
-    const id = users[userId]
+    const userData = users[userId]
+    const id = userData?.id
+
     if (!id) return interaction.reply("❌ No tienes ID")
 
     await fetch(`${API_URL}?action=offline&id=${id}`)
-    return interaction.reply(`🔴 ID ${id} OFFLINE`)
+
+    return interaction.reply(`🔴 ${userData.name} está OFFLINE con ID ${id}`)
   }
 })
 
