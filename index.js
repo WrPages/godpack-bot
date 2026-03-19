@@ -1,7 +1,13 @@
 const { Client, GatewayIntentBits } = require('discord.js')
 const fetch = require('node-fetch')
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] })
+const client = new Client({ 
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent
+  ] 
+})
 
 const TOKEN = process.env.TOKEN
 const API_URL = "https://add-ids.netlify.app/.netlify/functions/api"
@@ -67,10 +73,11 @@ async function addVipID(id) {
 
     let content = data.files["vip_ids.txt"]?.content || ""
 
-    // evitar duplicados
-    if (content.includes(id)) return
+    const ids = content.split("\n").filter(Boolean)
 
-    content += (content ? "\n" : "") + id
+    if (ids.includes(id)) return
+
+    ids.push(id)
 
     await fetch(`https://api.github.com/gists/${process.env.VIP_GIST_ID}`, {
       method: "PATCH",
@@ -81,13 +88,13 @@ async function addVipID(id) {
       body: JSON.stringify({
         files: {
           "vip_ids.txt": {
-            content: content
+            content: ids.join("\n")
           }
         }
       })
     })
 
-    console.log("VIP añadido:", id)
+    console.log("✅ VIP añadido:", id)
 
   } catch (err) {
     console.error("Error VIP:", err)
@@ -224,6 +231,25 @@ if (interaction.commandName === "gp") {
 
     return interaction.reply(msg)
   }
+})
+
+client.on("messageCreate", async (message) => {
+
+  // solo mensajes de webhook o bots
+  if (!message.webhookId && !message.author.bot) return
+
+  const text = message.content || ""
+
+  // extraer ID entre paréntesis
+  const match = text.match(/\((\d{16})\)/)
+
+  if (!match) return
+
+  const id = match[1]
+
+  console.log("🔥 GP detectado:", id)
+
+  await addVipID(id)
 })
 
 client.login(TOKEN)
