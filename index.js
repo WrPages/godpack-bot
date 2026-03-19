@@ -235,15 +235,18 @@ if (interaction.commandName === "gp") {
 
 client.on("messageCreate", async (message) => {
 
-  // solo mensajes de webhook o bots
-  if (!message.webhookId && !message.author.bot) return
+  console.log("📩 MENSAJE DETECTADO")
+  console.log("Contenido:", message.content)
+  console.log("Webhook:", message.webhookId)
 
   const text = message.content || ""
 
-  // extraer ID entre paréntesis
   const match = text.match(/\((\d{16})\)/)
 
-  if (!match) return
+  if (!match) {
+    console.log("❌ No se encontró ID")
+    return
+  }
 
   const id = match[1]
 
