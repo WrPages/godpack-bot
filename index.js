@@ -239,7 +239,7 @@ if (interaction.commandName === "gp") {
     for (const id of ids) {
 
       // 🔍 buscar nombre correspondiente
-      let name = "Unknown"
+      let name = ""
 
       for (const uid in users) {
         if (users[uid].id === id) {
