@@ -218,18 +218,29 @@ if (interaction.commandName === "gp") {
   }
 
   // 🔹 ONLINE LIST
-  if (interaction.commandName === "online_list") {
-    if (Object.keys(onlineUsers).length === 0) {
+ if (interaction.commandName === "online_list") {
+
+  try {
+    const res = await fetch("https://gist.githubusercontent.com/WrPages/1fc02ff0921e82b3af1d3101cee44e4c/raw/ids.txt?t=" + Date.now())
+    const text = await res.text()
+
+    const ids = text.split("\n").filter(x => x.trim() !== "")
+
+    if (ids.length === 0) {
       return interaction.reply("⚫ No users are online")
     }
 
-    let msg = "🟢 **Online users:**\n\n"
+    let msg = "🟢 **Online IDs:**\n\n"
 
-    for (const uid in onlineUsers) {
-      msg += `🟢 ${onlineUsers[uid].name} → ID: ${onlineUsers[uid].id}\n`
+    for (const id of ids) {
+      msg += `🟢 ${id}\n`
     }
 
     return interaction.reply(msg)
+
+  } catch (err) {
+    console.error(err)
+    return interaction.reply("❌ Error fetching online list")
   }
 })
 
