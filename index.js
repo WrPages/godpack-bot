@@ -242,7 +242,7 @@ if (interaction.commandName === "gp") {
     console.error(err)
     return interaction.reply("❌ Error fetching online list")
   }
-})
+}
 
 client.on("messageCreate", async (message) => {
 
