@@ -219,8 +219,9 @@ if (interaction.commandName === "gp") {
 
   // 🔹 ONLINE LIST
  if (interaction.commandName === "online_list") {
-
   try {
+
+    // 🔥 obtener IDs online desde gist
     const res = await fetch("https://gist.githubusercontent.com/WrPages/1fc02ff0921e82b3af1d3101cee44e4c/raw/ids.txt?t=" + Date.now())
     const text = await res.text()
 
@@ -230,10 +231,24 @@ if (interaction.commandName === "gp") {
       return interaction.reply("⚫ No users are online")
     }
 
-    let msg = "🟢 **Online IDs:**\n\n"
+    // 🔥 obtener usuarios registrados
+    const users = await getUsers()
+
+    let msg = "🟢 **Online users:**\n\n"
 
     for (const id of ids) {
-      msg += `🟢 ${id}\n`
+
+      // 🔍 buscar nombre correspondiente
+      let name = "Unknown"
+
+      for (const uid in users) {
+        if (users[uid].id === id) {
+          name = users[uid].name
+          break
+        }
+      }
+
+      msg += `🟢 ${name} → ${id}\n`
     }
 
     return interaction.reply(msg)
@@ -242,7 +257,7 @@ if (interaction.commandName === "gp") {
     console.error(err)
     return interaction.reply("❌ Error fetching online list")
   }
- }
+}
 })
 
 client.on("messageCreate", async (message) => {
