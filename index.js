@@ -335,30 +335,49 @@ if (interaction.commandName === "gp") {
 
   // 🔹 CHANGE
 if (interaction.commandName === "change") {
-  const newId = interaction.options.getString("id")
+  try {
 
-  if (!/^\d{16}$/.test(newId)) {
-    return interaction.reply("❌ ID must be exactly 16 digits (numbers only)")
+    await interaction.deferReply({ ephemeral: true })
+
+    const newId = interaction.options.getString("id")
+
+    if (!/^\d{16}$/.test(newId)) {
+      return interaction.editReply("❌ ID must be exactly 16 digits (numbers only)")
+    }
+
+    let users = await getUsers()
+
+    const userData = users[userId]
+
+    // Si existe ID anterior → poner offline
+    if (userData?.id) {
+      try {
+        await fetch(`${API_URL}?action=offline&id=${userData.id}`)
+      } catch (e) {
+        console.error("Error putting old ID offline:", e)
+      }
+    }
+
+    // Actualizar ID
+    users[userId] = {
+      id: newId,
+      name: interaction.user.tag
+    }
+
+    await saveUsers(users)
+
+    return interaction.editReply(`🔄 ID updated to ${newId}`)
+
+  } catch (error) {
+    console.error("CHANGE ERROR:", error)
+
+    if (interaction.deferred || interaction.replied) {
+      return interaction.editReply("❌ Unexpected error updating ID")
+    } else {
+      return interaction.reply("❌ Unexpected error updating ID")
+    }
   }
-
-  if (onlineUsers[userId]) {
-    const oldId = onlineUsers[userId].id
-    await fetch(`${API_URL}?action=offline&id=${oldId}`)
-    delete onlineUsers[userId]
-  }
-
-  users[userId] = {
-    id: newId,
-    name: interaction.user.tag
-  }
-
-  await saveUsers(users)
-
-  // 🔥 SOLO aquí recargar si quieres
-  users = await getUsers()
-
-  return interaction.reply(`🔄 ID updated to ${newId} (${interaction.user.tag})`)
-  }
+}
 
   
   // 🔹 ONLINE
