@@ -192,7 +192,7 @@ async function updateTotalPPM() {
 
     let messageContent = ""
     messageContent += "━━━━━━━━━━━━━━━━━━━━━━\n"
-    messageContent += "🚀 **GLOBAL PPM*\n"
+    messageContent += "🚀 **Global ppm\n"
     messageContent += "━━━━━━━━━━━━━━━━━━━━━━\n\n"
 
     // 🔥 SOLO EL NÚMERO GRANDE
