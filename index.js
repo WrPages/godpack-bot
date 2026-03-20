@@ -192,15 +192,15 @@ async function updateTotalPPM() {
 
     let messageContent = ""
     messageContent += "━━━━━━━━━━━━━━━━━━━━━━\n"
-    messageContent += "🚀 **GLOBAL PACK RATE**\n"
+    messageContent += "🚀 **GLOBAL PPM*\n"
     messageContent += "━━━━━━━━━━━━━━━━━━━━━━\n\n"
 
     // 🔥 SOLO EL NÚMERO GRANDE
     messageContent += `# 🔥 ${totalPPM.toFixed(2)}\n`
-    messageContent += "**PPM TOTAL ACTUAL**\n\n"
+    messageContent += "**CURRENT PPM**\n\n"
 
     messageContent += "━━━━━━━━━━━━━━━━━━━━━━\n"
-    messageContent += `📊 **MEDIA 12H:** ${average12h.toFixed(2)} ppm\n`
+    messageContent += `📊 **12H Average:** ${average12h.toFixed(2)} ppm\n`
     messageContent += "━━━━━━━━━━━━━━━━━━━━━━\n\n"
 
     if (onlineUsers.length === 0) {
