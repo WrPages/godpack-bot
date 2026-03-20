@@ -102,8 +102,93 @@ async function addVipID(id) {
 }
 
 client.on("ready", () => {
+  setInterval(updateTotalPPM, 10 * 60 * 1000)
+updateTotalPPM()
   console.log("Bot ready 🔥")
 })
+
+// StartPPMCounter
+const HEARTBEAT_CHANNEL_ID = "1483616146996465735"
+const TOTAL_CHANNEL_ID = "1484015417411244082"
+
+async function updateTotalPPM() {
+  try {
+    const heartbeatChannel = await client.channels.fetch(HEARTBEAT_CHANNEL_ID)
+    const totalChannel = await client.channels.fetch(TOTAL_CHANNEL_ID)
+
+    const messages = await heartbeatChannel.messages.fetch({ limit: 100 })
+
+    let totalPPM = 0
+    let onlineUsers = []
+
+    const processedUsers = new Set()
+
+    for (const msg of messages.values()) {
+
+      if (!msg.author.bot) continue
+
+      const lines = msg.content.split("\n")
+      if (lines.length < 3) continue
+
+      const username = lines[0].trim()
+
+      // evitar procesar el mismo usuario 2 veces
+      if (processedUsers.has(username)) continue
+
+      const onlineLine = lines.find(l => l.startsWith("Online:"))
+      const avgLine = lines.find(l => l.includes("Avg:"))
+
+      if (!onlineLine || !avgLine) continue
+
+      // 🔥 verificar que tenga algo después de Online:
+      const onlineContent = onlineLine.replace("Online:", "").trim()
+
+      if (!onlineContent || onlineContent.toLowerCase() === "none") continue
+
+      // 🔥 extraer ppm
+      const match = avgLine.match(/Avg:\s*([\d.]+)/)
+      if (!match) continue
+
+      const ppm = parseFloat(match[1])
+      if (isNaN(ppm)) continue
+
+      totalPPM += ppm
+      onlineUsers.push({ name: username, ppm })
+
+      processedUsers.add(username)
+    }
+
+    // construir mensaje
+    let messageContent = `🔥 **TOTAL PPM: ${totalPPM.toFixed(2)} packs/min**\n\n`
+
+    if (onlineUsers.length === 0) {
+      messageContent += "⚫ No users online"
+    } else {
+      messageContent += "🟢 **Online Users:**\n"
+      for (const user of onlineUsers) {
+        messageContent += `• ${user.name} → ${user.ppm} ppm\n`
+      }
+    }
+
+    // 🔥 actualizar mensaje fijo
+    const existingMessages = await totalChannel.messages.fetch({ limit: 5 })
+    const botMessage = existingMessages.find(m => m.author.id === client.user.id)
+
+    if (botMessage) {
+      await botMessage.edit(messageContent)
+    } else {
+      await totalChannel.send(messageContent)
+    }
+
+    console.log("PPM total actualizado")
+
+  } catch (err) {
+    console.error("Error actualizando PPM:", err)
+  }
+}
+
+
+//FinishPPM
 
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return
