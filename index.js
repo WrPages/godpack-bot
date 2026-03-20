@@ -158,7 +158,7 @@ const text = await res.text()
 //const onlineIDs = text.split("\n").filter(x => x.trim() !== "")
 
 // 🔥 obtener usuarios registrados
-const users = await getUsers()
+//const users = await getUsers()
 
 // 🔥 construir lista de nombres realmente online
 const onlineNames = new Set()
