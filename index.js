@@ -109,7 +109,7 @@ updateTotalPPM()
 
 // StartPPMCounter
 const HEARTBEAT_CHANNEL_ID = "1483616146996465735"
-const TOTAL_CHANNEL_ID = "1484015417411244082"
+const TOTAL_CHANNEL_ID = "1484416376436424794"
 
 async function updateTotalPPM() {
   try {
