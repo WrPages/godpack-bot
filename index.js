@@ -209,7 +209,7 @@ for (const msg of messages.values()) {
 
     
 
-      if (processedUsers.has(username)) continue
+      if (processedUsers.has(heartbeatName)) continue
 
       const onlineLine = lines.find(l => l.startsWith("Online:"))
       const avgLine = lines.find(l => l.includes("Avg:"))
@@ -230,7 +230,7 @@ for (const msg of messages.values()) {
      // ppmUsers.push({ name: foundName, ppm })
   ppmUsers.push({ name: heartbeatName, ppm })
 
-      processedUsers.add(username)
+      processedUsers.add(heartbeatName)
     }
 
     // ===== HISTORIAL 12H =====
