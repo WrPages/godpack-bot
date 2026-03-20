@@ -197,7 +197,7 @@ async function updateTotalPPM() {
 
     // 🔥 SOLO EL NÚMERO GRANDE
     messageContent += `# 🔥 ${totalPPM.toFixed(2)}\n`
-    messageContent += "**CURRENT PPM**\n\n"
+    messageContent += "**Current ppm**\n\n"
 
     messageContent += "━━━━━━━━━━━━━━━━━━━━━━\n"
     messageContent += `📊 **12H Average:** ${average12h.toFixed(2)} ppm\n`
@@ -206,7 +206,7 @@ async function updateTotalPPM() {
     if (onlineUsers.length === 0) {
       messageContent += "⚫ No users online\n"
     } else {
-      messageContent += "🟢 **ONLINE USERS**\n"
+      messageContent += "🟢 **Online users**\n"
       messageContent += "────────────────────\n"
 
       for (const user of onlineUsers) {
