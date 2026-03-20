@@ -151,6 +151,24 @@ const TOTAL_CHANNEL_ID = "1484416376436424794"
 
 async function updateTotalPPM() {
   try {
+
+// 🔥 obtener IDs online desde gist
+const res = await fetch("https://gist.githubusercontent.com/WrPages/1fc02ff0921e82b3af1d3101cee44e4c/raw/ids.txt?t=" + Date.now())
+const text = await res.text()
+const onlineIDs = text.split("\n").filter(x => x.trim() !== "")
+
+// 🔥 obtener usuarios registrados
+const users = await getUsers()
+
+// 🔥 construir lista de nombres realmente online
+const onlineNames = new Set()
+
+for (const uid in users) {
+  if (onlineIDs.includes(users[uid].id)) {
+    onlineNames.add(users[uid].name.trim())
+  }
+}
+    
     
     const heartbeatChannel = await client.channels.fetch(HEARTBEAT_CHANNEL_ID)
     const totalChannel = await client.channels.fetch(TOTAL_CHANNEL_ID)
@@ -168,9 +186,12 @@ async function updateTotalPPM() {
       const lines = msg.content.split("\n")
       if (lines.length < 3) continue
 
-      const username = lines[0].trim()
-      // 🚫 Si NO está en ids.txt, ignorar
-if (!onlineIDs.includes(username)) continue
+      const username = lines[0]
+  .replace(":", "")
+  .trim()
+
+// 🚫 validar que esté realmente online por ID
+if (!onlineNames.has(username)) continue
       if (processedUsers.has(username)) continue
 
       const onlineLine = lines.find(l => l.startsWith("Online:"))
