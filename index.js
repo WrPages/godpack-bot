@@ -15,6 +15,28 @@ const API_URL = "https://add-ids.netlify.app/.netlify/functions/api"
 const USERS_GIST_ID = "312803a8e6964070593081d99a705d19"
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
 
+//detecta onlineppm
+const fetch = require("node-fetch") // si no lo tienes: npm install node-fetch
+
+const IDS_GIST_RAW_URL = "AQUI_TU_RAW_URL_DEL_IDS_TXT"
+
+async function getOnlineIDs() {
+  try {
+    const response = await fetch(IDS_GIST_RAW_URL)
+    const text = await response.text()
+
+    return text
+      .split("\n")
+      .map(line => line.trim())
+      .filter(line => line.length > 0)
+
+  } catch (err) {
+    console.error("Error leyendo ids.txt:", err)
+    return []
+  }
+}
+
+//termina
 const fs = require("fs")
 
 const HISTORY_FILE = "./ppm_history.json"
@@ -129,6 +151,7 @@ const TOTAL_CHANNEL_ID = "1484416376436424794"
 
 async function updateTotalPPM() {
   try {
+    
     const heartbeatChannel = await client.channels.fetch(HEARTBEAT_CHANNEL_ID)
     const totalChannel = await client.channels.fetch(TOTAL_CHANNEL_ID)
 
@@ -137,7 +160,7 @@ async function updateTotalPPM() {
     let totalPPM = 0
     let onlineUsers = []
     const processedUsers = new Set()
-
+    const onlineIDs = await getOnlineIDs()
     for (const msg of messages.values()) {
 
       if (!msg.author.bot) continue
@@ -146,6 +169,8 @@ async function updateTotalPPM() {
       if (lines.length < 3) continue
 
       const username = lines[0].trim()
+      // 🚫 Si NO está en ids.txt, ignorar
+if (!onlineIDs.includes(username)) continue
       if (processedUsers.has(username)) continue
 
       const onlineLine = lines.find(l => l.startsWith("Online:"))
