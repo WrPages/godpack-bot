@@ -185,7 +185,7 @@ const onlineIDs = await getOnlineIDs()
 const users = await getUsers()
 
 // 🔥 convertir IDs online a nombres
-const onlineNames = new Set()
+//const onlineNames = new Set()
 
 for (const uid in users) {
   if (onlineIDs.includes(users[uid].id)) {
