@@ -15,6 +15,20 @@ const API_URL = "https://add-ids.netlify.app/.netlify/functions/api"
 const USERS_GIST_ID = "312803a8e6964070593081d99a705d19"
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
 
+const fs = require("fs")
+
+const HISTORY_FILE = "./ppm_history.json"
+const TWELVE_HOURS = 12 * 60 * 60 * 1000
+
+function loadHistory() {
+  if (!fs.existsSync(HISTORY_FILE)) return []
+  return JSON.parse(fs.readFileSync(HISTORY_FILE))
+}
+
+function saveHistory(data) {
+  fs.writeFileSync(HISTORY_FILE, JSON.stringify(data))
+}
+
 let onlineUsers = {}
 
 async function getUsers() {
@@ -103,9 +117,10 @@ async function addVipID(id) {
 
 client.on("ready", () => {
   setInterval(updateTotalPPM, 5 * 60 * 1000)
-updateTotalPPM()
+  updateTotalPPM()
   console.log("Bot ready 🔥")
 })
+
 
 // StartPPMCounter
 
@@ -121,7 +136,6 @@ async function updateTotalPPM() {
 
     let totalPPM = 0
     let onlineUsers = []
-
     const processedUsers = new Set()
 
     for (const msg of messages.values()) {
@@ -132,8 +146,6 @@ async function updateTotalPPM() {
       if (lines.length < 3) continue
 
       const username = lines[0].trim()
-
-      // evitar procesar el mismo usuario 2 veces
       if (processedUsers.has(username)) continue
 
       const onlineLine = lines.find(l => l.startsWith("Online:"))
@@ -141,12 +153,9 @@ async function updateTotalPPM() {
 
       if (!onlineLine || !avgLine) continue
 
-      // 🔥 verificar que tenga algo después de Online:
       const onlineContent = onlineLine.replace("Online:", "").trim()
-
       if (!onlineContent || onlineContent.toLowerCase() === "none") continue
 
-      // 🔥 extraer ppm
       const match = avgLine.match(/Avg:\s*([\d.]+)/)
       if (!match) continue
 
@@ -159,39 +168,53 @@ async function updateTotalPPM() {
       processedUsers.add(username)
     }
 
-    // construir mensaje
- // ordenar usuarios de mayor a menor ppm
-onlineUsers.sort((a, b) => b.ppm - a.ppm)
+    // ===== HISTORIAL 12H =====
+    let history = loadHistory()
+    const now = Date.now()
 
-// construir mensaje mejorado
-let messageContent = ""
-messageContent += "━━━━━━━━━━━━━━━━━━━━━━\n"
-messageContent += "🚀 **GLOBAL PACK RATE**\n"
-messageContent += "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    history.push({
+      timestamp: now,
+      value: totalPPM
+    })
 
-messageContent += `🔥 **${totalPPM.toFixed(2)} PPM TOTAL**\n`
-messageContent += "_Packs por minuto combinados_\n\n"
+    history = history.filter(entry => now - entry.timestamp <= TWELVE_HOURS)
+    saveHistory(history)
 
-if (onlineUsers.length === 0) {
-  messageContent += "⚫ No users online\n"
-} else {
-  messageContent += "🟢 **ONLINE USERS**\n"
-  messageContent += "────────────────────\n"
+    let average12h = 0
+    if (history.length > 0) {
+      const sum = history.reduce((acc, entry) => acc + entry.value, 0)
+      average12h = sum / history.length
+    }
 
-  for (let i = 0; i < onlineUsers.length; i++) {
-    const user = onlineUsers[i]
+    // ===== CONSTRUIR MENSAJE =====
 
-    // medallas para top 3
-    let medal = ""
-    if (i === 0) medal = "🥇 "
-    else if (i === 1) medal = "🥈 "
-    else if (i === 2) medal = "🥉 "
+    onlineUsers.sort((a, b) => b.ppm - a.ppm)
 
-    messageContent += `${medal}**${user.name}** → \`${user.ppm.toFixed(2)} ppm\`\n`
-  }
-}
+    let messageContent = ""
+    messageContent += "━━━━━━━━━━━━━━━━━━━━━━\n"
+    messageContent += "🚀 **GLOBAL PACK RATE**\n"
+    messageContent += "━━━━━━━━━━━━━━━━━━━━━━\n\n"
 
-messageContent += "\n━━━━━━━━━━━━━━━━━━━━━━"
+    // 🔥 SOLO EL NÚMERO GRANDE
+    messageContent += `# 🔥 ${totalPPM.toFixed(2)}\n`
+    messageContent += "**PPM TOTAL ACTUAL**\n\n"
+
+    messageContent += "━━━━━━━━━━━━━━━━━━━━━━\n"
+    messageContent += `📊 **MEDIA 12H:** ${average12h.toFixed(2)} ppm\n`
+    messageContent += "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+
+    if (onlineUsers.length === 0) {
+      messageContent += "⚫ No users online\n"
+    } else {
+      messageContent += "🟢 **ONLINE USERS**\n"
+      messageContent += "────────────────────\n"
+
+      for (const user of onlineUsers) {
+        messageContent += `• **${user.name}** → \`${user.ppm.toFixed(2)} ppm\`\n`
+      }
+    }
+
+    messageContent += "\n━━━━━━━━━━━━━━━━━━━━━━"
 
     // 🔥 actualizar mensaje fijo
     const existingMessages = await totalChannel.messages.fetch({ limit: 5 })
