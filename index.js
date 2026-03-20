@@ -160,16 +160,38 @@ async function updateTotalPPM() {
     }
 
     // construir mensaje
-    let messageContent = `🔥 **TOTAL PPM: ${totalPPM.toFixed(2)} packs/min**\n\n`
+ // ordenar usuarios de mayor a menor ppm
+onlineUsers.sort((a, b) => b.ppm - a.ppm)
 
-    if (onlineUsers.length === 0) {
-      messageContent += "⚫ No users online"
-    } else {
-      messageContent += "🟢 **Online Users:**\n"
-      for (const user of onlineUsers) {
-        messageContent += `• ${user.name} → ${user.ppm} ppm\n`
-      }
-    }
+// construir mensaje mejorado
+let messageContent = ""
+messageContent += "━━━━━━━━━━━━━━━━━━━━━━\n"
+messageContent += "🚀 **GLOBAL PACK RATE**\n"
+messageContent += "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+
+messageContent += `🔥 **${totalPPM.toFixed(2)} PPM TOTAL**\n`
+messageContent += "_Packs por minuto combinados_\n\n"
+
+if (onlineUsers.length === 0) {
+  messageContent += "⚫ No users online\n"
+} else {
+  messageContent += "🟢 **ONLINE USERS**\n"
+  messageContent += "────────────────────\n"
+
+  for (let i = 0; i < onlineUsers.length; i++) {
+    const user = onlineUsers[i]
+
+    // medallas para top 3
+    let medal = ""
+    if (i === 0) medal = "🥇 "
+    else if (i === 1) medal = "🥈 "
+    else if (i === 2) medal = "🥉 "
+
+    messageContent += `${medal}**${user.name}** → \`${user.ppm.toFixed(2)} ppm\`\n`
+  }
+}
+
+messageContent += "\n━━━━━━━━━━━━━━━━━━━━━━"
 
     // 🔥 actualizar mensaje fijo
     const existingMessages = await totalChannel.messages.fetch({ limit: 5 })
