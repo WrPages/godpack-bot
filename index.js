@@ -159,7 +159,23 @@ async function updateTotalPPM() {
     }
 
     // construir mensaje
-    let messageContent = `🔥 **TOTAL PPM: ${totalPPM.toFixed(2)} packs/min**\n\n`
+    const { EmbedBuilder } = require("discord.js")
+
+// ordenar usuarios por ppm mayor a menor
+onlineUsers.sort((a, b) => b.ppm - a.ppm)
+
+const embed = new EmbedBuilder()
+  .setColor(0x00ff88)
+  .setTitle("🚀 GLOBAL PACK RATE")
+  .setDescription(`## 🔥 ${totalPPM.toFixed(2)} PPM`)
+  .addFields({
+    name: "🟢 Online Users",
+    value: onlineUsers.length > 0
+      ? onlineUsers.map(u => `**${u.name}** — ${u.ppm.toFixed(2)} ppm`).join("\n")
+      : "No users online"
+  })
+  .setFooter({ text: `Updated automatically every 10 minutes` })
+  .setTimestamp()
 
     if (onlineUsers.length === 0) {
       messageContent += "⚫ No users online"
@@ -175,9 +191,9 @@ async function updateTotalPPM() {
     const botMessage = existingMessages.find(m => m.author.id === client.user.id)
 
     if (botMessage) {
-      await botMessage.edit(messageContent)
+      await botMessage.edit({ embeds: [embed] })
     } else {
-      await totalChannel.send(messageContent)
+      await totalChannel.send({ embeds: [embed] })
     }
 
     console.log("PPM total actualizado")
