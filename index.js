@@ -116,7 +116,7 @@ async function updateTotalPPM() {
     const heartbeatChannel = await client.channels.fetch(HEARTBEAT_CHANNEL_ID)
     const totalChannel = await client.channels.fetch(TOTAL_CHANNEL_ID)
 
-    const messages = await heartbeatChannel.messages.fetch({ limit: 100 })
+    const messages = await heartbeatChannel.messages.fetch({ limit: 10 })
 
     let totalPPM = 0
     let onlineUsers = []
