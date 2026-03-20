@@ -18,7 +18,7 @@ const GITHUB_TOKEN = process.env.GITHUB_TOKEN
 //detecta onlineppm
 const fetch = require("node-fetch") // si no lo tienes: npm install node-fetch
 
-const IDS_GIST_RAW_URL = "AQUI_TU_RAW_URL_DEL_IDS_TXT"
+const IDS_GIST_RAW_URL = "https://gist.githubusercontent.com/WrPages/1fc02ff0921e82b3af1d3101cee44e4c/raw/ids.txt"
 
 async function getOnlineIDs() {
   try {
