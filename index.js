@@ -179,38 +179,35 @@ async function updateTotalPPM() {
     }
 
     // 🔥 Leer mensajes heartbeat
-    for (const msg of messages.values()) {
+for (const msg of messages.values()) {
 
-      if (!msg.author.bot) continue
+  if (!msg.author.bot) continue
 
-      const lines = msg.content.split("\n")
-      if (lines.length < 3) continue
+  const lines = msg.content.split("\n")
+  if (lines.length < 3) continue
 
+  const heartbeatName = lines[0]
+    .replace(":", "")
+    .trim()
 
-      let foundId = null
-let foundName = null
+  let foundId = null
 
-for (const uid in users) {
+  for (const discordId in users) {
 
-  const registeredName = users[uid].name.split("#")[0].trim()
+    const registeredName = users[discordId].name
+      .split("#")[0]
+      .trim()
 
-  // 🔍 Buscar si el mensaje contiene el nombre registrado
-  if (msg.content.toLowerCase().includes(registeredName.toLowerCase())) {
-
-    foundId = users[uid].id
-    foundName = registeredName
-    break
+    if (registeredName.toLowerCase() === heartbeatName.toLowerCase()) {
+      foundId = users[discordId].id
+      break
+    }
   }
-}
 
-// 🚫 No está registrado
-if (!foundId) continue
+  if (!foundId) continue
+  if (!onlineIDs.includes(foundId)) continue
 
-// 🚫 No está online realmente
-if (!onlineIDs.includes(foundId)) continue
-
-
-      
+    
 
       if (processedUsers.has(username)) continue
 
@@ -230,7 +227,8 @@ if (!onlineIDs.includes(foundId)) continue
 
       totalPPM += ppm
       
-      ppmUsers.push({ name: foundName, ppm })
+     // ppmUsers.push({ name: foundName, ppm })
+  ppmUsers.push({ name: heartbeatName, ppm })
 
       processedUsers.add(username)
     }
