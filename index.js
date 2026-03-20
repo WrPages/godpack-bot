@@ -334,7 +334,7 @@ if (interaction.commandName === "gp") {
   }
 
   // 🔹 CHANGE
- if (interaction.commandName === "change") {
+if (interaction.commandName === "change") {
   const newId = interaction.options.getString("id")
 
   if (!/^\d{16}$/.test(newId)) {
@@ -360,6 +360,7 @@ if (interaction.commandName === "gp") {
   return interaction.reply(`🔄 ID updated to ${newId} (${interaction.user.tag})`)
   }
 
+  
   // 🔹 ONLINE
 if (interaction.commandName === "online") {
 
