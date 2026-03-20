@@ -361,38 +361,40 @@ if (interaction.commandName === "gp") {
   }
 
   // 🔹 ONLINE
-  if (interaction.commandName === "online") {
-    users = await getUsers()
+if (interaction.commandName === "online") {
 
-    const userData = users[userId]
-    const id = userData?.id
+  await interaction.deferReply()
 
-    if (!id) {
-      return interaction.reply("❌ You must register first using /register")
-    }
+  const users = await getUsers()
+  const userData = users[userId]
+  const id = userData?.id
 
-    await fetch(`${API_URL}?action=online&id=${id}`)
-
-    onlineUsers[userId] = userData
-
-    return interaction.reply(`🟢 ${userData.name} is now ONLINE with ID ${id}`)
+  if (!id) {
+    return interaction.editReply("❌ You must register first using /register")
   }
+
+  await fetch(`${API_URL}?action=online&id=${id}`)
+
+  return interaction.editReply(`🟢 ${userData.name} is now ONLINE with ID ${id}`)
+}
 
   // 🔹 OFFLINE
   if (interaction.commandName === "offline") {
-    const userData = users[userId]
-    const id = userData?.id
 
-    if (!id) {
-      return interaction.reply("❌ No ID registered")
-    }
+  await interaction.deferReply()
 
-    await fetch(`${API_URL}?action=offline&id=${id}`)
+  const users = await getUsers()
+  const userData = users[userId]
+  const id = userData?.id
 
-    delete onlineUsers[userId]
-
-    return interaction.reply(`🔴 ${userData.name} is now OFFLINE with ID ${id}`)
+  if (!id) {
+    return interaction.editReply("❌ No ID registered")
   }
+
+  await fetch(`${API_URL}?action=offline&id=${id}`)
+
+  return interaction.editReply(`🔴 ${userData.name} is now OFFLINE with ID ${id}`)
+}
 
   // 🔹 LIST
   if (interaction.commandName === "list") {
