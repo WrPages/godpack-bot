@@ -51,7 +51,7 @@ function saveHistory(data) {
   fs.writeFileSync(HISTORY_FILE, JSON.stringify(data))
 }
 
-let onlineUsers = {}
+//let onlineUsers = {}
 
 async function getUsers() {
   try {
@@ -152,46 +152,33 @@ const TOTAL_CHANNEL_ID = "1484416376436424794"
 async function updateTotalPPM() {
   try {
 
-// 🔥 obtener IDs online desde gist
-const res = await fetch("https://gist.githubusercontent.com/WrPages/1fc02ff0921e82b3af1d3101cee44e4c/raw/ids.txt?t=" + Date.now())
-const text = await res.text()
-//const onlineIDs = text.split("\n").filter(x => x.trim() !== "")
-
-// 🔥 obtener usuarios registrados
-//const users = await getUsers()
-
-// 🔥 construir lista de nombres realmente online
-const onlineNames = new Set()
-
-for (const uid in users) {
-  if (onlineIDs.includes(users[uid].id)) {
-    onlineNames.add(users[uid].name.trim())
-  }
-}
-    
-    
     const heartbeatChannel = await client.channels.fetch(HEARTBEAT_CHANNEL_ID)
     const totalChannel = await client.channels.fetch(TOTAL_CHANNEL_ID)
 
     const messages = await heartbeatChannel.messages.fetch({ limit: 10 })
 
     let totalPPM = 0
-    let onlineUsers = []
+    let ppmUsers = []
     const processedUsers = new Set()
-    // 🔥 obtener IDs online reales
-const onlineIDs = await getOnlineIDs()
 
-// 🔥 obtener usuarios registrados
-const users = await getUsers()
+    // 🔥 Obtener IDs online reales
+    const onlineIDs = await getOnlineIDs()
 
-// 🔥 convertir IDs online a nombres
-//const onlineNames = new Set()
+    // 🔥 Obtener usuarios registrados
+    const users = await getUsers()
 
-for (const uid in users) {
-  if (onlineIDs.includes(users[uid].id)) {
-    onlineNames.add(users[uid].name.trim())
-  }
-}
+    // 🔥 Construir set de nombres realmente online (por ID)
+    const onlineNames = new Set()
+
+    for (const uid in users) {
+      if (onlineIDs.includes(users[uid].id)) {
+        // Quitamos #1234 por seguridad
+        const cleanName = users[uid].name.split("#")[0].trim()
+        onlineNames.add(cleanName)
+      }
+    }
+
+    // 🔥 Leer mensajes heartbeat
     for (const msg of messages.values()) {
 
       if (!msg.author.bot) continue
@@ -199,14 +186,13 @@ for (const uid in users) {
       const lines = msg.content.split("\n")
       if (lines.length < 3) continue
 
-     const username = lines[0]
-  .replace(":", "")
-  .trim()
+      const username = lines[0]
+        .replace(":", "")
+        .trim()
 
-// 🚫 validar contra IDs reales
-if (!onlineNames.has(username)) continue
+      // 🚫 Validar que esté online REALMENTE por ID
+      if (!onlineNames.has(username)) continue
 
-      
       if (processedUsers.has(username)) continue
 
       const onlineLine = lines.find(l => l.startsWith("Online:"))
@@ -224,7 +210,7 @@ if (!onlineNames.has(username)) continue
       if (isNaN(ppm)) continue
 
       totalPPM += ppm
-      onlineUsers.push({ name: username, ppm })
+      ppmUsers.push({ name: username, ppm })
 
       processedUsers.add(username)
     }
@@ -247,37 +233,35 @@ if (!onlineNames.has(username)) continue
       average12h = sum / history.length
     }
 
-    // ===== CONSTRUIR MENSAJE =====
+    // ===== MENSAJE =====
 
-    onlineUsers.sort((a, b) => b.ppm - a.ppm)
+    ppmUsers.sort((a, b) => b.ppm - a.ppm)
 
     let messageContent = ""
     messageContent += "━━━━━━━━━━━━━━━━━━━━━━\n"
-    messageContent += "🚀 **Global ppm\n"
+    messageContent += "🚀 **Global PPM**\n"
     messageContent += "━━━━━━━━━━━━━━━━━━━━━━\n\n"
 
-    // 🔥 SOLO EL NÚMERO GRANDE
     messageContent += `# 🔥 ${totalPPM.toFixed(2)}\n`
-    messageContent += "**Current ppm**\n\n"
+    messageContent += "**Current PPM**\n\n"
 
     messageContent += "━━━━━━━━━━━━━━━━━━━━━━\n"
     messageContent += `📊 **12H Average:** ${average12h.toFixed(2)} ppm\n`
     messageContent += "━━━━━━━━━━━━━━━━━━━━━━\n\n"
 
-    if (onlineUsers.length === 0) {
+    if (ppmUsers.length === 0) {
       messageContent += "⚫ No users online\n"
     } else {
       messageContent += "🟢 **Online users**\n"
       messageContent += "────────────────────\n"
 
-      for (const user of onlineUsers) {
+      for (const user of ppmUsers) {
         messageContent += `• **${user.name}** → \`${user.ppm.toFixed(2)} ppm\`\n`
       }
     }
 
     messageContent += "\n━━━━━━━━━━━━━━━━━━━━━━"
 
-    // 🔥 actualizar mensaje fijo
     const existingMessages = await totalChannel.messages.fetch({ limit: 5 })
     const botMessage = existingMessages.find(m => m.author.id === client.user.id)
 
