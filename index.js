@@ -186,26 +186,27 @@ async function updateTotalPPM() {
       const lines = msg.content.split("\n")
       if (lines.length < 3) continue
 
-      const username = lines[0]
-        .replace(":", "")
-        .trim()
 
-// 🔍 Buscar el ID real del usuario registrado
-let foundId = null
+      let foundId = null
+let foundName = null
 
 for (const uid in users) {
+
   const registeredName = users[uid].name.split("#")[0].trim()
 
-  if (registeredName.toLowerCase() === username.toLowerCase()) {
+  // 🔍 Buscar si el mensaje contiene el nombre registrado
+  if (msg.content.toLowerCase().includes(registeredName.toLowerCase())) {
+
     foundId = users[uid].id
+    foundName = registeredName
     break
   }
 }
 
-// 🚫 Si no está registrado → ignorar
+// 🚫 No está registrado
 if (!foundId) continue
 
-// 🚫 Si su ID no está online en ids.txt → ignorar
+// 🚫 No está online realmente
 if (!onlineIDs.includes(foundId)) continue
 
 
@@ -228,7 +229,8 @@ if (!onlineIDs.includes(foundId)) continue
       if (isNaN(ppm)) continue
 
       totalPPM += ppm
-      ppmUsers.push({ name: username, ppm })
+      
+      ppmUsers.push({ name: foundName, ppm })
 
       processedUsers.add(username)
     }
