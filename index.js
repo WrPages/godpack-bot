@@ -178,7 +178,20 @@ for (const uid in users) {
     let totalPPM = 0
     let onlineUsers = []
     const processedUsers = new Set()
-    const onlineIDs = await getOnlineIDs()
+    // 🔥 obtener IDs online reales
+const onlineIDs = await getOnlineIDs()
+
+// 🔥 obtener usuarios registrados
+const users = await getUsers()
+
+// 🔥 convertir IDs online a nombres
+const onlineNames = new Set()
+
+for (const uid in users) {
+  if (onlineIDs.includes(users[uid].id)) {
+    onlineNames.add(users[uid].name.trim())
+  }
+}
     for (const msg of messages.values()) {
 
       if (!msg.author.bot) continue
@@ -186,12 +199,14 @@ for (const uid in users) {
       const lines = msg.content.split("\n")
       if (lines.length < 3) continue
 
-      const username = lines[0]
+     const username = lines[0]
   .replace(":", "")
   .trim()
 
-// 🚫 validar que esté realmente online por ID
+// 🚫 validar contra IDs reales
 if (!onlineNames.has(username)) continue
+
+      
       if (processedUsers.has(username)) continue
 
       const onlineLine = lines.find(l => l.startsWith("Online:"))
