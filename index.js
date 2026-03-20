@@ -155,7 +155,7 @@ async function updateTotalPPM() {
 // 🔥 obtener IDs online desde gist
 const res = await fetch("https://gist.githubusercontent.com/WrPages/1fc02ff0921e82b3af1d3101cee44e4c/raw/ids.txt?t=" + Date.now())
 const text = await res.text()
-const onlineIDs = text.split("\n").filter(x => x.trim() !== "")
+//const onlineIDs = text.split("\n").filter(x => x.trim() !== "")
 
 // 🔥 obtener usuarios registrados
 const users = await getUsers()
