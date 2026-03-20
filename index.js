@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits } = require('discord.js')
+const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js')
 const fetch = require('node-fetch')
 
 const client = new Client({ 
@@ -108,19 +108,15 @@ updateTotalPPM()
 })
 
 // StartPPMCounter
-const HEARTBEAT_CHANNEL_ID = "ID_DEL_CANAL_HEARTBEAT"
-const TOTAL_CHANNEL_ID = "ID_DEL_CANAL_PPM_TOTAL"
-
 async function updateTotalPPM() {
   try {
-    const heartbeatChannel = await client.channels.fetch(HEARTBEAT_CHANNEL_ID)
-    const totalChannel = await client.channels.fetch(TOTAL_CHANNEL_ID)
+    const heartbeatChannel = await client.channels.fetch(1483616146996465735)
+    const totalChannel = await client.channels.fetch(1484416376436424794)
 
-    const messages = await heartbeatChannel.messages.fetch({ limit: 100 })
+    const messages = await heartbeatChannel.messages.fetch({ limit: 10 })
 
     let totalPPM = 0
     let onlineUsers = []
-
     const processedUsers = new Set()
 
     for (const msg of messages.values()) {
@@ -131,8 +127,6 @@ async function updateTotalPPM() {
       if (lines.length < 3) continue
 
       const username = lines[0].trim()
-
-      // evitar procesar el mismo usuario 2 veces
       if (processedUsers.has(username)) continue
 
       const onlineLine = lines.find(l => l.startsWith("Online:"))
@@ -140,12 +134,9 @@ async function updateTotalPPM() {
 
       if (!onlineLine || !avgLine) continue
 
-      // 🔥 verificar que tenga algo después de Online:
       const onlineContent = onlineLine.replace("Online:", "").trim()
-
       if (!onlineContent || onlineContent.toLowerCase() === "none") continue
 
-      // 🔥 extraer ppm
       const match = avgLine.match(/Avg:\s*([\d.]+)/)
       if (!match) continue
 
@@ -158,26 +149,30 @@ async function updateTotalPPM() {
       processedUsers.add(username)
     }
 
-    // construir mensaje
-    let messageContent = `🔥 **TOTAL PPM: ${totalPPM.toFixed(2)} packs/min**\n\n`
+    onlineUsers.sort((a, b) => b.ppm - a.ppm)
 
-    if (onlineUsers.length === 0) {
-      messageContent += "⚫ No users online"
-    } else {
-      messageContent += "🟢 **Online Users:**\n"
-      for (const user of onlineUsers) {
-        messageContent += `• ${user.name} → ${user.ppm} ppm\n`
-      }
-    }
+    const { EmbedBuilder } = require("discord.js")
 
-    // 🔥 actualizar mensaje fijo
+    const embed = new EmbedBuilder()
+      .setColor(0x00ff88)
+      .setTitle("🚀 GLOBAL PACK RATE")
+      .setDescription(`## 🔥 ${totalPPM.toFixed(2)} PPM`)
+      .addFields({
+        name: "🟢 Online Users",
+        value: onlineUsers.length > 0
+          ? onlineUsers.map(u => `**${u.name}** — ${u.ppm.toFixed(2)} ppm`).join("\n")
+          : "No users online"
+      })
+      .setFooter({ text: `Updated automatically every 10 minutes` })
+      .setTimestamp()
+
     const existingMessages = await totalChannel.messages.fetch({ limit: 5 })
     const botMessage = existingMessages.find(m => m.author.id === client.user.id)
 
     if (botMessage) {
-      await botMessage.edit(messageContent)
+      await botMessage.edit({ embeds: [embed] })
     } else {
-      await totalChannel.send(messageContent)
+      await totalChannel.send({ embeds: [embed] })
     }
 
     console.log("PPM total actualizado")
