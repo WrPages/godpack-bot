@@ -16,7 +16,7 @@ const USERS_GIST_ID = "312803a8e6964070593081d99a705d19"
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
 
 //detecta onlineppm
-const fetch = require("node-fetch") // si no lo tienes: npm install node-fetch
+
 
 const IDS_GIST_RAW_URL = "https://gist.githubusercontent.com/WrPages/1fc02ff0921e82b3af1d3101cee44e4c/raw/ids.txt"
 
