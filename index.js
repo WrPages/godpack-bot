@@ -190,8 +190,26 @@ async function updateTotalPPM() {
         .replace(":", "")
         .trim()
 
-      // 🚫 Validar que esté online REALMENTE por ID
-      if (!onlineNames.has(username)) continue
+// 🔍 Buscar el ID real del usuario registrado
+let foundId = null
+
+for (const uid in users) {
+  const registeredName = users[uid].name.split("#")[0].trim()
+
+  if (registeredName.toLowerCase() === username.toLowerCase()) {
+    foundId = users[uid].id
+    break
+  }
+}
+
+// 🚫 Si no está registrado → ignorar
+if (!foundId) continue
+
+// 🚫 Si su ID no está online en ids.txt → ignorar
+if (!onlineIDs.includes(foundId)) continue
+
+
+      
 
       if (processedUsers.has(username)) continue
 
