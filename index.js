@@ -323,9 +323,14 @@ if (interaction.commandName === "gp") {
       return interaction.reply("❌ ID must be exactly 16 digits (numbers only)")
     }
 
-    users[userId] = {
-      id: id,
-      name: interaction.user.tag
+const displayName = interaction.member
+  ? interaction.member.displayName
+  : interaction.user.username
+
+    
+  users[userId] = {
+  id: id,
+  name: interaction.member.displayName
     }
 
     await saveUsers(users)
