@@ -142,7 +142,9 @@ client.on("ready", () => {
   updateTotalPPM()
   console.log("Bot ready 🔥")
 })
+require("./gpHandler")(client);
 
+client.login(process.env.TOKEN)
 
 // StartPPMCounter
 
