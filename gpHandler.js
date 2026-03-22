@@ -289,37 +289,7 @@ client.on("interactionCreate", async (interaction) => {
   });
 });
 
-    if (totalVotes >= 3 && data.alive.size >= 2 && !data.confirmed) {
-
-      data.confirmed = true;
-      statsData.todayCount++;
-      saveData();
-
-      const updatedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
-        .setFooter({ text: "🟢 CONFIRMADO VIVO" })
-        .setColor(0x00ff00);
-
-      const disabledRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("gp_alive")
-          .setLabel(`🟢 Alive (${data.alive.size})`)
-          .setStyle(ButtonStyle.Success)
-          .setDisabled(true),
-
-        new ButtonBuilder()
-          .setCustomId("gp_dead")
-          .setLabel(`🔴 Dead (${data.dead.size})`)
-          .setStyle(ButtonStyle.Danger)
-          .setDisabled(true)
-      );
-
-      await interaction.message.edit({
-        embeds: [updatedEmbed],
-        components: [disabledRow]
-      });
-
-      updateStats(interaction.client);
-    }
+    
   });
 
 };
