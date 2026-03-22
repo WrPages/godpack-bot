@@ -118,9 +118,9 @@ module.exports = (client) => {
       .setDescription(`👤 **@${username}**`)
       .setColor(color);
 
-    if (imageFile && imageName) {
-      embed.setImage(`attachment://${imageName}`);
-    }
+    if (imageFile) {
+  embed.setImage(imageFile);
+}
 
     const buttons = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
@@ -135,7 +135,7 @@ module.exports = (client) => {
 
     const sentMessage = await message.channel.send({
       embeds: [embed],
-      files: imageFile ? [{ attachment: imageFile, name: imageName }] : [],
+
       components: [buttons]
     });
 
