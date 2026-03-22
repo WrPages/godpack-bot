@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require("discord.js");
+ const { EmbedBuilder } = require("discord.js");
 
 const ALLOWED_CHANNEL_ID = "1484015417411244082";
 
@@ -83,9 +83,12 @@ const sentMessage = await message.channel.send({
 });
 
 // 2️⃣ Crear thread automáticamente
-const thread = await sentMessage.startThread({
+
+
+
+const thread = await message.channel.threads.create({
   name: `GP • ${rarity}/5`,
-  autoArchiveDuration: 1440, // 24h
+  autoArchiveDuration: 1440,
 });
 
 // 3️⃣ Enviar mensaje original dentro del thread
