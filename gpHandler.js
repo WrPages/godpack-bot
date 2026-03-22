@@ -187,59 +187,107 @@ module.exports = (client) => {
 
   // ========= INTERACCIONES =========
 
-  client.on("interactionCreate", async (interaction) => {
-    if (!interaction.isButton()) return;
+client.on("interactionCreate", async (interaction) => {
+  if (!interaction.isButton()) return;
 
-    const data = packVotes.get(interaction.message.id);
-    if (!data) return;
+  const data = packVotes.get(interaction.message.id);
+  if (!data) return;
 
-    const userId = interaction.user.id;
+  const userId = interaction.user.id;
 
-    if (interaction.customId === "gp_alive") {
-      data.alive.add(userId);
-      data.dead.delete(userId);
-    }
-
-    if (interaction.customId === "gp_dead") {
-      data.dead.add(userId);
-      data.alive.delete(userId);
-    }
-
-  await interaction.deferUpdate();
-
-// Buscar el thread del mensaje
-const thread = interaction.message.thread;
-
-if (thread) {
+  // Registrar voto
   if (interaction.customId === "gp_alive") {
-    await thread.send(`🗳️ **${interaction.user.username} voted ALIVE**`);
+    data.alive.add(userId);
+    data.dead.delete(userId);
   }
 
   if (interaction.customId === "gp_dead") {
-    await thread.send(`🗳️ **${interaction.user.username} voted DEAD**`);
+    data.dead.add(userId);
+    data.alive.delete(userId);
   }
-}
 
-// ===== SI LLEGA A 2 ALIVE → QUITAR BOTÓN DEAD =====
+  const totalVotes = data.alive.size + data.dead.size;
 
-if (data.alive.size >= 2 && !data.confirmed) {
+  // Buscar thread
+  const thread = interaction.message.thread;
+  if (thread) {
+    await thread.send(
+      `🗳️ **${interaction.user.username} voted ${
+        interaction.customId === "gp_alive" ? "ALIVE" : "DEAD"
+      }**`
+    );
+  }
 
-  const updatedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
-    .setFooter({ text: "🟢 Likely Alive (2 votes reached)" })
-    .setColor(0x2ecc71);
+  // ==========================
+  // 1️⃣ CONFIRMADO DEFINITIVO
+  // ==========================
+  if (totalVotes >= 3 && data.alive.size >= 2 && !data.confirmed) {
 
-  const aliveOnlyRow = new ActionRowBuilder().addComponents(
+    data.confirmed = true;
+    statsData.todayCount++;
+    saveData();
+
+    const confirmedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
+      .setFooter({ text: "🟢 CONFIRMED ALIVE" })
+      .setColor(0x00ff00);
+
+    const disabledRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("gp_alive")
+        .setLabel(`🟢 Alive (${data.alive.size})`)
+        .setStyle(ButtonStyle.Success)
+        .setDisabled(true)
+    );
+
+    await updateStats(interaction.client);
+
+    return await interaction.update({
+      embeds: [confirmedEmbed],
+      components: [disabledRow]
+    });
+  }
+
+  // ==========================
+  // 2️⃣ LLEGÓ A 2 ALIVE
+  // ==========================
+  if (data.alive.size >= 2 && !data.confirmed) {
+
+    const likelyEmbed = EmbedBuilder.from(interaction.message.embeds[0])
+      .setFooter({ text: "🟢 Likely Alive (2 votes reached)" })
+      .setColor(0x2ecc71);
+
+    const aliveOnlyRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("gp_alive")
+        .setLabel(`🟢 Alive (${data.alive.size})`)
+        .setStyle(ButtonStyle.Success)
+    );
+
+    return await interaction.update({
+      embeds: [likelyEmbed],
+      components: [aliveOnlyRow]
+    });
+  }
+
+  // ==========================
+  // 3️⃣ VOTO NORMAL
+  // ==========================
+  const normalRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("gp_alive")
       .setLabel(`🟢 Alive (${data.alive.size})`)
-      .setStyle(ButtonStyle.Success)
+      .setStyle(ButtonStyle.Success),
+
+    new ButtonBuilder()
+      .setCustomId("gp_dead")
+      .setLabel(`🔴 Dead (${data.dead.size})`)
+      .setStyle(ButtonStyle.Danger)
   );
 
   return await interaction.update({
-    embeds: [updatedEmbed],
-    components: [aliveOnlyRow]
+    components: [normalRow]
   });
-}
+});
 
     if (totalVotes >= 3 && data.alive.size >= 2 && !data.confirmed) {
 
