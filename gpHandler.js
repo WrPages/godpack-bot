@@ -85,8 +85,8 @@ module.exports = (client) => {
   client.on("messageCreate", async (message) => {
 
     if (message.channel.id !== ALLOWED_CHANNEL_ID) return;
-    if (!message.webhookId) return;
-if (!/\[\d\/5\]/.test(message.content)) return;
+    //if (!message.webhookId) return;
+if (!/\[\s*\d\s*\/\s*5\s*\]/.test(message.content)) return;
 
     let imageFile = null;
     let imageName = null;
