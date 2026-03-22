@@ -1,48 +1,43 @@
 const { EmbedBuilder } = require('discord.js');
 
 module.exports = (client) => {
-    // REEMPLAZA ESTO CON EL ID REAL DE TU CANAL
-    const CANAL_DETECCION_ID = '1484009807181779096'; // O el ID del canal donde quieres que aparezca
+    // IMPORTANTE: Asegúrate de que este ID sea el del CANAL, no el del Webhook.
+    const CANAL_DETECCION_ID = '1484009807181779096'; 
 
     client.on('messageCreate', async (message) => {
-        // 1. Filtros de seguridad
+        // 1. FILTRO: Solo procesar en el canal específico
         if (message.channel.id !== CANAL_DETECCION_ID) return;
-        if (message.author.id === client.user.id) return;
 
-        // 2. Comprobar si es el mensaje del God Pack
+        // 2. DETECCIÓN: Buscamos "God Pack found" sin importar quién lo envíe
         if (message.content.includes('God Pack found')) {
-            console.log("📩 PROCESANDO GOD PACK...");
+            console.log("🚀 [gpHandler] Iniciando creación de panel...");
 
             try {
                 const content = message.content;
 
-                // --- EXTRACCIÓN MEJORADA PARA TU FORMATO ---
-                
-                // Extraer el Tag (ej: @Lordchaosz)
+                // --- EXTRACCIÓN DE DATOS ---
                 const tagMatch = content.match(/(@\w+)/);
                 const userTag = tagMatch ? tagMatch[1] : 'N/A';
 
-                // Extraer el Nombre de Cuenta (ej: LordhGP) que está antes del paréntesis
+                // Buscar el nombre antes del ID entre paréntesis
                 const nameMatch = content.match(/^([^\s(]+)\s*\(/m);
                 const accountName = nameMatch ? nameMatch[1].trim() : 'Desconocido';
 
-                // Extraer la Rareza (ej: [3/5][2P])
                 const rarityMatch = content.match(/(\[\d+\/\d+\]\[\w+\])/);
-                const rarity = rarityMatch ? rarityMatch[1] : 'Desconocida';
+                const rarity = rarityMatch ? rarityMatch[1] : 'Especial';
 
-                // --- MANEJO DE IMÁGENES ---
+                // --- IMÁGENES ---
+                // Convertimos a array para asegurar el orden
                 const attachments = Array.from(message.attachments.values());
-                
-                // Imagen 1: El God Pack (Cartas)
-                // Imagen 2: El Perfil (Friend ID)
                 const imgGodPack = attachments[0] ? attachments[0].url : null;
                 const imgProfile = attachments[1] ? attachments[1].url : null;
 
-                // --- CREACIÓN DEL EMBED ---
+                console.log(`📸 Imágenes detectadas: ${attachments.length}`);
+
+                // --- CONSTRUCCIÓN DEL EMBED ---
                 const embed = new EmbedBuilder()
                     .setTitle('✨ ¡NUEVO GOD PACK DETECTADO! ✨')
-                    .setDescription(`¡Felicidades! Se ha encontrado un paquete especial.`)
-                    .setColor(0xF1C40F) // Dorado
+                    .setColor(0xF1C40F)
                     .addFields(
                         { name: '👤 Usuario', value: `**${userTag}**`, inline: true },
                         { name: '🆔 Cuenta', value: `\`${accountName}\``, inline: true },
@@ -50,25 +45,19 @@ module.exports = (client) => {
                     )
                     .setTimestamp();
 
-                // Añadir imagen grande si existe
-                if (imgGodPack) {
-                    embed.setImage(imgGodPack);
-                }
+                if (imgGodPack) embed.setImage(imgGodPack);
+                if (imgProfile) embed.setThumbnail(imgProfile);
 
-                // Añadir miniatura del perfil si existe
-                if (imgProfile) {
-                    embed.setThumbnail(imgProfile);
-                }
-
-                // --- ENVIAR ---
-                await message.channel.send({ embeds: [embed] });
-                console.log(`✅ Panel enviado con éxito para la cuenta: ${accountName}`);
+                // --- ENVÍO CON CAPTURA DE ERROR ---
+                await message.channel.send({ embeds: [embed] })
+                    .then(() => console.log(`✅ [gpHandler] Panel enviado para ${accountName}`))
+                    .catch(err => console.error(`❌ [gpHandler] Error al enviar el mensaje:`, err));
 
             } catch (error) {
-                console.error('❌ Error al generar el panel:', error);
+                console.error('❌ [gpHandler] Error crítico en el proceso:', error);
             }
         }
     });
 
-    console.log("✅ Modulo gpHandler cargado correctamente.");
+    console.log("✅ Modulo gpHandler cargado y escuchando...");
 };
