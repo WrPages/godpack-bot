@@ -195,64 +195,51 @@ module.exports = (client) => {
     // 🟢 CONFIRM ALIVE (2 votos)
     if (data.alive.size >= 2 && !data.confirmed) {
 
-      data.confirmed = true;
+data.confirmed = true;
 
-      statsData.todayCount++;
-      saveData();
-      await updateStats(interaction.client);
+statsData.todayCount++;
+saveData();
+await updateStats(interaction.client);
 
-      const aliveEmbed = new EmbedBuilder()
-        .setTitle(oldEmbed.title)
-        .setDescription(oldEmbed.description)
-        .setColor(0x00ff00)
-        .setFooter({ text: "🟢 CONFIRMED ALIVE" });
+// Cambiar SOLO el color del embed existente
+const editedEmbed = EmbedBuilder.from(oldEmbed)
+  .setColor(0x00ff00)
+  .setFooter({ text: "🟢 CONFIRMED ALIVE" });
 
-      if (oldEmbed.image) {
-        aliveEmbed.setImage(oldEmbed.image.url);
-      }
+const disabledRow = new ActionRowBuilder().addComponents(
+  new ButtonBuilder()
+    .setCustomId("gp_alive")
+    .setLabel(`🟢 Alive (${data.alive.size})`)
+    .setStyle(ButtonStyle.Success)
+    .setDisabled(true)
+);
 
-      const disabledRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("gp_alive")
-          .setLabel(`🟢 Alive (${data.alive.size})`)
-          .setStyle(ButtonStyle.Success)
-          .setDisabled(true)
-      );
-
-      return interaction.message.edit({
-        embeds: [aliveEmbed],
-        components: [disabledRow]
-      });
-    }
+return interaction.message.edit({
+  embeds: [editedEmbed],
+  components: [disabledRow]
+});
 
     // 🔴 CONFIRM DEAD (3 votos)
     if (data.dead.size >= 3 && !data.confirmed) {
 
-      data.confirmed = true;
+  data.confirmed = true;
 
-      const deadEmbed = new EmbedBuilder()
-        .setTitle(oldEmbed.title)
-        .setDescription(oldEmbed.description)
-        .setColor(0xff0000)
-        .setFooter({ text: "🔴 CONFIRMED DEAD" });
+const editedEmbed = EmbedBuilder.from(oldEmbed)
+  .setColor(0xff0000)
+  .setFooter({ text: "🔴 CONFIRMED DEAD" });
 
-      if (oldEmbed.image) {
-        deadEmbed.setImage(oldEmbed.image.url);
-      }
+const disabledRow = new ActionRowBuilder().addComponents(
+  new ButtonBuilder()
+    .setCustomId("gp_dead")
+    .setLabel(`🔴 Dead (${data.dead.size})`)
+    .setStyle(ButtonStyle.Danger)
+    .setDisabled(true)
+);
 
-      const disabledRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("gp_dead")
-          .setLabel(`🔴 Dead (${data.dead.size})`)
-          .setStyle(ButtonStyle.Danger)
-          .setDisabled(true)
-      );
-
-      return interaction.message.edit({
-        embeds: [deadEmbed],
-        components: [disabledRow]
-      });
-    }
+return interaction.message.edit({
+  embeds: [editedEmbed],
+  components: [disabledRow]
+});
 
     // UPDATE NORMAL
     const normalRow = new ActionRowBuilder().addComponents(
