@@ -51,8 +51,6 @@ if (!mainImage) {
   return;
 }
 
-// Primera imagen para el embed
-const mainImage = attachments[0].url;
 
     
     let color = 0x999999;
