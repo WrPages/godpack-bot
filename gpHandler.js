@@ -236,10 +236,10 @@ if (data.alive.size >= 2 && !data.confirmed) {
 
   );
 
-  await interaction.message.edit({
-    embeds: [updatedEmbed],
-    components: [aliveOnlyRow]
-  });
+  await interaction.update({
+  embeds: [updatedEmbed],
+  components: [aliveOnlyRow]
+});
 }
 
     if (totalVotes >= 3 && data.alive.size >= 2 && !data.confirmed) {
