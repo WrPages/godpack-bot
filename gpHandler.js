@@ -201,8 +201,8 @@ statsData.todayCount++;
 saveData();
 await updateStats(interaction.client);
 
-// Cambiar SOLO el color del embed existente
-const editedEmbed = EmbedBuilder.from(oldEmbed)
+// Clonar embed actual sin tocar imagen
+const editedEmbed = new EmbedBuilder(oldEmbed.data)
   .setColor(0x00ff00)
   .setFooter({ text: "🟢 CONFIRMED ALIVE" });
 
@@ -214,17 +214,18 @@ const disabledRow = new ActionRowBuilder().addComponents(
     .setDisabled(true)
 );
 
-return interaction.message.edit({
+await interaction.message.edit({
   embeds: [editedEmbed],
   components: [disabledRow]
 });
+return;
 
     // 🔴 CONFIRM DEAD (3 votos)
     if (data.dead.size >= 3 && !data.confirmed) {
 
-  data.confirmed = true;
+data.confirmed = true;
 
-const editedEmbed = EmbedBuilder.from(oldEmbed)
+const editedEmbed = new EmbedBuilder(oldEmbed.data)
   .setColor(0xff0000)
   .setFooter({ text: "🔴 CONFIRMED DEAD" });
 
@@ -236,10 +237,11 @@ const disabledRow = new ActionRowBuilder().addComponents(
     .setDisabled(true)
 );
 
-return interaction.message.edit({
+await interaction.message.edit({
   embeds: [editedEmbed],
   components: [disabledRow]
 });
+return;
 
     // UPDATE NORMAL
     const normalRow = new ActionRowBuilder().addComponents(
