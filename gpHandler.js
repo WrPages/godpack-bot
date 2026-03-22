@@ -140,11 +140,28 @@ client.on("messageCreate", async (message) => {
         .setStyle(ButtonStyle.Danger)
     );
 
-    const sentMessage = await message.channel.send({
-      embeds: [embed],
-      components: [buttons],
-      files: files
+   let files = [];
+let imageFile = null;
+
+if (message.attachments.size > 0) {
+  const first = message.attachments.first();
+  imageFile = `attachment://${first.name}`; // para el embed
+  if (message.attachments.size > 1) {
+    // Solo agrega otros archivos, no el primero
+    message.attachments.forEach((att, i) => {
+      if (i > 0) files.push({ attachment: att.url, name: att.name });
     });
+  }
+}
+
+if (imageFile) embed.setImage(imageFile);
+
+// Luego envías:
+const sentMessage = await message.channel.send({
+  embeds: [embed],
+  components: [buttons],
+  files: files // ya no incluye la imagen principal
+});
 
     packVotes.set(sentMessage.id, {
       alive: new Set(),
