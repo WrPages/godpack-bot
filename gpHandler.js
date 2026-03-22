@@ -31,12 +31,10 @@ function loadData() {
 }
 
 async function updateStats(client) {
-
   const now = new Date();
   const today = now.toDateString();
 
   if (today !== statsData.currentDay) {
-
     statsData.lastFiveDays.unshift({
       day: statsData.currentDay,
       count: statsData.todayCount
@@ -57,12 +55,12 @@ async function updateStats(client) {
     .setTitle("📊 GOD PACKS - 24H STATS")
     .setColor(0x00ff99)
     .setDescription(
-      `# 🟢 Hoy: ${statsData.todayCount}\n\n` +
+      `# 🟢 Today: ${statsData.todayCount}\n\n` +
       (statsData.lastFiveDays.length > 0
         ? statsData.lastFiveDays.map(d =>
             `▫️ ${d.day}: ${d.count}`
           ).join("\n")
-        : "Sin registros anteriores")
+        : "No previous records")
     );
 
   if (!statsData.statsMessageId) {
@@ -83,15 +81,14 @@ module.exports = (client) => {
     updateStats(client).catch(() => {});
   }, 60 * 60 * 1000);
 
+  // ==============================
+  // MESSAGE CREATE (WEBHOOK PANEL)
+  // ==============================
   client.on("messageCreate", async (message) => {
 
     if (message.channel.id !== ALLOWED_CHANNEL_ID) return;
     if (!message.webhookId) return;
     if (!message.content.includes("God Pack found")) return;
-
-    console.log("📩 MENSAJE DE WEBHOOK DETECTADO");
-
-    // ========= IMAGEN =========
 
     let imageFile = null;
     let imageName = null;
@@ -102,28 +99,18 @@ module.exports = (client) => {
       imageName = attachment.name;
     }
 
-    // ========= RAREZA =========
-
     const rarityMatch = message.content.match(/\[(\d)\/5\]/);
     if (!rarityMatch) return;
 
     const rarity = parseInt(rarityMatch[1]);
 
     const packMatch = message.content.match(/\[(\d)P\]/i);
-    let packNumber = null;
-
-    if (packMatch) {
-      packNumber = parseInt(packMatch[1]);
-    }
-
-    // ========= USERNAME =========
+    const packNumber = packMatch ? parseInt(packMatch[1]) : null;
 
     const usernameMatch = message.content.match(/^(.+?) \(\d+\)$/m);
     if (!usernameMatch) return;
 
     const username = usernameMatch[1];
-
-    // ========= EMBED =========
 
     let color = 0x999999;
     if (rarity === 5) color = 0xFFD700;
@@ -138,8 +125,6 @@ module.exports = (client) => {
       embed.setImage(`attachment://${imageName}`);
     }
 
-    // ========= BOTONES =========
-
     const buttons = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("gp_alive")
@@ -152,11 +137,12 @@ module.exports = (client) => {
         .setStyle(ButtonStyle.Danger)
     );
 
-    // ========= ENVIAR PANEL =========
-
     const sentMessage = await message.channel.send({
       embeds: [embed],
-      files: imageFile ? [imageFile] : [],
+      files: imageFile ? [{
+        attachment: imageFile,
+        name: imageName
+      }] : [],
       components: [buttons]
     });
 
@@ -166,14 +152,12 @@ module.exports = (client) => {
       confirmed: false
     });
 
-    // ========= CREAR THREAD =========
-
     const thread = await sentMessage.startThread({
       name: `GP • ${rarity}/5`,
       autoArchiveDuration: 1440,
     });
 
-    await thread.send("📂 Mensaje original del webhook:");
+    await thread.send("📂 Original webhook message:");
     await thread.send({ content: message.content });
 
     if (message.attachments.size > 0) {
@@ -185,111 +169,100 @@ module.exports = (client) => {
     await message.delete().catch(() => {});
   });
 
-  // ========= INTERACCIONES =========
+  // ==============================
+  // INTERACTIONS (BUTTON SYSTEM)
+  // ==============================
+  client.on("interactionCreate", async (interaction) => {
+    if (!interaction.isButton()) return;
 
-client.on("interactionCreate", async (interaction) => {
-  if (!interaction.isButton()) return;
+    const data = packVotes.get(interaction.message.id);
+    if (!data) return;
 
-  const data = packVotes.get(interaction.message.id);
-  if (!data) return;
+    const userId = interaction.user.id;
 
-  const userId = interaction.user.id;
+    if (interaction.customId === "gp_alive") {
+      data.alive.add(userId);
+      data.dead.delete(userId);
+    }
 
-  // Registrar voto
-  if (interaction.customId === "gp_alive") {
-    data.alive.add(userId);
-    data.dead.delete(userId);
-  }
+    if (interaction.customId === "gp_dead") {
+      data.dead.add(userId);
+      data.alive.delete(userId);
+    }
 
-  if (interaction.customId === "gp_dead") {
-    data.dead.add(userId);
-    data.alive.delete(userId);
-  }
+    const totalVotes = data.alive.size + data.dead.size;
 
-  const totalVotes = data.alive.size + data.dead.size;
+    const thread = interaction.message.thread;
+    if (thread) {
+      await thread.send(
+        `🗳️ **${interaction.user.username} voted ${
+          interaction.customId === "gp_alive" ? "ALIVE" : "DEAD"
+        }**`
+      );
+    }
 
-  // Buscar thread
-  const thread = interaction.message.thread;
-  if (thread) {
-    await thread.send(
-      `🗳️ **${interaction.user.username} voted ${
-        interaction.customId === "gp_alive" ? "ALIVE" : "DEAD"
-      }**`
-    );
-  }
+    // CONFIRMED
+    if (totalVotes >= 3 && data.alive.size >= 2 && !data.confirmed) {
+      data.confirmed = true;
+      statsData.todayCount++;
+      saveData();
 
-  // ==========================
-  // 1️⃣ CONFIRMADO DEFINITIVO
-  // ==========================
-  if (totalVotes >= 3 && data.alive.size >= 2 && !data.confirmed) {
+      const confirmedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
+        .setFooter({ text: "🟢 CONFIRMED ALIVE" })
+        .setColor(0x00ff00);
 
-    data.confirmed = true;
-    statsData.todayCount++;
-    saveData();
+      const disabledRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("gp_alive")
+          .setLabel(`🟢 Alive (${data.alive.size})`)
+          .setStyle(ButtonStyle.Success)
+          .setDisabled(true)
+      );
 
-    const confirmedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
-      .setFooter({ text: "🟢 CONFIRMED ALIVE" })
-      .setColor(0x00ff00);
+      await updateStats(interaction.client);
 
-    const disabledRow = new ActionRowBuilder().addComponents(
+      return await interaction.update({
+        embeds: [confirmedEmbed],
+        components: [disabledRow]
+      });
+    }
+
+    // LIKELY ALIVE (2 votes)
+    if (data.alive.size >= 2 && !data.confirmed) {
+
+      const likelyEmbed = EmbedBuilder.from(interaction.message.embeds[0])
+        .setFooter({ text: "🟢 Likely Alive (2 votes reached)" })
+        .setColor(0x2ecc71);
+
+      const aliveOnlyRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("gp_alive")
+          .setLabel(`🟢 Alive (${data.alive.size})`)
+          .setStyle(ButtonStyle.Success)
+      );
+
+      return await interaction.update({
+        embeds: [likelyEmbed],
+        components: [aliveOnlyRow]
+      });
+    }
+
+    // NORMAL UPDATE
+    const normalRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("gp_alive")
         .setLabel(`🟢 Alive (${data.alive.size})`)
-        .setStyle(ButtonStyle.Success)
-        .setDisabled(true)
-    );
+        .setStyle(ButtonStyle.Success),
 
-    await updateStats(interaction.client);
-
-    return await interaction.update({
-      embeds: [confirmedEmbed],
-      components: [disabledRow]
-    });
-  }
-
-  // ==========================
-  // 2️⃣ LLEGÓ A 2 ALIVE
-  // ==========================
-  if (data.alive.size >= 2 && !data.confirmed) {
-
-    const likelyEmbed = EmbedBuilder.from(interaction.message.embeds[0])
-      .setFooter({ text: "🟢 Likely Alive (2 votes reached)" })
-      .setColor(0x2ecc71);
-
-    const aliveOnlyRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setCustomId("gp_alive")
-        .setLabel(`🟢 Alive (${data.alive.size})`)
-        .setStyle(ButtonStyle.Success)
+        .setCustomId("gp_dead")
+        .setLabel(`🔴 Dead (${data.dead.size})`)
+        .setStyle(ButtonStyle.Danger)
     );
 
     return await interaction.update({
-      embeds: [likelyEmbed],
-      components: [aliveOnlyRow]
+      components: [normalRow]
     });
-  }
-
-  // ==========================
-  // 3️⃣ VOTO NORMAL
-  // ==========================
-  const normalRow = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("gp_alive")
-      .setLabel(`🟢 Alive (${data.alive.size})`)
-      .setStyle(ButtonStyle.Success),
-
-    new ButtonBuilder()
-      .setCustomId("gp_dead")
-      .setLabel(`🔴 Dead (${data.dead.size})`)
-      .setStyle(ButtonStyle.Danger)
-  );
-
-  return await interaction.update({
-    components: [normalRow]
-  });
-});
-
-    
   });
 
 };
