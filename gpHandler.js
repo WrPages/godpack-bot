@@ -14,41 +14,31 @@ let statsData = {
   statsMessageId: null
 };
 
-// ------------------
 // Guardar y cargar stats
-// ------------------
 function saveData() {
   fs.writeFileSync(DATA_FILE, JSON.stringify(statsData, null, 2));
 }
-
 function loadData() {
   if (fs.existsSync(DATA_FILE)) {
     statsData = JSON.parse(fs.readFileSync(DATA_FILE));
   }
 }
 
-// ------------------
 // Actualizar estadísticas
-// ------------------
 async function updateStats(client) {
-  const now = new Date();
-  const today = now.toDateString();
-
+  const today = new Date().toDateString();
   if (today !== statsData.currentDay) {
     statsData.lastFiveDays.unshift({
       day: statsData.currentDay,
       count: statsData.todayCount
     });
     if (statsData.lastFiveDays.length > 5) statsData.lastFiveDays.pop();
-
     statsData.todayCount = 0;
     statsData.currentDay = today;
-
     saveData();
   }
 
   const channel = await client.channels.fetch(STATS_CHANNEL_ID);
-
   const embed = new EmbedBuilder()
     .setTitle("📊 GOD PACKS - 24H STATS")
     .setColor(0x00ff99)
@@ -69,45 +59,40 @@ async function updateStats(client) {
   }
 }
 
-// ------------------
-// Módulo principal
-// ------------------
 module.exports = (client) => {
 
   loadData();
 
-  // Actualizar stats cada hora
   setInterval(() => {
     updateStats(client).catch(() => {});
   }, 60 * 60 * 1000);
 
-  // ------------------
   // PANEL CREATION
-  // ------------------
   client.on("messageCreate", async (message) => {
     try {
       if (message.channel.id !== ALLOWED_CHANNEL_ID) return;
       if (!message.webhookId) return;
       if (!message.content.includes("God Pack found")) return;
 
-      // ===== Attachments =====
+      // =======================
+      // Procesar attachments
+      // =======================
       let files = [];
       let imageFile = null;
 
       if (message.attachments.size > 0) {
         const first = message.attachments.first();
-        imageFile = `attachment://${first.name}`; // Para el embed
+        imageFile = `attachment://${first.name}`; // Solo para embed
 
-        // Otros attachments secundarios
+        // Otros attachments secundarios (si hay)
         message.attachments.forEach((att, i) => {
           if (i > 0) files.push({ attachment: att.url, name: att.name });
         });
-
-        // Incluir la imagen principal en files para que embed funcione
-        files.unshift({ attachment: first.url, name: first.name });
       }
 
-      // ===== Regex flexible =====
+      // =======================
+      // Regex flexible
+      // =======================
       const rarityMatch = message.content.match(/\[(\d)\/5\]/);
       if (!rarityMatch) return;
       const rarity = parseInt(rarityMatch[1]);
@@ -120,7 +105,9 @@ module.exports = (client) => {
       if (!usernameMatch) return;
       const username = usernameMatch[1];
 
-      // ===== Embed y botones =====
+      // =======================
+      // Embed y botones
+      // =======================
       let color = 0x999999;
       if (rarity === 5) color = 0xFFD700;
       if (rarity === 3) color = 0x0099ff;
@@ -145,7 +132,7 @@ module.exports = (client) => {
       const sentMessage = await message.channel.send({
         embeds: [embed],
         components: [buttons],
-        files: files
+        files: files // solo archivos secundarios
       });
 
       packVotes.set(sentMessage.id, {
@@ -154,7 +141,7 @@ module.exports = (client) => {
         confirmed: false
       });
 
-      // ===== Thread =====
+      // THREAD
       let thread;
       try {
         thread = await sentMessage.startThread({
@@ -169,10 +156,10 @@ module.exports = (client) => {
         await thread.send("📂 Original webhook message:");
         await thread.send({ content: message.content });
 
-        // Solo enviar attachments secundarios en thread
+        // Solo attachments secundarios
         if (message.attachments.size > 1) {
           const threadFiles = message.attachments.map((att, i) => {
-            if (i === 0) return null; // omitir principal
+            if (i === 0) return null;
             return { attachment: att.url, name: att.name };
           }).filter(Boolean);
 
@@ -186,9 +173,7 @@ module.exports = (client) => {
     }
   });
 
-  // ------------------
   // BUTTON SYSTEM
-  // ------------------
   client.on("interactionCreate", async (interaction) => {
     if (!interaction.isButton()) return;
 
@@ -212,7 +197,7 @@ module.exports = (client) => {
 
     const oldEmbed = interaction.message.embeds[0];
 
-    // 🟢 CONFIRM ALIVE (2)
+    // CONFIRM ALIVE
     if (data.alive.size >= 2) {
       data.confirmed = true;
       statsData.todayCount++;
@@ -234,7 +219,7 @@ module.exports = (client) => {
       return interaction.message.edit({ embeds: [updatedEmbed], components: [row] });
     }
 
-    // 🔴 CONFIRM DEAD (3)
+    // CONFIRM DEAD
     if (data.dead.size >= 3) {
       data.confirmed = true;
 
@@ -267,4 +252,5 @@ module.exports = (client) => {
 
     await interaction.message.edit({ components: [normalRow] });
   });
+
 };
