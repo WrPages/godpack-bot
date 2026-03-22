@@ -71,20 +71,25 @@ module.exports = (client) => {
       if (!message.webhookId) return;
       if (!message.content.includes("God Pack found")) return;
 
+      // =======================
       // Procesar attachments
-      let files = [];
-      let imageFile = null;
+      // =======================
+      let imageFile = null; // Imagen principal solo para el embed
+      let files = [];       // Attachments secundarios (opcional)
+
       if (message.attachments.size > 0) {
         const first = message.attachments.first();
-        imageFile = `attachment://${first.name}`; // Solo para el embed
+        imageFile = `attachment://${first.name}`; // para el embed
 
-        // Otros attachments secundarios
+        // Archivos secundarios para files
         message.attachments.forEach((att, i) => {
           if (i > 0) files.push({ attachment: att.url, name: att.name });
         });
       }
 
+      // =======================
       // Regex flexible
+      // =======================
       const rarityMatch = message.content.match(/\[(\d)\/5\]/);
       if (!rarityMatch) return;
       const rarity = parseInt(rarityMatch[1]);
@@ -97,7 +102,9 @@ module.exports = (client) => {
       if (!usernameMatch) return;
       const username = usernameMatch[1];
 
+      // =======================
       // Embed y botones
+      // =======================
       let color = 0x999999;
       if (rarity === 5) color = 0xFFD700;
       if (rarity === 3) color = 0x0099ff;
@@ -106,8 +113,7 @@ module.exports = (client) => {
         .setColor(color)
         .setDescription(`## ✨ ${rarity}/5 • ${packText}  |  **${username}**`);
 
-      // Imagen principal del panel
-      if (imageFile) embed.setImage(imageFile);
+      if (imageFile) embed.setImage(imageFile); // Imagen principal
 
       const buttons = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -120,11 +126,11 @@ module.exports = (client) => {
           .setStyle(ButtonStyle.Danger)
       );
 
-      // Mensaje principal: embed + botones + solo attachments secundarios
+      // Mensaje principal: embed + botones + solo secundarios
       const sentMessage = await message.channel.send({
         embeds: [embed],
         components: [buttons],
-        files: files // no incluye la principal
+        files: files
       });
 
       packVotes.set(sentMessage.id, {
@@ -133,7 +139,9 @@ module.exports = (client) => {
         confirmed: false
       });
 
-      // Thread con mensaje original + todos los attachments
+      // =======================
+      // Thread con mensaje original
+      // =======================
       let thread;
       try {
         thread = await sentMessage.startThread({
@@ -148,6 +156,7 @@ module.exports = (client) => {
         await thread.send("📂 Original webhook message:");
         await thread.send({ content: message.content });
 
+        // TODOS los attachments, incluida la principal, en el thread
         if (message.attachments.size > 0) {
           const threadFiles = message.attachments.map(att => ({ attachment: att.url, name: att.name }));
           await thread.send({ files: threadFiles });
@@ -160,7 +169,9 @@ module.exports = (client) => {
     }
   });
 
+  // =========================
   // BUTTON SYSTEM
+  // =========================
   client.on("interactionCreate", async (interaction) => {
     if (!interaction.isButton()) return;
 
