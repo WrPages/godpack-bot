@@ -85,8 +85,8 @@ module.exports = (client) => {
   client.on("messageCreate", async (message) => {
 
     if (message.channel.id !== ALLOWED_CHANNEL_ID) return;
-    //if (!message.webhookId) return;
-if (!/\[\s*\d\s*\/\s*5\s*\]/.test(message.content)) return;
+    if (!message.webhookId) return;
+    if (!message.content.includes("God Pack found")) return;
 
     let imageFile = null;
     let imageName = null;
@@ -113,15 +113,10 @@ if (!/\[\s*\d\s*\/\s*5\s*\]/.test(message.content)) return;
     if (rarity === 5) color = 0xFFD700;
     if (rarity === 3) color = 0x0099ff;
 
-const packText = packNumber ? `${packNumber}P` : "1P";
-
-const embed = new EmbedBuilder()
-  .setColor(color)
-  .setDescription(
-    `## ${rarity}/5 • ${packText}  |  **${username}**`
-  )
-  .setImage(imageFile);
-
+    const embed = new EmbedBuilder()
+      .setTitle(`✨ GOD PACK ${rarity}/5${packNumber ? ` • Pack ${packNumber}` : ""}`)
+      .setDescription(`👤 **@${username}**`)
+      .setColor(color);
 
     if (imageFile) {
   embed.setImage(imageFile);
@@ -193,7 +188,7 @@ const embed = new EmbedBuilder()
     }
 
     // 🟢 CONFIRM ALIVE (2)
-   if (data.alive.size >= 2) {
+ if (data.alive.size >= 2) {
   data.confirmed = true;
 
   statsData.todayCount++;
@@ -217,10 +212,11 @@ const embed = new EmbedBuilder()
     embeds: [updatedEmbed],
     components: [row]
   });
-}
+
+    }
 
     // 🔴 CONFIRM DEAD (3)
-    if (data.dead.size >= 3) {
+  if (data.dead.size >= 3) {
   data.confirmed = true;
 
   const oldEmbed = interaction.message.embeds[0];
@@ -240,7 +236,8 @@ const embed = new EmbedBuilder()
     embeds: [updatedEmbed],
     components: [row]
   });
-}
+
+    }
 
     // NORMAL UPDATE
     const normalRow = new ActionRowBuilder().addComponents(
