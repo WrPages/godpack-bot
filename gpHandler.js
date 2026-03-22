@@ -1,7 +1,9 @@
 const { EmbedBuilder } = require("discord.js");
-
+const ALLOWED_CHANNEL_ID = "1484015417411244082"; // 👈 PON AQUÍ EL ID DEL CANAL
 module.exports = (client) => {
 
+
+  
   client.on("messageCreate", async (message) => {
 
     console.log("📩 MENSAJE DETECTADO");
