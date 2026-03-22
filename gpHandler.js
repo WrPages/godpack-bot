@@ -15,21 +15,18 @@ module.exports = (client) => {
     if (!message.content.includes("God Pack found")) return;
 
     // ======================
-    // Detectar imagen
-    // ======================
+    // Detectar 
 
-    let mainImage = null;
+let mainImage = null;
 
-    if (message.attachments.size > 0) {
-      const attachmentsArray = Array.from(message.attachments.values());
-      mainImage = attachmentsArray[0].url;
-      console.log("📷 Imagen detectada:", mainImage);
-    }
+if (message.attachments.size > 0) {
+  const attachment = message.attachments.first();
 
-    if (!mainImage) {
-      console.log("❌ No hay imagen en el mensaje");
-      return;
-    }
+  // Forzar URL limpia sin parámetros temporales
+  mainImage = attachment.url.split("?")[0];
+
+  console.log("📷 Imagen limpia:", mainImage);
+}
 
     // ======================
     // Detectar rareza
