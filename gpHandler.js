@@ -35,38 +35,20 @@ module.exports = (client) => {
 
 let mainImage = null;
 
-try {
-  const filter = (m) => {
-    return (
-      m.author.id === message.author.id &&
-      (m.attachments.size > 0 ||
-        (m.embeds.length > 0 && m.embeds[0].image))
-    );
-  };
+if (message.attachments.size > 0) {
+  console.log("📷 Adjuntos detectados:", message.attachments.size);
 
-  // ⏳ Esperar hasta 5 segundos a que llegue la imagen
-  const collected = await message.channel.awaitMessages({
-    filter,
-    max: 1,
-    time: 20000,
-  });
+  // Si hay 2 imágenes, tomamos la primera
+  const firstAttachment = message.attachments.first();
 
-  if (collected.size > 0) {
-    const imgMsg = collected.first();
-
-    if (imgMsg.attachments.size > 0) {
-      mainImage = imgMsg.attachments.first().url;
-    } else if (imgMsg.embeds.length > 0 && imgMsg.embeds[0].image) {
-      mainImage = imgMsg.embeds[0].image.url;
-    }
+  if (firstAttachment.contentType?.startsWith("image/")) {
+    mainImage = firstAttachment.url;
+    console.log("✅ Imagen encontrada:", mainImage);
   }
-
-} catch (err) {
-  console.log("Error esperando imagen:", err);
 }
 
 if (!mainImage) {
-  console.log("❌ No llegó imagen dentro del tiempo esperado");
+  console.log("❌ No se encontró imagen en attachments");
 }
 
 
