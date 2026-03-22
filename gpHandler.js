@@ -19,11 +19,13 @@ module.exports = (client) => {
     // ======================
 
     let imageFile = null;
+    let imageName = null;
 
-if (message.attachments.size > 0) {
-  const attachment = message.attachments.first();
-  imageFile = attachment.url;
-}
+    if (message.attachments.size > 0) {
+      const attachment = message.attachments.first();
+      imageFile = attachment.url;
+      imageName = attachment.name;
+    }
 
     // ======================
     // Detectar rareza
@@ -34,7 +36,6 @@ if (message.attachments.size > 0) {
 
     const rarity = parseInt(rarityMatch[1]);
 
-    // Detectar número de pack [1P]
     const packMatch = message.content.match(/\[(\d)P\]/i);
     let packNumber = null;
 
@@ -64,12 +65,9 @@ if (message.attachments.size > 0) {
       .setTitle(`✨ GOD PACK ${rarity}/5${packNumber ? ` • Pack ${packNumber}` : ""}`)
       .setDescription(`👤 **@${username}**`)
       .setColor(color);
-if (imageFile) {
-  embed.setImage("attachment://" + message.attachments.first().name);
-}
 
-    if (mainImage) {
-      embed.setImage(mainImage);
+    if (imageFile && imageName) {
+      embed.setImage(`attachment://${imageName}`);
     }
 
     console.log("✅ Enviando embed...");
@@ -85,10 +83,10 @@ if (imageFile) {
     // 1️⃣ Enviar panel
     // ======================
 
-  const sentMessage = await message.channel.send({
-  embeds: [embed],
-  files: imageFile ? [imageFile] : []
-});
+    const sentMessage = await message.channel.send({
+      embeds: [embed],
+      files: imageFile ? [imageFile] : []
+    });
 
     // ======================
     // 2️⃣ Crear thread independiente
