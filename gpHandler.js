@@ -19,7 +19,20 @@ if (!message.webhookId && message.author.id !== "111114110569029632") return;
     const rarity = rarityMatch[1];
 
     // Detectar username (ejemplo: [5/5][1P] wrx128 (123123))
-    const nameMatch = message.content.match(/\]\[\dP\]\s(.+?)\s\(/);
+const lines = message.content.split("\n");
+
+let username = null;
+
+for (const line of lines) {
+  const match = line.match(/^(.+?)\s\((\d+)\)$/);
+  if (match) {
+    username = match[1];
+    break;
+  }
+}
+
+if (!username) return;
+    
     if (!nameMatch) return;
 
     const username = nameMatch[1];
