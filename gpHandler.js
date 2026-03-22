@@ -82,7 +82,7 @@ module.exports = (client) => {
   }, 60 * 60 * 1000);
 
   // ==============================
-  // MESSAGE CREATE (WEBHOOK PANEL)
+  // PANEL CREATION
   // ==============================
   client.on("messageCreate", async (message) => {
 
@@ -103,7 +103,6 @@ module.exports = (client) => {
     if (!rarityMatch) return;
 
     const rarity = parseInt(rarityMatch[1]);
-
     const packMatch = message.content.match(/\[(\d)P\]/i);
     const packNumber = packMatch ? parseInt(packMatch[1]) : null;
 
@@ -139,10 +138,7 @@ module.exports = (client) => {
 
     const sentMessage = await message.channel.send({
       embeds: [embed],
-      files: imageFile ? [{
-        attachment: imageFile,
-        name: imageName
-      }] : [],
+      files: imageFile ? [{ attachment: imageFile, name: imageName }] : [],
       components: [buttons]
     });
 
@@ -170,19 +166,17 @@ module.exports = (client) => {
   });
 
   // ==============================
-  // INTERACTIONS (BUTTON SYSTEM)
+  // BUTTON SYSTEM (STABLE VERSION)
   // ==============================
   client.on("interactionCreate", async (interaction) => {
     if (!interaction.isButton()) return;
 
     const data = packVotes.get(interaction.message.id);
     if (!data) return;
-if (data.confirmed) {
-  return interaction.reply({
-    content: "Voting has already been closed.",
-    ephemeral: true
-  }).catch(() => {});
-}
+
+    await interaction.deferUpdate(); // 🔥 CLAVE PARA NO FALLAR
+
+    if (data.confirmed) return;
 
     const userId = interaction.user.id;
 
@@ -196,107 +190,71 @@ if (data.confirmed) {
       data.alive.delete(userId);
     }
 
-    const totalVotes = data.alive.size + data.dead.size;
+    const oldEmbed = interaction.message.embeds[0];
 
-    const thread = interaction.message.thread;
-    if (thread) {
-      await thread.send(
-        `🗳️ **${interaction.user.username} voted ${
-          interaction.customId === "gp_alive" ? "ALIVE" : "DEAD"
-        }**`
+    // 🟢 CONFIRM ALIVE (2 votos)
+    if (data.alive.size >= 2 && !data.confirmed) {
+
+      data.confirmed = true;
+
+      statsData.todayCount++;
+      saveData();
+      await updateStats(interaction.client);
+
+      const aliveEmbed = new EmbedBuilder()
+        .setTitle(oldEmbed.title)
+        .setDescription(oldEmbed.description)
+        .setColor(0x00ff00)
+        .setFooter({ text: "🟢 CONFIRMED ALIVE" });
+
+      if (oldEmbed.image) {
+        aliveEmbed.setImage(oldEmbed.image.url);
+      }
+
+      const disabledRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("gp_alive")
+          .setLabel(`🟢 Alive (${data.alive.size})`)
+          .setStyle(ButtonStyle.Success)
+          .setDisabled(true)
       );
+
+      return interaction.message.edit({
+        embeds: [aliveEmbed],
+        components: [disabledRow]
+      });
     }
 
-    // CONFIRMED
-    // ==========================
-// CONFIRMACIÓN FINAL
-// ==========================
-// ==========================
-// CONFIRMACIÓN FINAL
-// ==========================
-if (!data.confirmed) {
+    // 🔴 CONFIRM DEAD (3 votos)
+    if (data.dead.size >= 3 && !data.confirmed) {
 
-  const oldEmbed = interaction.message.embeds[0];
+      data.confirmed = true;
 
-  // 🟢 CONFIRMAR ALIVE (2 votos)
-  if (data.alive.size >= 2) {
+      const deadEmbed = new EmbedBuilder()
+        .setTitle(oldEmbed.title)
+        .setDescription(oldEmbed.description)
+        .setColor(0xff0000)
+        .setFooter({ text: "🔴 CONFIRMED DEAD" });
 
-    data.confirmed = true;
+      if (oldEmbed.image) {
+        deadEmbed.setImage(oldEmbed.image.url);
+      }
 
-    statsData.todayCount++;
-    saveData();
-    await updateStats(interaction.client);
+      const disabledRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("gp_dead")
+          .setLabel(`🔴 Dead (${data.dead.size})`)
+          .setStyle(ButtonStyle.Danger)
+          .setDisabled(true)
+      );
 
-    const aliveEmbed = new EmbedBuilder()
-      .setTitle(oldEmbed.title)
-      .setDescription(oldEmbed.description)
-      .setColor(0x00ff00)
-      .setFooter({ text: "🟢 CONFIRMED ALIVE" });
-
-    if (oldEmbed.image) {
-      aliveEmbed.setImage(oldEmbed.image.url);
+      return interaction.message.edit({
+        embeds: [deadEmbed],
+        components: [disabledRow]
+      });
     }
 
-    const disabledRow = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("gp_alive")
-        .setLabel(`🟢 Alive (${data.alive.size})`)
-        .setStyle(ButtonStyle.Success)
-        .setDisabled(true)
-    );
-
-    return await interaction.update({
-      embeds: [aliveEmbed],
-      components: [disabledRow]
-    });
-  }
-
-  // 🔴 CONFIRMAR DEAD (3 votos)
-  if (data.dead.size >= 3) {
-
-    data.confirmed = true;
-
-    const deadEmbed = new EmbedBuilder()
-      .setTitle(oldEmbed.title)
-      .setDescription(oldEmbed.description)
-      .setColor(0xff0000)
-      .setFooter({ text: "🔴 CONFIRMED DEAD" });
-
-    if (oldEmbed.image) {
-      deadEmbed.setImage(oldEmbed.image.url);
-    }
-
-    const disabledRow = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("gp_dead")
-        .setLabel(`🔴 Dead (${data.dead.size})`)
-        .setStyle(ButtonStyle.Danger)
-        .setDisabled(true)
-    );
-
-    return await interaction.update({
-      embeds: [deadEmbed],
-      components: [disabledRow]
-    });
-  }
-}
-
-    // LIKELY ALIVE (2 votes)
-   if (data.alive.size >= 2 && !data.confirmed) {
-
-  const aliveOnlyRow = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("gp_alive")
-      .setLabel(`🟢 Alive (${data.alive.size})`)
-      .setStyle(ButtonStyle.Success)
-  );
-
-  return await interaction.update({
-    components: [aliveOnlyRow]
-  });
-}
-
-    // NORMAL UPDATE
+    // UPDATE NORMAL
     const normalRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("gp_alive")
@@ -309,7 +267,7 @@ if (!data.confirmed) {
         .setStyle(ButtonStyle.Danger)
     );
 
-    return await interaction.update({
+    await interaction.message.edit({
       components: [normalRow]
     });
   });
