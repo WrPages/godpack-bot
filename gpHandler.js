@@ -74,14 +74,14 @@ module.exports = (client) => {
       // =======================
       // Procesar attachments
       // =======================
-      let imageFile = null; // Imagen principal solo para el embed
-      let files = [];       // Attachments secundarios (opcional)
+      let imageFile = null; // Imagen principal para el embed
+      let files = [];       // Attachments secundarios, opcional
 
       if (message.attachments.size > 0) {
         const first = message.attachments.first();
-        imageFile = `attachment://${first.name}`; // para el embed
+        imageFile = `attachment://${first.name}`; // solo para embed
 
-        // Archivos secundarios para files
+        // Solo enviar archivos secundarios (si existen) en "files"
         message.attachments.forEach((att, i) => {
           if (i > 0) files.push({ attachment: att.url, name: att.name });
         });
@@ -113,7 +113,7 @@ module.exports = (client) => {
         .setColor(color)
         .setDescription(`## ✨ ${rarity}/5 • ${packText}  |  **${username}**`);
 
-      if (imageFile) embed.setImage(imageFile); // Imagen principal
+      if (imageFile) embed.setImage(imageFile); // Solo aquí la imagen principal
 
       const buttons = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -130,7 +130,7 @@ module.exports = (client) => {
       const sentMessage = await message.channel.send({
         embeds: [embed],
         components: [buttons],
-        files: files
+        files: files // la imagen principal NO va aquí
       });
 
       packVotes.set(sentMessage.id, {
@@ -156,7 +156,7 @@ module.exports = (client) => {
         await thread.send("📂 Original webhook message:");
         await thread.send({ content: message.content });
 
-        // TODOS los attachments, incluida la principal, en el thread
+        // TODOS los attachments originales en el thread
         if (message.attachments.size > 0) {
           const threadFiles = message.attachments.map(att => ({ attachment: att.url, name: att.name }));
           await thread.send({ files: threadFiles });
