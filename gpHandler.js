@@ -2,7 +2,44 @@ const { EmbedBuilder } = require("discord.js");
 
 const ALLOWED_CHANNEL_ID = "1484015417411244082";
 
+
+const {
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle
+} = require("discord.js");
+
+const fs = require("fs");
+
+const ALLOWED_CHANNEL_ID = "1484015417411244082";
+const STATS_CHANNEL_ID = "PON_AQUI_EL_ID_DEL_CANAL_STATS";
+const DATA_FILE = "./gp_stats.json";
+
+let packVotes = new Map();
+
+let statsData = {
+  currentDay: new Date().toDateString(),
+  todayCount: 0,
+  lastFiveDays: [],
+  statsMessageId: null
+};
+
+function saveData() {
+  fs.writeFileSync(DATA_FILE, JSON.stringify(statsData, null, 2));
+}
+
+function loadData() {
+  if (fs.existsSync(DATA_FILE)) {
+    statsData = JSON.parse(fs.readFileSync(DATA_FILE));
+  }
+}
+
 module.exports = (client) => {
+loadData();
+setInterval(() => {
+  updateStats(client);
+}, 60 * 60 * 1000);
 
   client.on("messageCreate", async (message) => {
 
@@ -82,11 +119,31 @@ module.exports = (client) => {
     // ======================
     // 1️⃣ Enviar panel
     // ======================
+const buttons = new ActionRowBuilder().addComponents(
+  new ButtonBuilder()
+    .setCustomId("gp_alive")
+    .setLabel("🟢 Alive")
+    .setStyle(ButtonStyle.Success),
 
-    const sentMessage = await message.channel.send({
-      embeds: [embed],
-      files: imageFile ? [imageFile] : []
-    });
+  new ButtonBuilder()
+    .setCustomId("gp_dead")
+    .setLabel("🔴 Dead")
+    .setStyle(ButtonStyle.Danger)
+);
+
+//aqui envia
+
+ const sentMessage = await message.channel.send({
+  embeds: [embed],
+  files: imageFile ? [imageFile] : [],
+  components: [buttons]
+});
+
+packVotes.set(sentMessage.id, {
+  alive: new Set(),
+  dead: new Set(),
+  confirmed: false
+});
 
     // ======================
     // 2️⃣ Crear thread independiente
@@ -122,5 +179,106 @@ module.exports = (client) => {
     await message.delete().catch(() => {});
 
   });
+  
+client.on("interactionCreate", async (interaction) => {
+  if (!interaction.isButton()) return;
+
+  const data = packVotes.get(interaction.message.id);
+  if (!data) return;
+
+  const userId = interaction.user.id;
+
+  if (interaction.customId === "gp_alive") {
+    data.alive.add(userId);
+    data.dead.delete(userId);
+  }
+
+  if (interaction.customId === "gp_dead") {
+    data.dead.add(userId);
+    data.alive.delete(userId);
+  }
+
+  await interaction.reply({
+    content: "✅ Voto registrado",
+    ephemeral: true
+  });
+
+  const totalVotes = data.alive.size + data.dead.size;
+
+  if (totalVotes >= 3 && data.alive.size >= 2 && !data.confirmed) {
+
+    data.confirmed = true;
+    statsData.todayCount++;
+    saveData();
+
+    const updatedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
+      .setFooter({ text: "🟢 CONFIRMADO VIVO" })
+      .setColor(0x00ff00);
+
+    const disabledRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("gp_alive")
+        .setLabel(`🟢 Alive (${data.alive.size})`)
+        .setStyle(ButtonStyle.Success)
+        .setDisabled(true),
+
+      new ButtonBuilder()
+        .setCustomId("gp_dead")
+        .setLabel(`🔴 Dead (${data.dead.size})`)
+        .setStyle(ButtonStyle.Danger)
+        .setDisabled(true)
+    );
+
+    await interaction.message.edit({
+      embeds: [updatedEmbed],
+      components: [disabledRow]
+    });
+
+    updateStats(interaction.client);
+  }
+});
+
+async function updateStats(client) {
+
+  const now = new Date();
+  const today = now.toDateString();
+
+  if (today !== statsData.currentDay) {
+
+    statsData.lastFiveDays.unshift({
+      day: statsData.currentDay,
+      count: statsData.todayCount
+    });
+
+    if (statsData.lastFiveDays.length > 5)
+      statsData.lastFiveDays.pop();
+
+    statsData.todayCount = 0;
+    statsData.currentDay = today;
+
+    saveData();
+  }
+
+  const channel = await client.channels.fetch(STATS_CHANNEL_ID);
+
+  const embed = new EmbedBuilder()
+    .setTitle("📊 GOD PACKS - 24H STATS")
+    .setColor(0x00ff99)
+    .setDescription(
+      `# 🟢 Hoy: ${statsData.todayCount}\n\n` +
+      statsData.lastFiveDays.map(d =>
+        `▫️ ${d.day}: ${d.count}`
+      ).join("\n")
+    );
+
+  if (!statsData.statsMessageId) {
+    const msg = await channel.send({ embeds: [embed] });
+    statsData.statsMessageId = msg.id;
+    saveData();
+  } else {
+    const msg = await channel.messages.fetch(statsData.statsMessageId);
+    await msg.edit({ embeds: [embed] });
+  }
+}
 
 };
