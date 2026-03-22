@@ -1,53 +1,59 @@
-const { 
-  EmbedBuilder 
-} = require("discord.js");
+const { EmbedBuilder } = require("discord.js");
 
 module.exports = (client) => {
 
   client.on("messageCreate", async (message) => {
-   if (message.author.bot && !message.webhookId) return;
-if (!message.webhookId && message.author.id !== "111114110569029632") return;
 
-    // ⚠️ CAMBIA ESTO POR EL ID DE TU CANAL group-packs
-    const allowedChannel = "1484015417411244082";
-    if (message.channel.id !== allowedChannel) return;
+    console.log("📩 MENSAJE DETECTADO");
+    console.log("Contenido:", message.content);
 
-    // Detectar rareza [5/5], [3/5], [1/5]
+    // Permitir webhook
+    //if (message.author.bot && !message.webhookId) return;
+
+    // Debe contener God Pack
+    if (!message.content.includes("God Pack found")) return;
+
+    // Detectar rareza [5/5]
     const rarityMatch = message.content.match(/\[(\d)\/5\]/);
-    if (!rarityMatch) return;
+    if (!rarityMatch) {
+      console.log("❌ No se detectó rareza");
+      return;
+    }
 
     const rarity = rarityMatch[1];
 
-    // Detectar username (ejemplo: [5/5][1P] wrx128 (123123))
-const nameMatch = message.content.match(/\]\[\dP\]\s(.+?)\s\(/);
-    
-    if (!nameMatch) return;
+    // Detectar username (línea que termina en (numeros))
+    const usernameMatch = message.content.match(/^(.+?) \(\d+\)$/m);
+    if (!usernameMatch) {
+      console.log("❌ No se detectó username");
+      return;
+    }
 
-    const username = nameMatch[1];
+    const username = usernameMatch[1];
 
     // Detectar imagen
-    const image = message.attachments.first();
-    if (!image) return;
+    const attachment = message.attachments.first();
+    if (!attachment) {
+      console.log("❌ No se detectó imagen");
+      return;
+    }
 
-    // Color según rareza
-    let color;
-    if (rarity == 5) color = 0xFFD700;       // Dorado
-    else if (rarity == 3) color = 0x0099ff;  // Azul
-    else color = 0x999999;                   // Gris
+    let color = 0x999999;
+    if (rarity == 5) color = 0xFFD700;
+    if (rarity == 3) color = 0x0099ff;
 
     const embed = new EmbedBuilder()
       .setTitle(`✨ GOD PACK ${rarity}/5`)
       .setDescription(`👤 **@${username}**`)
-      .setImage(image.url)
-      .setColor(color)
-      .setFooter({ text: "EternalGP Service" });
+      .setImage(attachment.url)
+      .setColor(color);
 
-    // Borrar mensaje original del webhook (opcional)
+    console.log("✅ Enviando embed...");
+
+    // Borra mensaje original
     await message.delete().catch(() => {});
 
-    await message.channel.send({
-      embeds: [embed]
-    });
+    await message.channel.send({ embeds: [embed] });
 
   });
 
