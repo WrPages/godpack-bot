@@ -115,13 +115,14 @@ module.exports = (client) => {
 
 const packText = packNumber ? `${packNumber}P` : "1P";
 
+// Espacios invisibles para empujar a la derecha
+const spacer = "ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤ";
+
 const embed = new EmbedBuilder()
   .setColor(color)
-  .setAuthor({
-    name: `${rarity}/5 • ${packText}`,
-  })
-  .setTitle(`👤 ${username}`)
-  .setDescription("━━━━━━━━━━━━━━━━━━━━━━")
+  .setDescription(
+    `# ✨ **${rarity}/5 • ${packText}**${spacer}**${username}**`
+  )
   .setImage(imageFile || null);
 
     if (imageFile) {
