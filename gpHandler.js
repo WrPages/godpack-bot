@@ -91,11 +91,17 @@ module.exports = (client) => {
     let imageFile = null;
     let imageName = null;
 
-    if (message.attachments.size > 0) {
-      const attachment = message.attachments.first();
-      imageFile = attachment.url;
-      imageName = attachment.name;
-    }
+   let files = [];
+
+if (message.attachments.size > 0) {
+  const attachment = message.attachments.first();
+  files.push({
+    attachment: attachment.url,
+    name: attachment.name
+  });
+
+  imageFile = `attachment://${attachment.name}`;
+}
 
     const rarityMatch = message.content.match(/\[(\d)\/5\]/);
     if (!rarityMatch) return;
@@ -120,7 +126,7 @@ const embed = new EmbedBuilder()
   .setDescription(
     `## ✨ ${rarity}/5 • ${packText}  |  **${username}**`
   )
-  .setImage(imageFile || null);
+ // .setImage(imageFile || null);
 
     if (imageFile) {
   embed.setImage(imageFile);
@@ -137,11 +143,11 @@ const embed = new EmbedBuilder()
         .setStyle(ButtonStyle.Danger)
     );
 
-    const sentMessage = await message.channel.send({
-      embeds: [embed],
-
-      components: [buttons]
-    });
+  const sentMessage = await message.channel.send({
+  embeds: [embed],
+  components: [buttons],
+  files: files
+});
 
     packVotes.set(sentMessage.id, {
       alive: new Set(),
