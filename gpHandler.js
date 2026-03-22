@@ -57,9 +57,7 @@ async function updateStats(client) {
     .setDescription(
       `# 🟢 Today: ${statsData.todayCount}\n\n` +
       (statsData.lastFiveDays.length > 0
-        ? statsData.lastFiveDays.map(d =>
-            `▫️ ${d.day}: ${d.count}`
-          ).join("\n")
+        ? statsData.lastFiveDays.map(d => `▫️ ${d.day}: ${d.count}`).join("\n")
         : "No previous records")
     );
 
@@ -81,9 +79,9 @@ module.exports = (client) => {
     updateStats(client).catch(() => {});
   }, 60 * 60 * 1000);
 
-  // ==============================
+  // =========================
   // PANEL CREATION
-  // ==============================
+  // =========================
   client.on("messageCreate", async (message) => {
 
     if (message.channel.id !== ALLOWED_CHANNEL_ID) return;
@@ -129,7 +127,6 @@ module.exports = (client) => {
         .setCustomId("gp_alive")
         .setLabel("🟢 Alive")
         .setStyle(ButtonStyle.Success),
-
       new ButtonBuilder()
         .setCustomId("gp_dead")
         .setLabel("🔴 Dead")
@@ -148,33 +145,19 @@ module.exports = (client) => {
       confirmed: false
     });
 
-    const thread = await sentMessage.startThread({
-      name: `GP • ${rarity}/5`,
-      autoArchiveDuration: 1440,
-    });
-
-    await thread.send("📂 Original webhook message:");
-    await thread.send({ content: message.content });
-
-    if (message.attachments.size > 0) {
-      await thread.send({
-        files: message.attachments.map(a => a.url)
-      });
-    }
-
     await message.delete().catch(() => {});
   });
 
-  // ==============================
-  // BUTTON SYSTEM (STABLE VERSION)
-  // ==============================
+  // =========================
+  // BUTTON SYSTEM
+  // =========================
   client.on("interactionCreate", async (interaction) => {
     if (!interaction.isButton()) return;
 
     const data = packVotes.get(interaction.message.id);
     if (!data) return;
 
-    await interaction.deferUpdate(); // 🔥 CLAVE PARA NO FALLAR
+    await interaction.deferUpdate();
 
     if (data.confirmed) return;
 
@@ -193,55 +176,52 @@ module.exports = (client) => {
     const oldEmbed = interaction.message.embeds[0];
 
     // 🟢 CONFIRM ALIVE (2 votos)
-    if (data.alive.size >= 2 && !data.confirmed) {
+    if (data.alive.size >= 2) {
+      data.confirmed = true;
 
-data.confirmed = true;
+      statsData.todayCount++;
+      saveData();
+      await updateStats(interaction.client);
 
-statsData.todayCount++;
-saveData();
-await updateStats(interaction.client);
+      const editedEmbed = new EmbedBuilder(oldEmbed.data)
+        .setColor(0x00ff00)
+        .setFooter({ text: "🟢 CONFIRMED ALIVE" });
 
-// Clonar embed actual sin tocar imagen
-const editedEmbed = new EmbedBuilder(oldEmbed.data)
-  .setColor(0x00ff00)
-  .setFooter({ text: "🟢 CONFIRMED ALIVE" });
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("gp_alive")
+          .setLabel(`🟢 Alive (${data.alive.size})`)
+          .setStyle(ButtonStyle.Success)
+          .setDisabled(true)
+      );
 
-const disabledRow = new ActionRowBuilder().addComponents(
-  new ButtonBuilder()
-    .setCustomId("gp_alive")
-    .setLabel(`🟢 Alive (${data.alive.size})`)
-    .setStyle(ButtonStyle.Success)
-    .setDisabled(true)
-);
-
-await interaction.message.edit({
-  embeds: [editedEmbed],
-  components: [disabledRow]
-});
-return;
+      return interaction.message.edit({
+        embeds: [editedEmbed],
+        components: [row]
+      });
+    }
 
     // 🔴 CONFIRM DEAD (3 votos)
-    if (data.dead.size >= 3 && !data.confirmed) {
+    if (data.dead.size >= 3) {
+      data.confirmed = true;
 
-data.confirmed = true;
+      const editedEmbed = new EmbedBuilder(oldEmbed.data)
+        .setColor(0xff0000)
+        .setFooter({ text: "🔴 CONFIRMED DEAD" });
 
-const editedEmbed = new EmbedBuilder(oldEmbed.data)
-  .setColor(0xff0000)
-  .setFooter({ text: "🔴 CONFIRMED DEAD" });
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("gp_dead")
+          .setLabel(`🔴 Dead (${data.dead.size})`)
+          .setStyle(ButtonStyle.Danger)
+          .setDisabled(true)
+      );
 
-const disabledRow = new ActionRowBuilder().addComponents(
-  new ButtonBuilder()
-    .setCustomId("gp_dead")
-    .setLabel(`🔴 Dead (${data.dead.size})`)
-    .setStyle(ButtonStyle.Danger)
-    .setDisabled(true)
-);
-
-await interaction.message.edit({
-  embeds: [editedEmbed],
-  components: [disabledRow]
-});
-return;
+      return interaction.message.edit({
+        embeds: [editedEmbed],
+        components: [row]
+      });
+    }
 
     // UPDATE NORMAL
     const normalRow = new ActionRowBuilder().addComponents(
@@ -249,7 +229,6 @@ return;
         .setCustomId("gp_alive")
         .setLabel(`🟢 Alive (${data.alive.size})`)
         .setStyle(ButtonStyle.Success),
-
       new ButtonBuilder()
         .setCustomId("gp_dead")
         .setLabel(`🔴 Dead (${data.dead.size})`)
