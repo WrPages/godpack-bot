@@ -84,27 +84,32 @@ module.exports = (client) => {
   // =========================
 client.on("messageCreate", async (message) => {
   try {
-    // Solo canal permitido
     if (message.channel.id !== ALLOWED_CHANNEL_ID) return;
-
-    // Solo mensajes de webhook
     if (!message.webhookId) return;
-
-    // Contenido esperado
     if (!message.content.includes("God Pack found")) return;
 
-    // ======= Attachments robusto =======
+    // =======================
+    // Procesar attachments
+    // =======================
     let files = [];
     let imageFile = null;
 
     if (message.attachments.size > 0) {
-      message.attachments.forEach(att => {
-        files.push({ attachment: att.url, name: att.name });
+      const first = message.attachments.first();
+      imageFile = `attachment://${first.name}`; // Para el embed
+
+      // Solo enviamos otros attachments, no la imagen principal
+      message.attachments.forEach((att, i) => {
+        if (i > 0) files.push({ attachment: att.url, name: att.name });
       });
-      imageFile = `attachment://${message.attachments.first().name}`;
+
+      // El attachment principal debe estar incluido en files
+      files.unshift({ attachment: first.url, name: first.name });
     }
 
-    // ======= Regex más flexible =======
+    // =======================
+    // Regex flexible
+    // =======================
     const rarityMatch = message.content.match(/\[(\d)\/5\]/);
     if (!rarityMatch) return;
     const rarity = parseInt(rarityMatch[1]);
@@ -117,7 +122,9 @@ client.on("messageCreate", async (message) => {
     if (!usernameMatch) return;
     const username = usernameMatch[1];
 
-    // ======= Embed color =======
+    // =======================
+    // Embed y botones
+    // =======================
     let color = 0x999999;
     if (rarity === 5) color = 0xFFD700;
     if (rarity === 3) color = 0x0099ff;
@@ -128,7 +135,6 @@ client.on("messageCreate", async (message) => {
 
     if (imageFile) embed.setImage(imageFile);
 
-    // ======= Botones =======
     const buttons = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("gp_alive")
@@ -140,17 +146,46 @@ client.on("messageCreate", async (message) => {
         .setStyle(ButtonStyle.Danger)
     );
 
-   let files = [];
-let imageFile = null;
-
-if (message.attachments.size > 0) {
-  const first = message.attachments.first();
-  imageFile = `attachment://${first.name}`; // para el embed
-  if (message.attachments.size > 1) {
-    // Solo agrega otros archivos, no el primero
-    message.attachments.forEach((att, i) => {
-      if (i > 0) files.push({ attachment: att.url, name: att.name });
+    const sentMessage = await message.channel.send({
+      embeds: [embed],
+      components: [buttons],
+      files: files
     });
+
+    packVotes.set(sentMessage.id, {
+      alive: new Set(),
+      dead: new Set(),
+      confirmed: false
+    });
+
+    // =======================
+    // Thread
+    // =======================
+    let thread;
+    try {
+      thread = await sentMessage.startThread({
+        name: `GP • ${rarity}/5`,
+        autoArchiveDuration: 1440
+      });
+    } catch (err) {
+      console.error("No se pudo crear el thread:", err);
+    }
+
+    if (thread) {
+      await thread.send("📂 Original webhook message:");
+      await thread.send({ content: message.content });
+
+      if (message.attachments.size > 1) {
+        const threadFiles = message.attachments.map(a => ({ attachment: a.url, name: a.name }));
+        await thread.send({ files: threadFiles });
+      }
+    }
+
+    await message.delete().catch(() => {});
+  } catch (err) {
+    console.error("Error en messageCreate:", err);
+  }
+});
   }
 }
 
