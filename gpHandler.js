@@ -120,7 +120,7 @@ const embed = new EmbedBuilder()
   .setDescription(
     `## ✨ ${rarity}/5 • ${packText}  |  **${username}**`
   )
-  .setImage(imageFile);
+  .setImage(imageFile || null);
 
     if (imageFile) {
   embed.setImage(imageFile);
