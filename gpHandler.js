@@ -73,7 +73,16 @@ if (packMatch) {
 
 // Guardar datos originales antes de borrar
 const originalContent = message.content;
-const originalAttachments = message.attachments.map(a => a.url);
+const originalAttachments = message.attachments.map(a => ({
+  attachment: a.url,
+  name: a.name
+}));
+
+if (originalAttachments.length > 0) {
+  await thread.send({
+    files: originalAttachments
+  });
+}
 
 console.log("✅ Enviando embed y creando thread...");
 
