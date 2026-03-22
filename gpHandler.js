@@ -1,16 +1,19 @@
 const { EmbedBuilder } = require("discord.js");
-const ALLOWED_CHANNEL_ID = "1484015417411244082"; // 👈 PON AQUÍ EL ID DEL CANAL
+
+const ALLOWED_CHANNEL_ID = "1484015417411244082"; // 👈 ID del canal permitido
+
 module.exports = (client) => {
 
-
-  if (!message.webhookId) return;
   client.on("messageCreate", async (message) => {
 
-    console.log("📩 MENSAJE DETECTADO");
-    console.log("Contenido:", message.content);
+    // ✅ Solo escuchar el canal específico
+    if (message.channel.id !== ALLOWED_CHANNEL_ID) return;
 
-    // Permitir webhook
-    //if (message.author.bot && !message.webhookId) return;
+    // ✅ Solo aceptar mensajes de webhook
+    if (!message.webhookId) return;
+
+    console.log("📩 MENSAJE DE WEBHOOK DETECTADO");
+    console.log("Contenido:", message.content);
 
     // Debe contener God Pack
     if (!message.content.includes("God Pack found")) return;
@@ -22,7 +25,7 @@ module.exports = (client) => {
       return;
     }
 
-    const rarity = rarityMatch[1];
+    const rarity = parseInt(rarityMatch[1]);
 
     // Detectar username (línea que termina en (numeros))
     const usernameMatch = message.content.match(/^(.+?) \(\d+\)$/m);
@@ -33,33 +36,33 @@ module.exports = (client) => {
 
     const username = usernameMatch[1];
 
-let mainImage = null;
+    // ✅ Detectar imagen del webhook
+    let mainImage = null;
 
-if (message.attachments.size > 0) {
-  console.log("📷 Adjuntos detectados:", message.attachments.size);
+    if (message.attachments.size > 0) {
+      console.log("📷 Adjuntos detectados:", message.attachments.size);
 
-  const attachmentsArray = Array.from(message.attachments.values());
+      const attachmentsArray = Array.from(message.attachments.values());
+      mainImage = attachmentsArray[0].url;
 
-  // Primera imagen
-  mainImage = attachmentsArray[0].url;
+      console.log("✅ Imagen encontrada:", mainImage);
+    } else {
+      console.log("❌ No se encontraron adjuntos");
+    }
 
-  console.log("✅ Imagen encontrada:", mainImage);
-}
-
-if (!mainImage) {
-  console.log("❌ No se encontró imagen en el webhook");
-}
-
-    
+    // Color según rareza
     let color = 0x999999;
-    if (rarity == 5) color = 0xFFD700;
-    if (rarity == 3) color = 0x0099ff;
+    if (rarity === 5) color = 0xFFD700;
+    if (rarity === 3) color = 0x0099ff;
 
     const embed = new EmbedBuilder()
       .setTitle(`✨ GOD PACK ${rarity}/5`)
       .setDescription(`👤 **@${username}**`)
-      .setImage(mainImage)
       .setColor(color);
+
+    if (mainImage) {
+      embed.setImage(mainImage);
+    }
 
     console.log("✅ Enviando embed...");
 
