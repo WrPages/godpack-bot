@@ -37,18 +37,36 @@ module.exports = (client) => {
     const username = usernameMatch[1];
 
     // ✅ Detectar imagen del webhook
-    let mainImage = null;
+   let mainImage = null;
 
-    if (message.attachments.size > 0) {
-      console.log("📷 Adjuntos detectados:", message.attachments.size);
+// 1️⃣ Intentar desde attachments
+if (message.attachments.size > 0) {
+  const attachmentsArray = Array.from(message.attachments.values());
+  mainImage = attachmentsArray[0].url;
+  console.log("📷 Imagen desde attachment:", mainImage);
+}
 
-      const attachmentsArray = Array.from(message.attachments.values());
-      mainImage = attachmentsArray[0].url;
+// 2️⃣ Si no hay attachment, intentar desde embeds
+if (!mainImage && message.embeds.length > 0) {
+  const embedImage = message.embeds[0]?.image?.url;
+  if (embedImage) {
+    mainImage = embedImage;
+    console.log("🖼 Imagen desde embed:", mainImage);
+  }
+}
 
-      console.log("✅ Imagen encontrada:", mainImage);
-    } else {
-      console.log("❌ No se encontraron adjuntos");
-    }
+// 3️⃣ Si tampoco, buscar URL en el texto
+if (!mainImage) {
+  const urlMatch = message.content.match(/https?:\/\/\S+\.(png|jpg|jpeg|webp)/i);
+  if (urlMatch) {
+    mainImage = urlMatch[0];
+    console.log("🌐 Imagen desde texto:", mainImage);
+  }
+}
+
+if (!mainImage) {
+  console.log("❌ No se pudo detectar imagen por ningún método");
+}
 
     // Color según rareza
     let color = 0x999999;
