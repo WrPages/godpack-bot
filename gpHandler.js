@@ -177,6 +177,12 @@ module.exports = (client) => {
 
     const data = packVotes.get(interaction.message.id);
     if (!data) return;
+if (data.confirmed) {
+  return interaction.reply({
+    content: "Voting has already been closed.",
+    ephemeral: true
+  }).catch(() => {});
+}
 
     const userId = interaction.user.id;
 
