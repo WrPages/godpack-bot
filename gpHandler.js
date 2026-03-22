@@ -202,38 +202,73 @@ module.exports = (client) => {
     }
 
     // CONFIRMED
-    if (totalVotes >= 3 && data.alive.size >= 2 && !data.confirmed) {
-      data.confirmed = true;
-      statsData.todayCount++;
-      saveData();
+    // ==========================
+// CONFIRMACIÓN FINAL
+// ==========================
+if (totalVotes >= 3 && !data.confirmed) {
 
-      const oldEmbed = interaction.message.embeds[0];
+  data.confirmed = true;
 
-const confirmedEmbed = new EmbedBuilder()
-  .setTitle(oldEmbed.title)
-  .setDescription(oldEmbed.description)
-  .setColor(0x00ff00)
-  .setFooter({ text: "🟢 CONFIRMED ALIVE" });
+  const oldEmbed = interaction.message.embeds[0];
 
-if (oldEmbed.image) {
-  confirmedEmbed.setImage(oldEmbed.image.url);
-}
+  // 🟢 CONFIRMADO ALIVE
+  if (data.alive.size >= 2) {
 
-      const disabledRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("gp_alive")
-          .setLabel(`🟢 Alive (${data.alive.size})`)
-          .setStyle(ButtonStyle.Success)
-          .setDisabled(true)
-      );
+    statsData.todayCount++;
+    saveData();
+    await updateStats(interaction.client);
 
-      await updateStats(interaction.client);
+    const aliveEmbed = new EmbedBuilder()
+      .setTitle(oldEmbed.title)
+      .setDescription(oldEmbed.description)
+      .setColor(0x00ff00)
+      .setFooter({ text: "🟢 CONFIRMED ALIVE" });
 
-      return await interaction.update({
-        embeds: [confirmedEmbed],
-        components: [disabledRow]
-      });
+    if (oldEmbed.image) {
+      aliveEmbed.setImage(oldEmbed.image.url);
     }
+
+    const disabledRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("gp_alive")
+        .setLabel(`🟢 Alive (${data.alive.size})`)
+        .setStyle(ButtonStyle.Success)
+        .setDisabled(true)
+    );
+
+    return await interaction.update({
+      embeds: [aliveEmbed],
+      components: [disabledRow]
+    });
+  }
+
+  // 🔴 CONFIRMADO DEAD
+  if (data.dead.size >= 2) {
+
+    const deadEmbed = new EmbedBuilder()
+      .setTitle(oldEmbed.title)
+      .setDescription(oldEmbed.description)
+      .setColor(0xff0000)
+      .setFooter({ text: "🔴 CONFIRMED DEAD" });
+
+    if (oldEmbed.image) {
+      deadEmbed.setImage(oldEmbed.image.url);
+    }
+
+    const disabledRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("gp_dead")
+        .setLabel(`🔴 Dead (${data.dead.size})`)
+        .setStyle(ButtonStyle.Danger)
+        .setDisabled(true)
+    );
+
+    return await interaction.update({
+      embeds: [deadEmbed],
+      components: [disabledRow]
+    });
+  }
+}
 
     // LIKELY ALIVE (2 votes)
    if (data.alive.size >= 2 && !data.confirmed) {
