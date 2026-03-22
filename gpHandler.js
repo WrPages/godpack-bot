@@ -1,10 +1,4 @@
-const {
-  EmbedBuilder,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle
-} = require("discord.js");
-
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder } = require("discord.js");
 const fs = require("fs");
 
 const ALLOWED_CHANNEL_ID = "1484015417411244082";
@@ -31,26 +25,19 @@ function loadData() {
 }
 
 async function updateStats(client) {
-  const now = new Date();
-  const today = now.toDateString();
-
+  const today = new Date().toDateString();
   if (today !== statsData.currentDay) {
     statsData.lastFiveDays.unshift({
       day: statsData.currentDay,
       count: statsData.todayCount
     });
-
-    if (statsData.lastFiveDays.length > 5)
-      statsData.lastFiveDays.pop();
-
+    if (statsData.lastFiveDays.length > 5) statsData.lastFiveDays.pop();
     statsData.todayCount = 0;
     statsData.currentDay = today;
-
     saveData();
   }
 
   const channel = await client.channels.fetch(STATS_CHANNEL_ID);
-
   const embed = new EmbedBuilder()
     .setTitle("📊 GOD PACKS - 24H STATS")
     .setColor(0x00ff99)
@@ -72,105 +59,106 @@ async function updateStats(client) {
 }
 
 module.exports = (client) => {
-
   loadData();
 
   setInterval(() => {
     updateStats(client).catch(() => {});
   }, 60 * 60 * 1000);
 
-  // =========================
-  // PANEL CREATION
-  // =========================
   client.on("messageCreate", async (message) => {
+    try {
+      if (message.channel.id !== ALLOWED_CHANNEL_ID) return;
+      if (!message.webhookId) return;
+      if (!message.content.includes("God Pack found")) return;
 
-    if (message.channel.id !== ALLOWED_CHANNEL_ID) return;
-    if (!message.webhookId) return;
-    if (!message.content.includes("God Pack found")) return;
+      // =======================
+      // Imagen principal solo para embed
+      // =======================
+      let imageFile = null;
+      if (message.attachments.size > 0) {
+        const firstAttachment = message.attachments.first();
+        const attachmentBuilder = new AttachmentBuilder(firstAttachment.url, { name: firstAttachment.name });
+        imageFile = `attachment://${firstAttachment.name}`;
+      }
 
-    let imageFile = null;
-    let imageName = null;
+      // =======================
+      // Datos del pack
+      // =======================
+      const rarityMatch = message.content.match(/\[(\d)\/5\]/);
+      if (!rarityMatch) return;
+      const rarity = parseInt(rarityMatch[1]);
 
-   let files = [];
+      const packMatch = message.content.match(/\[(\d+)P\]/i);
+      const packNumber = packMatch ? parseInt(packMatch[1]) : null;
+      const packText = packNumber ? `${packNumber}P` : "1P";
 
-if (message.attachments.size > 0) {
-  const attachment = message.attachments.first();
-  files.push({
-    attachment: attachment.url,
-    name: attachment.name
-  });
+      const usernameMatch = message.content.match(/^(.+?) \(\d+\)$/m);
+      if (!usernameMatch) return;
+      const username = usernameMatch[1];
 
-  imageFile = `attachment://${attachment.name}`;
-}
+      let color = 0x999999;
+      if (rarity === 5) color = 0xFFD700;
+      if (rarity === 3) color = 0x0099ff;
 
-    const rarityMatch = message.content.match(/\[(\d)\/5\]/);
-    if (!rarityMatch) return;
+      // =======================
+      // Embed y botones
+      // =======================
+      const embed = new EmbedBuilder()
+        .setColor(color)
+        .setDescription(`## ✨ ${rarity}/5 • ${packText}  |  **${username}**`);
 
-    const rarity = parseInt(rarityMatch[1]);
-    const packMatch = message.content.match(/\[(\d)P\]/i);
-    const packNumber = packMatch ? parseInt(packMatch[1]) : null;
+      if (imageFile) embed.setImage(imageFile);
 
-    const usernameMatch = message.content.match(/^(.+?) \(\d+\)$/m);
-    if (!usernameMatch) return;
+      const buttons = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("gp_alive")
+          .setLabel("🟢 Alive")
+          .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+          .setCustomId("gp_dead")
+          .setLabel("🔴 Dead")
+          .setStyle(ButtonStyle.Danger)
+      );
 
-    const username = usernameMatch[1];
-
-    let color = 0x999999;
-    if (rarity === 5) color = 0xFFD700;
-    if (rarity === 3) color = 0x0099ff;
-
-    const packText = packNumber ? `${packNumber}P` : "1P";
-
-const embed = new EmbedBuilder()
-  .setColor(color)
-  .setDescription(
-    `## ✨ ${rarity}/5 • ${packText}  |  **${username}**`
-  )
- // .setImage(imageFile || null);
-
-    if (imageFile) {
-  embed.setImage(imageFile);
-}
-
-    const buttons = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("gp_alive")
-        .setLabel("🟢 Alive")
-        .setStyle(ButtonStyle.Success),
-      new ButtonBuilder()
-        .setCustomId("gp_dead")
-        .setLabel("🔴 Dead")
-        .setStyle(ButtonStyle.Danger)
-    );
-
-  const sentMessage = await message.channel.send({
-  embeds: [embed],
-  components: [buttons],
-  files: files
-});
-
-    packVotes.set(sentMessage.id, {
-      alive: new Set(),
-      dead: new Set(),
-      confirmed: false
-    });
-
-    // 🔥 THREAD RESTORED
-    const thread = await sentMessage.startThread({
-      name: `GP • ${rarity}/5`,
-      autoArchiveDuration: 1440
-    });
-
-    await thread.send("📂 Original webhook message:");
-    await thread.send({ content: message.content });
-
-    if (message.attachments.size > 0) {
-      await thread.send({
-        files: message.attachments.map(a => a.url)
+      // =======================
+      // Mensaje principal SIN attachments adicionales
+      // =======================
+      const sentMessage = await message.channel.send({
+        embeds: [embed],
+        components: [buttons],
+        files: imageFile ? [new AttachmentBuilder(message.attachments.first().url, { name: message.attachments.first().name })] : []
       });
-    }
 
-    await message.delete().catch(() => {});
+      packVotes.set(sentMessage.id, {
+        alive: new Set(),
+        dead: new Set(),
+        confirmed: false
+      });
+
+      // =======================
+      // Thread con mensaje original y attachments secundarios
+      // =======================
+      const thread = await sentMessage.startThread({
+        name: `GP • ${rarity}/5`,
+        autoArchiveDuration: 1440
+      });
+
+      await thread.send("📂 Original webhook message:");
+      await thread.send({ content: message.content });
+
+      if (message.attachments.size > 1) {
+        const secondaryFiles = message.attachments.map((att, i) => {
+          if (i === 0) return null; // omitir principal
+          return new AttachmentBuilder(att.url, { name: att.name });
+        }).filter(Boolean);
+
+        if (secondaryFiles.length > 0) await thread.send({ files: secondaryFiles });
+      }
+
+      await message.delete().catch(() => {});
+    } catch (err) {
+      console.error("Error en messageCreate:", err);
+    }
   });
 
   // =========================
@@ -197,56 +185,47 @@ const embed = new EmbedBuilder()
       data.alive.delete(userId);
     }
 
-    // 🟢 CONFIRM ALIVE (2)
- if (data.alive.size >= 2) {
-  data.confirmed = true;
+    const oldEmbed = interaction.message.embeds[0];
 
-  statsData.todayCount++;
-  saveData();
-  await updateStats(interaction.client);
+    // CONFIRM ALIVE
+    if (data.alive.size >= 2) {
+      data.confirmed = true;
+      statsData.todayCount++;
+      saveData();
+      await updateStats(interaction.client);
 
-  const oldEmbed = interaction.message.embeds[0];
-  const updatedEmbed = EmbedBuilder.from(oldEmbed)
-    .setColor(0x00ff00)
-    .setFooter({ text: "🟢 CONFIRMED ALIVE" });
+      const updatedEmbed = EmbedBuilder.from(oldEmbed)
+        .setColor(0x00ff00)
+        .setFooter({ text: "🟢 CONFIRMED ALIVE" });
 
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("gp_alive")
-      .setLabel(`🟢 Alive (${data.alive.size})`)
-      .setStyle(ButtonStyle.Success)
-      .setDisabled(true)
-  );
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("gp_alive")
+          .setLabel(`🟢 Alive (${data.alive.size})`)
+          .setStyle(ButtonStyle.Success)
+          .setDisabled(true)
+      );
 
-  return interaction.message.edit({
-    embeds: [updatedEmbed],
-    components: [row]
-  });
-
+      return interaction.message.edit({ embeds: [updatedEmbed], components: [row] });
     }
 
-    // 🔴 CONFIRM DEAD (3)
-  if (data.dead.size >= 3) {
-  data.confirmed = true;
+    // CONFIRM DEAD
+    if (data.dead.size >= 3) {
+      data.confirmed = true;
 
-  const oldEmbed = interaction.message.embeds[0];
-  const updatedEmbed = EmbedBuilder.from(oldEmbed)
-    .setColor(0xff0000)
-    .setFooter({ text: "🔴 CONFIRMED DEAD" });
+      const updatedEmbed = EmbedBuilder.from(oldEmbed)
+        .setColor(0xff0000)
+        .setFooter({ text: "🔴 CONFIRMED DEAD" });
 
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("gp_dead")
-      .setLabel(`🔴 Dead (${data.dead.size})`)
-      .setStyle(ButtonStyle.Danger)
-      .setDisabled(true)
-  );
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("gp_dead")
+          .setLabel(`🔴 Dead (${data.dead.size})`)
+          .setStyle(ButtonStyle.Danger)
+          .setDisabled(true)
+      );
 
-  return interaction.message.edit({
-    embeds: [updatedEmbed],
-    components: [row]
-  });
-
+      return interaction.message.edit({ embeds: [updatedEmbed], components: [row] });
     }
 
     // NORMAL UPDATE
@@ -263,5 +242,4 @@ const embed = new EmbedBuilder()
 
     await interaction.message.edit({ components: [normalRow] });
   });
-
 };
