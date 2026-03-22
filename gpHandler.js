@@ -1,4 +1,6 @@
 const { EmbedBuilder } = require("discord.js");
+let lastWebhookImage = null;
+let lastWebhookChannel = null;
 
 const ALLOWED_CHANNEL_ID = "1484015417411244082"; // 👈 ID del canal permitido
 
@@ -11,6 +13,29 @@ module.exports = (client) => {
 
     // ✅ Solo aceptar mensajes de webhook
     if (!message.webhookId) return;
+// Si trae imagen, guardarla
+if (message.attachments.size > 0) {
+  const attachmentsArray = Array.from(message.attachments.values());
+  lastWebhookImage = attachmentsArray[0].url;
+  lastWebhookChannel = message.channel.id;
+  console.log("🧠 Imagen guardada temporalmente");
+}
+
+// Si contiene God Pack
+if (!message.content.includes("God Pack found")) return;
+
+// Si no hay imagen guardada, salir
+if (!lastWebhookImage || lastWebhookChannel !== message.channel.id) {
+  console.log("❌ No hay imagen asociada");
+  return;
+}
+
+const mainImage = lastWebhookImage;
+
+// limpiar memoria
+lastWebhookImage = null;
+lastWebhookChannel = null;
+    
 
     console.log("📩 MENSAJE DE WEBHOOK DETECTADO");
     console.log("Contenido:", message.content);
