@@ -37,7 +37,14 @@ module.exports = (client) => {
 
     const rarityMatch = message.content.match(/\[(\d)\/5\]/);
     if (!rarityMatch) return;
+// Detectar número de pack [1P]
+const packMatch = message.content.match(/\[(\d)P\]/i);
 
+let packNumber = null;
+if (packMatch) {
+  packNumber = parseInt(packMatch[1]);
+  console.log("📦 Pack detectado:", packNumber);
+}
     const rarity = parseInt(rarityMatch[1]);
 
     // ======================
@@ -58,7 +65,7 @@ module.exports = (client) => {
     if (rarity === 3) color = 0x0099ff;
 
     const embed = new EmbedBuilder()
-      .setTitle(`✨ GOD PACK ${rarity}/5`)
+.setTitle(`✨ GOD PACK ${rarity}/5${packNumber ? ` • Pack ${packNumber}` : ""}`)
       .setDescription(`👤 **@${username}**`)
       .setColor(color)
       .setImage(mainImage);
