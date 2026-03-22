@@ -195,9 +195,10 @@ module.exports = (client) => {
       saveData();
       await updateStats(interaction.client);
 
-      const embed = interaction.message.embeds[0];
-      embed.color = 0x00ff00;
-      embed.footer = { text: "🟢 CONFIRMED ALIVE" };
+  const oldEmbed = interaction.message.embeds[0];
+const updatedEmbed = EmbedBuilder.from(oldEmbed)
+  .setColor(0x00ff00)
+  .setFooter({ text: "🟢 CONFIRMED ALIVE" });
 
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -207,10 +208,10 @@ module.exports = (client) => {
           .setDisabled(true)
       );
 
-      return interaction.message.edit({
-        embeds: [embed],
-        components: [row]
-      });
+      interaction.message.edit({
+  embeds: [updatedEmbed],
+  components: [row]
+});
     }
 
     // 🔴 CONFIRM DEAD (3)
