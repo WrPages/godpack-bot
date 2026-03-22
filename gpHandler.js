@@ -236,32 +236,19 @@ if (oldEmbed.image) {
     }
 
     // LIKELY ALIVE (2 votes)
-    if (data.alive.size >= 2 && !data.confirmed) {
+   if (data.alive.size >= 2 && !data.confirmed) {
 
-   const oldEmbed = interaction.message.embeds[0];
+  const aliveOnlyRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("gp_alive")
+      .setLabel(`🟢 Alive (${data.alive.size})`)
+      .setStyle(ButtonStyle.Success)
+  );
 
-const likelyEmbed = new EmbedBuilder()
-  .setTitle(oldEmbed.title)
-  .setDescription(oldEmbed.description)
-  .setColor(0x2ecc71)
-  .setFooter({ text: "🟢 Likely Alive (2 votes reached)" });
-
-if (oldEmbed.image) {
-  likelyEmbed.setImage(oldEmbed.image.url);
+  return await interaction.update({
+    components: [aliveOnlyRow]
+  });
 }
-
-      const aliveOnlyRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("gp_alive")
-          .setLabel(`🟢 Alive (${data.alive.size})`)
-          .setStyle(ButtonStyle.Success)
-      );
-
-      return await interaction.update({
-        embeds: [likelyEmbed],
-        components: [aliveOnlyRow]
-      });
-    }
 
     // NORMAL UPDATE
     const normalRow = new ActionRowBuilder().addComponents(
