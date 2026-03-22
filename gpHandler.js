@@ -22,7 +22,7 @@ module.exports = (client) => {
 
     if (message.attachments.size > 0) {
       const attachment = message.attachments.first();
-      mainImage = attachment.url.split("?")[0];
+mainImage = attachment.url;
       console.log("📷 Imagen limpia:", mainImage);
     }
 
