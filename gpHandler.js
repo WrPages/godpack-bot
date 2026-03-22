@@ -230,9 +230,17 @@ module.exports = (client) => {
     // LIKELY ALIVE (2 votes)
     if (data.alive.size >= 2 && !data.confirmed) {
 
-      const likelyEmbed = EmbedBuilder.from(interaction.message.embeds[0])
-        .setFooter({ text: "🟢 Likely Alive (2 votes reached)" })
-        .setColor(0x2ecc71);
+   const oldEmbed = interaction.message.embeds[0];
+
+const likelyEmbed = new EmbedBuilder()
+  .setTitle(oldEmbed.title)
+  .setDescription(oldEmbed.description)
+  .setColor(0x2ecc71)
+  .setFooter({ text: "🟢 Likely Alive (2 votes reached)" });
+
+if (oldEmbed.image) {
+  likelyEmbed.setImage(oldEmbed.image.url);
+}
 
       const aliveOnlyRow = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
