@@ -205,10 +205,20 @@ module.exports = (client) => {
       data.alive.delete(userId);
     }
 
-    await interaction.reply({
-      content: "✅ Voto registrado",
-      ephemeral: true
-    });
+  await interaction.deferUpdate();
+
+// Buscar el thread del mensaje
+const thread = interaction.message.thread;
+
+if (thread) {
+  if (interaction.customId === "gp_alive") {
+    await thread.send(`🗳️ **${interaction.user.username} voted ALIVE**`);
+  }
+
+  if (interaction.customId === "gp_dead") {
+    await thread.send(`🗳️ **${interaction.user.username} voted DEAD**`);
+  }
+}
 
     const totalVotes = data.alive.size + data.dead.size;
 
