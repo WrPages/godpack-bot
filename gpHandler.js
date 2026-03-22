@@ -1,10 +1,4 @@
-const {
-  EmbedBuilder,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle
-} = require("discord.js");
-
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const fs = require("fs");
 
 const ALLOWED_CHANNEL_ID = "1484015417411244082";
@@ -20,6 +14,9 @@ let statsData = {
   statsMessageId: null
 };
 
+// ------------------
+// Guardar y cargar stats
+// ------------------
 function saveData() {
   fs.writeFileSync(DATA_FILE, JSON.stringify(statsData, null, 2));
 }
@@ -30,6 +27,9 @@ function loadData() {
   }
 }
 
+// ------------------
+// Actualizar estadísticas
+// ------------------
 async function updateStats(client) {
   const now = new Date();
   const today = now.toDateString();
@@ -39,9 +39,7 @@ async function updateStats(client) {
       day: statsData.currentDay,
       count: statsData.todayCount
     });
-
-    if (statsData.lastFiveDays.length > 5)
-      statsData.lastFiveDays.pop();
+    if (statsData.lastFiveDays.length > 5) statsData.lastFiveDays.pop();
 
     statsData.todayCount = 0;
     statsData.currentDay = today;
@@ -71,175 +69,126 @@ async function updateStats(client) {
   }
 }
 
+// ------------------
+// Módulo principal
+// ------------------
 module.exports = (client) => {
 
   loadData();
 
+  // Actualizar stats cada hora
   setInterval(() => {
     updateStats(client).catch(() => {});
   }, 60 * 60 * 1000);
 
-  // =========================
+  // ------------------
   // PANEL CREATION
-  // =========================
-client.on("messageCreate", async (message) => {
-  try {
-    if (message.channel.id !== ALLOWED_CHANNEL_ID) return;
-    if (!message.webhookId) return;
-    if (!message.content.includes("God Pack found")) return;
-
-    // =======================
-    // Procesar attachments
-    // =======================
-    let files = [];
-    let imageFile = null;
-
-    if (message.attachments.size > 0) {
-      const first = message.attachments.first();
-      imageFile = `attachment://${first.name}`; // Para el embed
-
-      // Solo enviar otros attachments que NO sean la principal
-      message.attachments.forEach((att, i) => {
-        if (i > 0) files.push({ attachment: att.url, name: att.name });
-      });
-
-      // La imagen principal debe estar en files también para que setImage funcione
-      files.unshift({ attachment: first.url, name: first.name });
-    }
-
-    // =======================
-    // Regex flexible
-    // =======================
-    const rarityMatch = message.content.match(/\[(\d)\/5\]/);
-    if (!rarityMatch) return;
-    const rarity = parseInt(rarityMatch[1]);
-
-    const packMatch = message.content.match(/\[(\d+)P\]/i);
-    const packNumber = packMatch ? parseInt(packMatch[1]) : null;
-    const packText = packNumber ? `${packNumber}P` : "1P";
-
-    const usernameMatch = message.content.match(/^(.+?)\s*\(\d+\)/m);
-    if (!usernameMatch) return;
-    const username = usernameMatch[1];
-
-    // =======================
-    // Embed y botones
-    // =======================
-    let color = 0x999999;
-    if (rarity === 5) color = 0xFFD700;
-    if (rarity === 3) color = 0x0099ff;
-
-    const embed = new EmbedBuilder()
-      .setColor(color)
-      .setDescription(`## ✨ ${rarity}/5 • ${packText}  |  **${username}**`);
-
-    if (imageFile) embed.setImage(imageFile);
-
-    const buttons = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("gp_alive")
-        .setLabel("🟢 Alive")
-        .setStyle(ButtonStyle.Success),
-      new ButtonBuilder()
-        .setCustomId("gp_dead")
-        .setLabel("🔴 Dead")
-        .setStyle(ButtonStyle.Danger)
-    );
-
-    const sentMessage = await message.channel.send({
-      embeds: [embed],
-      components: [buttons],
-      files: files
-    });
-
-    packVotes.set(sentMessage.id, {
-      alive: new Set(),
-      dead: new Set(),
-      confirmed: false
-    });
-
-    // =======================
-    // Thread
-    // =======================
-    let thread;
+  // ------------------
+  client.on("messageCreate", async (message) => {
     try {
-      thread = await sentMessage.startThread({
-        name: `GP • ${rarity}/5`,
-        autoArchiveDuration: 1440
-      });
-    } catch (err) {
-      console.error("No se pudo crear el thread:", err);
-    }
+      if (message.channel.id !== ALLOWED_CHANNEL_ID) return;
+      if (!message.webhookId) return;
+      if (!message.content.includes("God Pack found")) return;
 
-    if (thread) {
-      await thread.send("📂 Original webhook message:");
-      await thread.send({ content: message.content });
-
-      // Solo enviar attachments secundarios en el thread
-      if (message.attachments.size > 1) {
-        const threadFiles = message.attachments.map((att, i) => {
-          if (i === 0) return null; // omitir principal
-          return { attachment: att.url, name: att.name };
-        }).filter(Boolean);
-
-        if (threadFiles.length > 0) await thread.send({ files: threadFiles });
-      }
-    }
-
-    await message.delete().catch(() => {});
-  } catch (err) {
-    console.error("Error en messageCreate:", err);
-  }
-});
-  }
-}
-
-if (imageFile) embed.setImage(imageFile);
-
-// Luego envías:
-const sentMessage = await message.channel.send({
-  embeds: [embed],
-  components: [buttons],
-  files: files // ya no incluye la imagen principal
-});
-
-    packVotes.set(sentMessage.id, {
-      alive: new Set(),
-      dead: new Set(),
-      confirmed: false
-    });
-
-    // ======= Thread robusto =======
-    let thread;
-    try {
-      thread = await sentMessage.startThread({
-        name: `GP • ${rarity}/5`,
-        autoArchiveDuration: 1440
-      });
-    } catch (err) {
-      console.error("No se pudo crear el thread:", err);
-    }
-
-    if (thread) {
-      await thread.send("📂 Original webhook message:");
-      await thread.send({ content: message.content });
+      // ===== Attachments =====
+      let files = [];
+      let imageFile = null;
 
       if (message.attachments.size > 0) {
-        const threadFiles = message.attachments.map(a => ({ attachment: a.url, name: a.name }));
-        await thread.send({ files: threadFiles });
+        const first = message.attachments.first();
+        imageFile = `attachment://${first.name}`; // Para el embed
+
+        // Otros attachments secundarios
+        message.attachments.forEach((att, i) => {
+          if (i > 0) files.push({ attachment: att.url, name: att.name });
+        });
+
+        // Incluir la imagen principal en files para que embed funcione
+        files.unshift({ attachment: first.url, name: first.name });
       }
+
+      // ===== Regex flexible =====
+      const rarityMatch = message.content.match(/\[(\d)\/5\]/);
+      if (!rarityMatch) return;
+      const rarity = parseInt(rarityMatch[1]);
+
+      const packMatch = message.content.match(/\[(\d+)P\]/i);
+      const packNumber = packMatch ? parseInt(packMatch[1]) : null;
+      const packText = packNumber ? `${packNumber}P` : "1P";
+
+      const usernameMatch = message.content.match(/^(.+?)\s*\(\d+\)/m);
+      if (!usernameMatch) return;
+      const username = usernameMatch[1];
+
+      // ===== Embed y botones =====
+      let color = 0x999999;
+      if (rarity === 5) color = 0xFFD700;
+      if (rarity === 3) color = 0x0099ff;
+
+      const embed = new EmbedBuilder()
+        .setColor(color)
+        .setDescription(`## ✨ ${rarity}/5 • ${packText}  |  **${username}**`);
+
+      if (imageFile) embed.setImage(imageFile);
+
+      const buttons = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("gp_alive")
+          .setLabel("🟢 Alive")
+          .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+          .setCustomId("gp_dead")
+          .setLabel("🔴 Dead")
+          .setStyle(ButtonStyle.Danger)
+      );
+
+      const sentMessage = await message.channel.send({
+        embeds: [embed],
+        components: [buttons],
+        files: files
+      });
+
+      packVotes.set(sentMessage.id, {
+        alive: new Set(),
+        dead: new Set(),
+        confirmed: false
+      });
+
+      // ===== Thread =====
+      let thread;
+      try {
+        thread = await sentMessage.startThread({
+          name: `GP • ${rarity}/5`,
+          autoArchiveDuration: 1440
+        });
+      } catch (err) {
+        console.error("No se pudo crear el thread:", err);
+      }
+
+      if (thread) {
+        await thread.send("📂 Original webhook message:");
+        await thread.send({ content: message.content });
+
+        // Solo enviar attachments secundarios en thread
+        if (message.attachments.size > 1) {
+          const threadFiles = message.attachments.map((att, i) => {
+            if (i === 0) return null; // omitir principal
+            return { attachment: att.url, name: att.name };
+          }).filter(Boolean);
+
+          if (threadFiles.length > 0) await thread.send({ files: threadFiles });
+        }
+      }
+
+      await message.delete().catch(() => {});
+    } catch (err) {
+      console.error("Error en messageCreate:", err);
     }
+  });
 
-    // ======= Borra mensaje original con try/catch =======
-    message.delete().catch(() => {});
-  } catch (err) {
-    console.error("Error en messageCreate:", err);
-  }
-});
-
-  // =========================
+  // ------------------
   // BUTTON SYSTEM
-  // =========================
+  // ------------------
   client.on("interactionCreate", async (interaction) => {
     if (!interaction.isButton()) return;
 
@@ -261,56 +210,47 @@ const sentMessage = await message.channel.send({
       data.alive.delete(userId);
     }
 
+    const oldEmbed = interaction.message.embeds[0];
+
     // 🟢 CONFIRM ALIVE (2)
- if (data.alive.size >= 2) {
-  data.confirmed = true;
+    if (data.alive.size >= 2) {
+      data.confirmed = true;
+      statsData.todayCount++;
+      saveData();
+      await updateStats(interaction.client);
 
-  statsData.todayCount++;
-  saveData();
-  await updateStats(interaction.client);
+      const updatedEmbed = EmbedBuilder.from(oldEmbed)
+        .setColor(0x00ff00)
+        .setFooter({ text: "🟢 CONFIRMED ALIVE" });
 
-  const oldEmbed = interaction.message.embeds[0];
-  const updatedEmbed = EmbedBuilder.from(oldEmbed)
-    .setColor(0x00ff00)
-    .setFooter({ text: "🟢 CONFIRMED ALIVE" });
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("gp_alive")
+          .setLabel(`🟢 Alive (${data.alive.size})`)
+          .setStyle(ButtonStyle.Success)
+          .setDisabled(true)
+      );
 
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("gp_alive")
-      .setLabel(`🟢 Alive (${data.alive.size})`)
-      .setStyle(ButtonStyle.Success)
-      .setDisabled(true)
-  );
-
-  return interaction.message.edit({
-    embeds: [updatedEmbed],
-    components: [row]
-  });
-
+      return interaction.message.edit({ embeds: [updatedEmbed], components: [row] });
     }
 
     // 🔴 CONFIRM DEAD (3)
-  if (data.dead.size >= 3) {
-  data.confirmed = true;
+    if (data.dead.size >= 3) {
+      data.confirmed = true;
 
-  const oldEmbed = interaction.message.embeds[0];
-  const updatedEmbed = EmbedBuilder.from(oldEmbed)
-    .setColor(0xff0000)
-    .setFooter({ text: "🔴 CONFIRMED DEAD" });
+      const updatedEmbed = EmbedBuilder.from(oldEmbed)
+        .setColor(0xff0000)
+        .setFooter({ text: "🔴 CONFIRMED DEAD" });
 
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("gp_dead")
-      .setLabel(`🔴 Dead (${data.dead.size})`)
-      .setStyle(ButtonStyle.Danger)
-      .setDisabled(true)
-  );
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("gp_dead")
+          .setLabel(`🔴 Dead (${data.dead.size})`)
+          .setStyle(ButtonStyle.Danger)
+          .setDisabled(true)
+      );
 
-  return interaction.message.edit({
-    embeds: [updatedEmbed],
-    components: [row]
-  });
-
+      return interaction.message.edit({ embeds: [updatedEmbed], components: [row] });
     }
 
     // NORMAL UPDATE
@@ -327,5 +267,4 @@ const sentMessage = await message.channel.send({
 
     await interaction.message.edit({ components: [normalRow] });
   });
-
 };
