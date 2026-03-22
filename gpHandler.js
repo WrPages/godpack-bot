@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder } = require("discord.js");
 const fs = require("fs");
 
 const ALLOWED_CHANNEL_ID = "1484015417411244082";
@@ -74,17 +74,17 @@ module.exports = (client) => {
       // =======================
       // Procesar attachments
       // =======================
-      let imageFile = null; // Imagen principal para el embed
-      let files = [];       // Solo secundarios
+      let mainAttachment = null; // Imagen principal
+      let secondaryAttachments = []; // Para thread, opcional
 
       if (message.attachments.size > 0) {
-        const first = message.attachments.first();
-        imageFile = `attachment://${first.name}`; // solo para embed
-
-        // Archivos secundarios para files
-        message.attachments.forEach((att, i) => {
-          if (i > 0) files.push({ attachment: att.url, name: att.name });
-        });
+        mainAttachment = message.attachments.first(); // Tomamos la primera como principal
+        // Si hay más attachments, los guardamos para el thread
+        if (message.attachments.size > 1) {
+          message.attachments.forEach((att, i) => {
+            if (i > 0) secondaryAttachments.push(att);
+          });
+        }
       }
 
       // =======================
@@ -113,7 +113,9 @@ module.exports = (client) => {
         .setColor(color)
         .setDescription(`## ✨ ${rarity}/5 • ${packText}  |  **${username}**`);
 
-      if (imageFile) embed.setImage(imageFile); // Solo aquí
+      if (mainAttachment) {
+        embed.setImage(`attachment://${mainAttachment.name}`); // Imagen principal solo aquí
+      }
 
       const buttons = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -126,11 +128,16 @@ module.exports = (client) => {
           .setStyle(ButtonStyle.Danger)
       );
 
-      // ⚡ Mensaje principal: embed + botones + SOLO secundarios
+      // ⚡ Mensaje principal: embed + botones + solo attachments secundarios
+      const filesForMessage = []; // nunca la principal
+      secondaryAttachments.forEach(att => {
+        filesForMessage.push(new AttachmentBuilder(att.url, { name: att.name }));
+      });
+
       const sentMessage = await message.channel.send({
         embeds: [embed],
         components: [buttons],
-        files: files.length > 0 ? files : undefined // nada si no hay secundarios
+        files: filesForMessage.length > 0 ? filesForMessage : undefined
       });
 
       packVotes.set(sentMessage.id, {
@@ -140,25 +147,27 @@ module.exports = (client) => {
       });
 
       // =======================
-      // Thread con todo el mensaje original
+      // Thread con mensaje original
       // =======================
-      let thread;
-      try {
-        thread = await sentMessage.startThread({
-          name: `GP • ${rarity}/5`,
-          autoArchiveDuration: 1440
-        });
-      } catch (err) {
-        console.error("No se pudo crear el thread:", err);
-      }
+      if (sentMessage) {
+        let thread;
+        try {
+          thread = await sentMessage.startThread({
+            name: `GP • ${rarity}/5`,
+            autoArchiveDuration: 1440
+          });
+        } catch (err) {
+          console.error("No se pudo crear el thread:", err);
+        }
 
-      if (thread) {
-        await thread.send("📂 Original webhook message:");
-        await thread.send({ content: message.content });
+        if (thread) {
+          await thread.send("📂 Original webhook message:");
+          await thread.send({ content: message.content });
 
-        if (message.attachments.size > 0) {
-          const threadFiles = message.attachments.map(att => ({ attachment: att.url, name: att.name }));
-          await thread.send({ files: threadFiles });
+          if (message.attachments.size > 0) {
+            const threadFiles = message.attachments.map(att => new AttachmentBuilder(att.url, { name: att.name }));
+            await thread.send({ files: threadFiles });
+          }
         }
       }
 
