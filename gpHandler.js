@@ -18,13 +18,12 @@ module.exports = (client) => {
     // Detectar imagen principal
     // ======================
 
-    let mainImage = null;
+    let imageFile = null;
 
-    if (message.attachments.size > 0) {
-      const attachment = message.attachments.first();
-mainImage = attachment.url;
-      console.log("📷 Imagen limpia:", mainImage);
-    }
+if (message.attachments.size > 0) {
+  const attachment = message.attachments.first();
+  imageFile = attachment.url;
+}
 
     // ======================
     // Detectar rareza
@@ -65,6 +64,9 @@ mainImage = attachment.url;
       .setTitle(`✨ GOD PACK ${rarity}/5${packNumber ? ` • Pack ${packNumber}` : ""}`)
       .setDescription(`👤 **@${username}**`)
       .setColor(color);
+if (imageFile) {
+  embed.setImage("attachment://" + message.attachments.first().name);
+}
 
     if (mainImage) {
       embed.setImage(mainImage);
@@ -83,9 +85,10 @@ mainImage = attachment.url;
     // 1️⃣ Enviar panel
     // ======================
 
-    const sentMessage = await message.channel.send({
-      embeds: [embed]
-    });
+  const sentMessage = await message.channel.send({
+  embeds: [embed],
+  files: imageFile ? [imageFile] : []
+});
 
     // ======================
     // 2️⃣ Crear thread independiente
