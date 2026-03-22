@@ -82,56 +82,53 @@ module.exports = (client) => {
   // =========================
   // PANEL CREATION
   // =========================
-  client.on("messageCreate", async (message) => {
-
+client.on("messageCreate", async (message) => {
+  try {
+    // Solo canal permitido
     if (message.channel.id !== ALLOWED_CHANNEL_ID) return;
+
+    // Solo mensajes de webhook
     if (!message.webhookId) return;
+
+    // Contenido esperado
     if (!message.content.includes("God Pack found")) return;
 
+    // ======= Attachments robusto =======
+    let files = [];
     let imageFile = null;
-    let imageName = null;
 
-   let files = [];
+    if (message.attachments.size > 0) {
+      message.attachments.forEach(att => {
+        files.push({ attachment: att.url, name: att.name });
+      });
+      imageFile = `attachment://${message.attachments.first().name}`;
+    }
 
-if (message.attachments.size > 0) {
-  const attachment = message.attachments.first();
-  files.push({
-    attachment: attachment.url,
-    name: attachment.name
-  });
-
-  imageFile = `attachment://${attachment.name}`;
-}
-
+    // ======= Regex más flexible =======
     const rarityMatch = message.content.match(/\[(\d)\/5\]/);
     if (!rarityMatch) return;
-
     const rarity = parseInt(rarityMatch[1]);
-    const packMatch = message.content.match(/\[(\d)P\]/i);
+
+    const packMatch = message.content.match(/\[(\d+)P\]/i);
     const packNumber = packMatch ? parseInt(packMatch[1]) : null;
+    const packText = packNumber ? `${packNumber}P` : "1P";
 
-    const usernameMatch = message.content.match(/^(.+?) \(\d+\)$/m);
+    const usernameMatch = message.content.match(/^(.+?)\s*\(\d+\)/m);
     if (!usernameMatch) return;
-
     const username = usernameMatch[1];
 
+    // ======= Embed color =======
     let color = 0x999999;
     if (rarity === 5) color = 0xFFD700;
     if (rarity === 3) color = 0x0099ff;
 
-    const packText = packNumber ? `${packNumber}P` : "1P";
+    const embed = new EmbedBuilder()
+      .setColor(color)
+      .setDescription(`## ✨ ${rarity}/5 • ${packText}  |  **${username}**`);
 
-const embed = new EmbedBuilder()
-  .setColor(color)
-  .setDescription(
-    `## ✨ ${rarity}/5 • ${packText}  |  **${username}**`
-  )
- // .setImage(imageFile || null);
+    if (imageFile) embed.setImage(imageFile);
 
-    if (imageFile) {
-  embed.setImage(imageFile);
-}
-
+    // ======= Botones =======
     const buttons = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("gp_alive")
@@ -143,11 +140,11 @@ const embed = new EmbedBuilder()
         .setStyle(ButtonStyle.Danger)
     );
 
-  const sentMessage = await message.channel.send({
-  embeds: [embed],
-  components: [buttons],
-  files: files
-});
+    const sentMessage = await message.channel.send({
+      embeds: [embed],
+      components: [buttons],
+      files: files
+    });
 
     packVotes.set(sentMessage.id, {
       alive: new Set(),
@@ -155,23 +152,33 @@ const embed = new EmbedBuilder()
       confirmed: false
     });
 
-    // 🔥 THREAD RESTORED
-    const thread = await sentMessage.startThread({
-      name: `GP • ${rarity}/5`,
-      autoArchiveDuration: 1440
-    });
-
-    await thread.send("📂 Original webhook message:");
-    await thread.send({ content: message.content });
-
-    if (message.attachments.size > 0) {
-      await thread.send({
-        files: message.attachments.map(a => a.url)
+    // ======= Thread robusto =======
+    let thread;
+    try {
+      thread = await sentMessage.startThread({
+        name: `GP • ${rarity}/5`,
+        autoArchiveDuration: 1440
       });
+    } catch (err) {
+      console.error("No se pudo crear el thread:", err);
     }
 
-    await message.delete().catch(() => {});
-  });
+    if (thread) {
+      await thread.send("📂 Original webhook message:");
+      await thread.send({ content: message.content });
+
+      if (message.attachments.size > 0) {
+        const threadFiles = message.attachments.map(a => ({ attachment: a.url, name: a.name }));
+        await thread.send({ files: threadFiles });
+      }
+    }
+
+    // ======= Borra mensaje original con try/catch =======
+    message.delete().catch(() => {});
+  } catch (err) {
+    console.error("Error en messageCreate:", err);
+  }
+});
 
   // =========================
   // BUTTON SYSTEM
