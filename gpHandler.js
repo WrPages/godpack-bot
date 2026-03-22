@@ -69,10 +69,42 @@ if (packMatch) {
 
     console.log("✅ Enviando embed...");
 
-    await message.channel.send({ embeds: [embed] });
+// ====== PANEL + THREAD AUTOMÁTICO ======
 
-    // Opcional borrar original
-    await message.delete().catch(() => {});
+// Guardar datos originales antes de borrar
+const originalContent = message.content;
+const originalAttachments = message.attachments.map(a => a.url);
+
+console.log("✅ Enviando embed y creando thread...");
+
+// 1️⃣ Enviar el panel (embed principal)
+const sentMessage = await message.channel.send({
+  embeds: [embed]
+});
+
+// 2️⃣ Crear thread automáticamente
+const thread = await sentMessage.startThread({
+  name: `GP • ${rarity}/5`,
+  autoArchiveDuration: 1440, // 24h
+});
+
+// 3️⃣ Enviar mensaje original dentro del thread
+await thread.send("📂 Mensaje original del webhook:");
+
+// Reenviar texto original
+if (originalContent) {
+  await thread.send({ content: originalContent });
+}
+
+// Reenviar imágenes originales
+if (originalAttachments.length > 0) {
+  await thread.send({
+    files: originalAttachments
+  });
+}
+
+// 4️⃣ Ahora sí borrar mensaje webhook original
+await message.delete().catch(() => {});
 
   });
 
