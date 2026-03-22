@@ -1,68 +1,75 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder } = require("discord.js");
+
+const ALLOWED_CHANNEL_ID = "1484015417411244082";
 
 module.exports = (client) => {
-    // ID del canal donde llegan los mensajes (según tu log)
-    const CANAL_DETECCION_ID = '1484009807181779096'; 
 
-    client.on('messageCreate', async (message) => {
-        // 1. Filtro por canal (Si no es este canal, ignorar)
-        if (message.channel.id !== CANAL_DETECCION_ID) return;
+  client.on("messageCreate", async (message) => {
 
-        // 2. Filtro de autor (No responderse a sí mismo)
-        if (message.author.id === client.user.id) return;
+    if (message.channel.id !== ALLOWED_CHANNEL_ID) return;
+    if (!message.webhookId) return;
 
-        // 3. Verificamos si el mensaje contiene la frase clave de God Pack
-        const content = message.content || "";
-        if (content.includes('God Pack found')) {
-            
-            console.log("🚀 [gpHandler] ¡Detectado! Iniciando panel visual...");
+    console.log("📩 MENSAJE DE WEBHOOK DETECTADO");
+    console.log("Contenido completo:", message.content);
 
-            try {
-                // --- EXTRACCIÓN DE DATOS ---
-                // Tag: @Lordchaosz
-                const tagMatch = content.match(/(@\w+)/);
-                const userTag = tagMatch ? tagMatch[1] : 'N/A';
+    if (!message.content.includes("God Pack found")) return;
 
-                // Nombre: LordhGP (antes del paréntesis)
-                const nameMatch = content.match(/^([^\s(]+)\s*\(/m);
-                const accountName = nameMatch ? nameMatch[1].trim() : 'Desconocido';
+    // ======================
+    // Detectar imagen
+    // ======================
 
-                // Rareza: [3/5][2P][PaldeanWonders]
-                const rarityMatch = content.match(/(\[\d+\/\d+\]\[\w+\](?:\[\w+\])?)/);
-                const rarity = rarityMatch ? rarityMatch[1] : 'Especial';
+    let mainImage = null;
 
-                // --- IMÁGENES ---
-                // Obtenemos los adjuntos (imágenes del webhook)
-                const attachments = Array.from(message.attachments.values());
-                const imgGodPack = attachments[0] ? attachments[0].url : null;
-                const imgProfile = attachments[1] ? attachments[1].url : null;
+    if (message.attachments.size > 0) {
+      const attachmentsArray = Array.from(message.attachments.values());
+      mainImage = attachmentsArray[0].url;
+      console.log("📷 Imagen detectada:", mainImage);
+    }
 
-                // --- CREACIÓN DEL EMBED ---
-                const embed = new EmbedBuilder()
-                    .setTitle('✨ ¡GOD PACK ENCONTRADO! ✨')
-                    .setDescription('Se ha localizado un sobre con cartas raras.')
-                    .setColor(0xF1C40F) // Color Dorado
-                    .addFields(
-                        { name: '👤 Usuario', value: `**${userTag}**`, inline: true },
-                        { name: '🆔 Cuenta', value: `\`${accountName}\``, inline: true },
-                        { name: '💎 Rareza', value: `**${rarity}**`, inline: true }
-                    )
-                    .setTimestamp()
-                    .setFooter({ text: 'TCG Pocket Reroll Bot', iconURL: client.user.displayAvatarURL() });
+    if (!mainImage) {
+      console.log("❌ No hay imagen en el mensaje");
+      return;
+    }
 
-                // Si hay imágenes, las ponemos
-                if (imgGodPack) embed.setImage(imgGodPack); // Imagen grande de las cartas
-                if (imgProfile) embed.setThumbnail(imgProfile); // Imagen pequeña del perfil
+    // ======================
+    // Detectar rareza
+    // ======================
 
-                // --- ENVIAR ---
-                await message.channel.send({ embeds: [embed] });
-                console.log(`✅ [gpHandler] Panel enviado para: ${accountName}`);
+    const rarityMatch = message.content.match(/\[(\d)\/5\]/);
+    if (!rarityMatch) return;
 
-            } catch (error) {
-                console.error('❌ [gpHandler] Error crítico:', error);
-            }
-        }
-    });
+    const rarity = parseInt(rarityMatch[1]);
 
-    console.log("✅ Modulo gpHandler cargado y monitoreando canal " + CANAL_DETECCION_ID);
+    // ======================
+    // Detectar username
+    // ======================
+
+    const usernameMatch = message.content.match(/^(.+?) \(\d+\)$/m);
+    if (!usernameMatch) return;
+
+    const username = usernameMatch[1];
+
+    // ======================
+    // Crear embed
+    // ======================
+
+    let color = 0x999999;
+    if (rarity === 5) color = 0xFFD700;
+    if (rarity === 3) color = 0x0099ff;
+
+    const embed = new EmbedBuilder()
+      .setTitle(`✨ GOD PACK ${rarity}/5`)
+      .setDescription(`👤 **@${username}**`)
+      .setColor(color)
+      .setImage(mainImage);
+
+    console.log("✅ Enviando embed...");
+
+    await message.channel.send({ embeds: [embed] });
+
+    // Opcional borrar original
+    await message.delete().catch(() => {});
+
+  });
+
 };
