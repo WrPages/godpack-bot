@@ -121,6 +121,7 @@ const embed = new EmbedBuilder()
     `## ${rarity}/5 • ${packText}  |  **${username}**`
   )
   .setImage(imageFile);;
+    .setFooter({ text: " " }); // pequeño truco para empujar layout
 
     if (imageFile) {
   embed.setImage(imageFile);
