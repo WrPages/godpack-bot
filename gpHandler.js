@@ -205,14 +205,17 @@ module.exports = (client) => {
     // ==========================
 // CONFIRMACIÓN FINAL
 // ==========================
-if (totalVotes >= 3 && !data.confirmed) {
-
-  data.confirmed = true;
+// ==========================
+// CONFIRMACIÓN FINAL
+// ==========================
+if (!data.confirmed) {
 
   const oldEmbed = interaction.message.embeds[0];
 
-  // 🟢 CONFIRMADO ALIVE
+  // 🟢 CONFIRMAR ALIVE (2 votos)
   if (data.alive.size >= 2) {
+
+    data.confirmed = true;
 
     statsData.todayCount++;
     saveData();
@@ -242,8 +245,10 @@ if (totalVotes >= 3 && !data.confirmed) {
     });
   }
 
-  // 🔴 CONFIRMADO DEAD
-  if (data.dead.size >= 2) {
+  // 🔴 CONFIRMAR DEAD (3 votos)
+  if (data.dead.size >= 3) {
+
+    data.confirmed = true;
 
     const deadEmbed = new EmbedBuilder()
       .setTitle(oldEmbed.title)
