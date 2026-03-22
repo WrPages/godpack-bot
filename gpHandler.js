@@ -32,12 +32,17 @@ module.exports = (client) => {
     const username = usernameMatch[1];
 
     // Detectar imagen
-    const attachment = message.attachments.first();
-    if (!attachment) {
-      console.log("❌ No se detectó imagen");
-      return;
-    }
+  const attachments = Array.from(message.attachments.values());
 
+if (attachments.length === 0) {
+  console.log("❌ No se detectaron imágenes");
+  return;
+}
+
+// Primera imagen para el embed
+const mainImage = attachments[0].url;
+
+    
     let color = 0x999999;
     if (rarity == 5) color = 0xFFD700;
     if (rarity == 3) color = 0x0099ff;
@@ -45,7 +50,7 @@ module.exports = (client) => {
     const embed = new EmbedBuilder()
       .setTitle(`✨ GOD PACK ${rarity}/5`)
       .setDescription(`👤 **@${username}**`)
-      .setImage(attachment.url)
+      .setImage(mainImage)
       .setColor(color);
 
     console.log("✅ Enviando embed...");
