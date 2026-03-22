@@ -35,22 +35,38 @@ module.exports = (client) => {
 
 let mainImage = null;
 
-// 1️⃣ Revisar attachments normales
-if (message.attachments.size > 0) {
-  mainImage = message.attachments.first().url;
-}
+try {
+  const filter = (m) => {
+    return (
+      m.author.id === message.author.id &&
+      (m.attachments.size > 0 ||
+        (m.embeds.length > 0 && m.embeds[0].image))
+    );
+  };
 
-// 2️⃣ Si no hay attachments, revisar embeds (cuando Discord convierte imagen)
-if (!mainImage && message.embeds.length > 0) {
-  const embedImage = message.embeds[0].image;
-  if (embedImage) {
-    mainImage = embedImage.url;
+  // ⏳ Esperar hasta 5 segundos a que llegue la imagen
+  const collected = await message.channel.awaitMessages({
+    filter,
+    max: 1,
+    time: 5000,
+  });
+
+  if (collected.size > 0) {
+    const imgMsg = collected.first();
+
+    if (imgMsg.attachments.size > 0) {
+      mainImage = imgMsg.attachments.first().url;
+    } else if (imgMsg.embeds.length > 0 && imgMsg.embeds[0].image) {
+      mainImage = imgMsg.embeds[0].image.url;
+    }
   }
+
+} catch (err) {
+  console.log("Error esperando imagen:", err);
 }
 
 if (!mainImage) {
-  console.log("❌ No se encontró imagen ni en attachments ni en embeds");
-  return;
+  console.log("❌ No llegó imagen dentro del tiempo esperado");
 }
 
 
