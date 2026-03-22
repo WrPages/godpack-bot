@@ -118,9 +118,9 @@ const packText = packNumber ? `${packNumber}P` : "1P";
 const embed = new EmbedBuilder()
   .setColor(color)
   .setDescription(
-    `## ✨ ${rarity}/5 • ${packText}  |  **${username}**`
+    `## ${rarity}/5 • ${packText}  |  **${username}**`
   )
-  .setImage(imageFile || null);;
+  .setImage(imageFile);;
 
     if (imageFile) {
   embed.setImage(imageFile);
