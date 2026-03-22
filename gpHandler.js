@@ -38,6 +38,8 @@ async function updateStats(client) {
   }
 
   const channel = await client.channels.fetch(STATS_CHANNEL_ID);
+
+  // Panel embed
   const embed = new EmbedBuilder()
     .setTitle("📊 GOD PACKS - 24H STATS")
     .setColor(0x00ff99)
@@ -48,12 +50,24 @@ async function updateStats(client) {
         : "No previous records")
     );
 
+  let msg = null;
+
+  // Intentamos obtener el mensaje existente
+  if (statsData.statsMessageId) {
+    try {
+      msg = await channel.messages.fetch(statsData.statsMessageId);
+    } catch {
+      // Si falla (mensaje borrado), lo recreamos
+      statsData.statsMessageId = null;
+      saveData();
+    }
+  }
+
   if (!statsData.statsMessageId) {
-    const msg = await channel.send({ embeds: [embed] });
+    msg = await channel.send({ embeds: [embed] });
     statsData.statsMessageId = msg.id;
     saveData();
   } else {
-    const msg = await channel.messages.fetch(statsData.statsMessageId);
     await msg.edit({ embeds: [embed] });
   }
 }
@@ -61,29 +75,28 @@ async function updateStats(client) {
 module.exports = (client) => {
   loadData();
 
+  // Actualización de stats cada hora
   setInterval(() => {
-    updateStats(client).catch(() => {});
+    updateStats(client).catch(console.error);
   }, 60 * 60 * 1000);
 
+  // =========================
+  // PANEL CREATION
+  // =========================
   client.on("messageCreate", async (message) => {
     try {
       if (message.channel.id !== ALLOWED_CHANNEL_ID) return;
       if (!message.webhookId) return;
       if (!message.content.includes("God Pack found")) return;
 
-      // =======================
-      // Imagen principal solo para embed
-      // =======================
+      // Imagen principal para embed
       let imageFile = null;
       if (message.attachments.size > 0) {
-        const firstAttachment = message.attachments.first();
-        const attachmentBuilder = new AttachmentBuilder(firstAttachment.url, { name: firstAttachment.name });
-        imageFile = `attachment://${firstAttachment.name}`;
+        const first = message.attachments.first();
+        imageFile = `attachment://${first.name}`;
       }
 
-      // =======================
       // Datos del pack
-      // =======================
       const rarityMatch = message.content.match(/\[(\d)\/5\]/);
       if (!rarityMatch) return;
       const rarity = parseInt(rarityMatch[1]);
@@ -100,9 +113,6 @@ module.exports = (client) => {
       if (rarity === 5) color = 0xFFD700;
       if (rarity === 3) color = 0x0099ff;
 
-      // =======================
-      // Embed y botones
-      // =======================
       const embed = new EmbedBuilder()
         .setColor(color)
         .setDescription(`## ✨ ${rarity}/5 • ${packText}  |  **${username}**`);
@@ -120,9 +130,7 @@ module.exports = (client) => {
           .setStyle(ButtonStyle.Danger)
       );
 
-      // =======================
-      // Mensaje principal SIN attachments adicionales
-      // =======================
+      // Solo enviamos la imagen principal, sin attachments extra
       const sentMessage = await message.channel.send({
         embeds: [embed],
         components: [buttons],
@@ -135,9 +143,7 @@ module.exports = (client) => {
         confirmed: false
       });
 
-      // =======================
       // Thread con mensaje original y attachments secundarios
-      // =======================
       const thread = await sentMessage.startThread({
         name: `GP • ${rarity}/5`,
         autoArchiveDuration: 1440
@@ -148,10 +154,9 @@ module.exports = (client) => {
 
       if (message.attachments.size > 1) {
         const secondaryFiles = message.attachments.map((att, i) => {
-          if (i === 0) return null; // omitir principal
+          if (i === 0) return null;
           return new AttachmentBuilder(att.url, { name: att.name });
         }).filter(Boolean);
-
         if (secondaryFiles.length > 0) await thread.send({ files: secondaryFiles });
       }
 
@@ -187,7 +192,6 @@ module.exports = (client) => {
 
     const oldEmbed = interaction.message.embeds[0];
 
-    // CONFIRM ALIVE
     if (data.alive.size >= 2) {
       data.confirmed = true;
       statsData.todayCount++;
@@ -209,7 +213,6 @@ module.exports = (client) => {
       return interaction.message.edit({ embeds: [updatedEmbed], components: [row] });
     }
 
-    // CONFIRM DEAD
     if (data.dead.size >= 3) {
       data.confirmed = true;
 
@@ -228,7 +231,7 @@ module.exports = (client) => {
       return interaction.message.edit({ embeds: [updatedEmbed], components: [row] });
     }
 
-    // NORMAL UPDATE
+    // Normal update
     const normalRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("gp_alive")
