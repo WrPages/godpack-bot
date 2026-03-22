@@ -1,4 +1,4 @@
- const { EmbedBuilder } = require("discord.js");
+const { EmbedBuilder } = require("discord.js");
 
 const ALLOWED_CHANNEL_ID = "1484015417411244082";
 
@@ -15,18 +15,16 @@ module.exports = (client) => {
     if (!message.content.includes("God Pack found")) return;
 
     // ======================
-    // Detectar 
+    // Detectar imagen principal
+    // ======================
 
-let mainImage = null;
+    let mainImage = null;
 
-if (message.attachments.size > 0) {
-  const attachment = message.attachments.first();
-
-  // Forzar URL limpia sin parámetros temporales
-  mainImage = attachment.url.split("?")[0];
-
-  console.log("📷 Imagen limpia:", mainImage);
-}
+    if (message.attachments.size > 0) {
+      const attachment = message.attachments.first();
+      mainImage = attachment.url.split("?")[0];
+      console.log("📷 Imagen limpia:", mainImage);
+    }
 
     // ======================
     // Detectar rareza
@@ -34,15 +32,17 @@ if (message.attachments.size > 0) {
 
     const rarityMatch = message.content.match(/\[(\d)\/5\]/);
     if (!rarityMatch) return;
-// Detectar número de pack [1P]
-const packMatch = message.content.match(/\[(\d)P\]/i);
 
-let packNumber = null;
-if (packMatch) {
-  packNumber = parseInt(packMatch[1]);
-  console.log("📦 Pack detectado:", packNumber);
-}
     const rarity = parseInt(rarityMatch[1]);
+
+    // Detectar número de pack [1P]
+    const packMatch = message.content.match(/\[(\d)P\]/i);
+    let packNumber = null;
+
+    if (packMatch) {
+      packNumber = parseInt(packMatch[1]);
+      console.log("📦 Pack detectado:", packNumber);
+    }
 
     // ======================
     // Detectar username
@@ -62,61 +62,63 @@ if (packMatch) {
     if (rarity === 3) color = 0x0099ff;
 
     const embed = new EmbedBuilder()
-.setTitle(`✨ GOD PACK ${rarity}/5${packNumber ? ` • Pack ${packNumber}` : ""}`)
+      .setTitle(`✨ GOD PACK ${rarity}/5${packNumber ? ` • Pack ${packNumber}` : ""}`)
       .setDescription(`👤 **@${username}**`)
-      .setColor(color)
-      .setImage(mainImage);
+      .setColor(color);
+
+    if (mainImage) {
+      embed.setImage(mainImage);
+    }
 
     console.log("✅ Enviando embed...");
 
-// ====== PANEL + THREAD AUTOMÁTICO ======
+    // ======================
+    // Guardar datos originales
+    // ======================
 
-// Guardar datos originales antes de borrar
-const originalContent = message.content;
-const originalAttachments = message.attachments.map(a => ({
-  attachment: a.url,
-  name: a.name
-}));
+    const originalContent = message.content;
+    const originalAttachments = [...message.attachments.values()];
 
-if (originalAttachments.length > 0) {
-  await thread.send({
-    files: originalAttachments
-  });
-}
+    // ======================
+    // 1️⃣ Enviar panel
+    // ======================
 
-console.log("✅ Enviando embed y creando thread...");
+    const sentMessage = await message.channel.send({
+      embeds: [embed]
+    });
 
-// 1️⃣ Enviar el panel (embed principal)
-const sentMessage = await message.channel.send({
-  embeds: [embed]
-});
+    // ======================
+    // 2️⃣ Crear thread independiente
+    // ======================
 
-// 2️⃣ Crear thread automáticamente
+    const thread = await message.channel.threads.create({
+      name: `GP • ${rarity}/5`,
+      autoArchiveDuration: 1440,
+    });
 
+    console.log("🧵 Thread creado");
 
+    // ======================
+    // 3️⃣ Enviar contenido original al thread
+    // ======================
 
-const thread = await message.channel.threads.create({
-  name: `GP • ${rarity}/5`,
-  autoArchiveDuration: 1440,
-});
+    await thread.send("📂 Mensaje original del webhook:");
 
-// 3️⃣ Enviar mensaje original dentro del thread
-await thread.send("📂 Mensaje original del webhook:");
+    if (originalContent) {
+      await thread.send({ content: originalContent });
+    }
 
-// Reenviar texto original
-if (originalContent) {
-  await thread.send({ content: originalContent });
-}
+    if (originalAttachments.length > 0) {
+      await thread.send({
+        files: originalAttachments.map(att => att.url)
+      });
+    }
 
-// Reenviar imágenes originales
-if (originalAttachments.length > 0) {
-  await thread.send({
-    files: originalAttachments
-  });
-}
+    // ======================
+    // 4️⃣ Borrar webhook original
+    // ======================
 
-// 4️⃣ Ahora sí borrar mensaje webhook original
-await message.delete().catch(() => {});
+    await message.delete().catch(() => {});
 
   });
 
