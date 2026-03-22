@@ -6,6 +6,7 @@ module.exports = (client) => {
 
   client.on("messageCreate", async (message) => {
    if (message.author.bot && !message.webhookId) return;
+if (!message.webhookId && message.author.id !== "TU_DISCORD_ID") return;
 
     // ⚠️ CAMBIA ESTO POR EL ID DE TU CANAL group-packs
     const allowedChannel = "1484015417411244082";
