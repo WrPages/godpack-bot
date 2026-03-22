@@ -8,7 +8,7 @@ const {
 const fs = require("fs");
 
 const ALLOWED_CHANNEL_ID = "1484015417411244082";
-const STATS_CHANNEL_ID = "PON_AQUI_EL_ID_REAL_DEL_CANAL_STATS";
+const STATS_CHANNEL_ID = "1484015417411244082";
 const DATA_FILE = "./gp_stats.json";
 
 let packVotes = new Map();
@@ -232,14 +232,13 @@ if (data.alive.size >= 2 && !data.confirmed) {
     new ButtonBuilder()
       .setCustomId("gp_alive")
       .setLabel(`🟢 Alive (${data.alive.size})`)
-      .setStyle(ButtonStyle.Success),
-
+      .setStyle(ButtonStyle.Success)
   );
 
-  await interaction.update({
-  embeds: [updatedEmbed],
-  components: [aliveOnlyRow]
-});
+  return await interaction.update({
+    embeds: [updatedEmbed],
+    components: [aliveOnlyRow]
+  });
 }
 
     if (totalVotes >= 3 && data.alive.size >= 2 && !data.confirmed) {
