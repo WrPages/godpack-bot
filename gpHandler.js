@@ -75,13 +75,13 @@ module.exports = (client) => {
       // Procesar attachments
       // =======================
       let imageFile = null; // Imagen principal para el embed
-      let files = [];       // Attachments secundarios, opcional
+      let files = [];       // Solo secundarios
 
       if (message.attachments.size > 0) {
         const first = message.attachments.first();
         imageFile = `attachment://${first.name}`; // solo para embed
 
-        // Solo enviar archivos secundarios (si existen) en "files"
+        // Archivos secundarios para files
         message.attachments.forEach((att, i) => {
           if (i > 0) files.push({ attachment: att.url, name: att.name });
         });
@@ -113,7 +113,7 @@ module.exports = (client) => {
         .setColor(color)
         .setDescription(`## ✨ ${rarity}/5 • ${packText}  |  **${username}**`);
 
-      if (imageFile) embed.setImage(imageFile); // Solo aquí la imagen principal
+      if (imageFile) embed.setImage(imageFile); // Solo aquí
 
       const buttons = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -126,11 +126,11 @@ module.exports = (client) => {
           .setStyle(ButtonStyle.Danger)
       );
 
-      // Mensaje principal: embed + botones + solo secundarios
+      // ⚡ Mensaje principal: embed + botones + SOLO secundarios
       const sentMessage = await message.channel.send({
         embeds: [embed],
         components: [buttons],
-        files: files // la imagen principal NO va aquí
+        files: files.length > 0 ? files : undefined // nada si no hay secundarios
       });
 
       packVotes.set(sentMessage.id, {
@@ -140,7 +140,7 @@ module.exports = (client) => {
       });
 
       // =======================
-      // Thread con mensaje original
+      // Thread con todo el mensaje original
       // =======================
       let thread;
       try {
@@ -156,7 +156,6 @@ module.exports = (client) => {
         await thread.send("📂 Original webhook message:");
         await thread.send({ content: message.content });
 
-        // TODOS los attachments originales en el thread
         if (message.attachments.size > 0) {
           const threadFiles = message.attachments.map(att => ({ attachment: att.url, name: att.name }));
           await thread.send({ files: threadFiles });
