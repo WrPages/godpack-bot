@@ -207,9 +207,17 @@ module.exports = (client) => {
       statsData.todayCount++;
       saveData();
 
-      const confirmedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
-        .setFooter({ text: "🟢 CONFIRMED ALIVE" })
-        .setColor(0x00ff00);
+      const oldEmbed = interaction.message.embeds[0];
+
+const confirmedEmbed = new EmbedBuilder()
+  .setTitle(oldEmbed.title)
+  .setDescription(oldEmbed.description)
+  .setColor(0x00ff00)
+  .setFooter({ text: "🟢 CONFIRMED ALIVE" });
+
+if (oldEmbed.image) {
+  confirmedEmbed.setImage(oldEmbed.image.url);
+}
 
       const disabledRow = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
