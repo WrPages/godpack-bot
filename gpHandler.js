@@ -98,12 +98,12 @@ client.on("messageCreate", async (message) => {
       const first = message.attachments.first();
       imageFile = `attachment://${first.name}`; // Para el embed
 
-      // Solo enviamos otros attachments, no la imagen principal
+      // Solo enviar otros attachments que NO sean la principal
       message.attachments.forEach((att, i) => {
         if (i > 0) files.push({ attachment: att.url, name: att.name });
       });
 
-      // El attachment principal debe estar incluido en files
+      // La imagen principal debe estar en files también para que setImage funcione
       files.unshift({ attachment: first.url, name: first.name });
     }
 
@@ -175,9 +175,14 @@ client.on("messageCreate", async (message) => {
       await thread.send("📂 Original webhook message:");
       await thread.send({ content: message.content });
 
+      // Solo enviar attachments secundarios en el thread
       if (message.attachments.size > 1) {
-        const threadFiles = message.attachments.map(a => ({ attachment: a.url, name: a.name }));
-        await thread.send({ files: threadFiles });
+        const threadFiles = message.attachments.map((att, i) => {
+          if (i === 0) return null; // omitir principal
+          return { attachment: att.url, name: att.name };
+        }).filter(Boolean);
+
+        if (threadFiles.length > 0) await thread.send({ files: threadFiles });
       }
     }
 
