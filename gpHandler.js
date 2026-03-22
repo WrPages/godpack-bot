@@ -1,5 +1,6 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder } = require("discord.js");
 const fs = require("fs");
+const axios = require("axios"); // Para descargar la imagen principal
 
 const ALLOWED_CHANNEL_ID = "1484015417411244082";
 const STATS_CHANNEL_ID = "1484015417411244082";
@@ -72,22 +73,6 @@ module.exports = (client) => {
       if (!message.content.includes("God Pack found")) return;
 
       // =======================
-      // Procesar attachments
-      // =======================
-      let mainAttachment = null; // Imagen principal
-      let secondaryAttachments = []; // Para thread, opcional
-
-      if (message.attachments.size > 0) {
-        mainAttachment = message.attachments.first(); // Tomamos la primera como principal
-        // Si hay más attachments, los guardamos para el thread
-        if (message.attachments.size > 1) {
-          message.attachments.forEach((att, i) => {
-            if (i > 0) secondaryAttachments.push(att);
-          });
-        }
-      }
-
-      // =======================
       // Regex flexible
       // =======================
       const rarityMatch = message.content.match(/\[(\d)\/5\]/);
@@ -103,20 +88,36 @@ module.exports = (client) => {
       const username = usernameMatch[1];
 
       // =======================
-      // Embed y botones
+      // Color del embed
       // =======================
       let color = 0x999999;
       if (rarity === 5) color = 0xFFD700;
       if (rarity === 3) color = 0x0099ff;
 
+      // =======================
+      // Imagen principal
+      // =======================
+      let mainAttachmentBuilder = null;
+      if (message.attachments.size > 0) {
+        const mainAttachment = message.attachments.first();
+        // Descargamos la imagen como Buffer para usarla solo en embed
+        const response = await axios.get(mainAttachment.url, { responseType: 'arraybuffer' });
+        const buffer = Buffer.from(response.data, "binary");
+        mainAttachmentBuilder = new AttachmentBuilder(buffer, { name: mainAttachment.name });
+      }
+
+      // =======================
+      // Embed
+      // =======================
       const embed = new EmbedBuilder()
         .setColor(color)
         .setDescription(`## ✨ ${rarity}/5 • ${packText}  |  **${username}**`);
 
-      if (mainAttachment) {
-        embed.setImage(`attachment://${mainAttachment.name}`); // Imagen principal solo aquí
-      }
+      if (mainAttachmentBuilder) embed.setImage(`attachment://${mainAttachmentBuilder.name}`);
 
+      // =======================
+      // Botones
+      // =======================
       const buttons = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId("gp_alive")
@@ -128,12 +129,10 @@ module.exports = (client) => {
           .setStyle(ButtonStyle.Danger)
       );
 
-      // ⚡ Mensaje principal: embed + botones + solo attachments secundarios
-      const filesForMessage = []; // nunca la principal
-      secondaryAttachments.forEach(att => {
-        filesForMessage.push(new AttachmentBuilder(att.url, { name: att.name }));
-      });
-
+      // =======================
+      // Mensaje principal (solo embed + botones)
+      // =======================
+      const filesForMessage = mainAttachmentBuilder ? [mainAttachmentBuilder] : [];
       const sentMessage = await message.channel.send({
         embeds: [embed],
         components: [buttons],
@@ -147,7 +146,7 @@ module.exports = (client) => {
       });
 
       // =======================
-      // Thread con mensaje original
+      // Thread con mensaje original y attachments secundarios
       // =======================
       if (sentMessage) {
         let thread;
@@ -164,9 +163,12 @@ module.exports = (client) => {
           await thread.send("📂 Original webhook message:");
           await thread.send({ content: message.content });
 
-          if (message.attachments.size > 0) {
-            const threadFiles = message.attachments.map(att => new AttachmentBuilder(att.url, { name: att.name }));
-            await thread.send({ files: threadFiles });
+          if (message.attachments.size > 1) {
+            const secondaryFiles = [];
+            message.attachments.forEach((att, i) => {
+              if (i > 0) secondaryFiles.push(new AttachmentBuilder(att.url, { name: att.name }));
+            });
+            if (secondaryFiles.length > 0) await thread.send({ files: secondaryFiles });
           }
         }
       }
