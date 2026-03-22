@@ -135,7 +135,7 @@ module.exports = (client) => {
 
     const sentMessage = await message.channel.send({
       embeds: [embed],
-     // files: imageFile ? [{ attachment: imageFile, name: imageName }] : [],
+     files: imageFile ? [{ attachment: imageFile, name: imageName }] : [],
       components: [buttons]
     });
 
