@@ -3,7 +3,7 @@ const ALLOWED_CHANNEL_ID = "1484015417411244082"; // 👈 PON AQUÍ EL ID DEL CA
 module.exports = (client) => {
 
 
-  
+  if (!message.webhookId) return;
   client.on("messageCreate", async (message) => {
 
     console.log("📩 MENSAJE DETECTADO");
@@ -38,19 +38,17 @@ let mainImage = null;
 if (message.attachments.size > 0) {
   console.log("📷 Adjuntos detectados:", message.attachments.size);
 
-  // Si hay 2 imágenes, tomamos la primera
-  const firstAttachment = message.attachments.first();
+  const attachmentsArray = Array.from(message.attachments.values());
 
-  if (firstAttachment.contentType?.startsWith("image/")) {
-    mainImage = firstAttachment.url;
-    console.log("✅ Imagen encontrada:", mainImage);
-  }
+  // Primera imagen
+  mainImage = attachmentsArray[0].url;
+
+  console.log("✅ Imagen encontrada:", mainImage);
 }
 
 if (!mainImage) {
-  console.log("❌ No se encontró imagen en attachments");
+  console.log("❌ No se encontró imagen en el webhook");
 }
-
 
     
     let color = 0x999999;
