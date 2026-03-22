@@ -48,7 +48,7 @@ try {
   const collected = await message.channel.awaitMessages({
     filter,
     max: 1,
-    time: 5000,
+    time: 20000,
   });
 
   if (collected.size > 0) {
