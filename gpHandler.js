@@ -145,6 +145,21 @@ module.exports = (client) => {
       confirmed: false
     });
 
+    // 🔥 THREAD RESTORED
+    const thread = await sentMessage.startThread({
+      name: `GP • ${rarity}/5`,
+      autoArchiveDuration: 1440
+    });
+
+    await thread.send("📂 Original webhook message:");
+    await thread.send({ content: message.content });
+
+    if (message.attachments.size > 0) {
+      await thread.send({
+        files: message.attachments.map(a => a.url)
+      });
+    }
+
     await message.delete().catch(() => {});
   });
 
@@ -158,7 +173,6 @@ module.exports = (client) => {
     if (!data) return;
 
     await interaction.deferUpdate();
-
     if (data.confirmed) return;
 
     const userId = interaction.user.id;
@@ -173,9 +187,7 @@ module.exports = (client) => {
       data.alive.delete(userId);
     }
 
-    const oldEmbed = interaction.message.embeds[0];
-
-    // 🟢 CONFIRM ALIVE (2 votos)
+    // 🟢 CONFIRM ALIVE (2)
     if (data.alive.size >= 2) {
       data.confirmed = true;
 
@@ -183,9 +195,9 @@ module.exports = (client) => {
       saveData();
       await updateStats(interaction.client);
 
-      const editedEmbed = new EmbedBuilder(oldEmbed.data)
-        .setColor(0x00ff00)
-        .setFooter({ text: "🟢 CONFIRMED ALIVE" });
+      const embed = interaction.message.embeds[0];
+      embed.color = 0x00ff00;
+      embed.footer = { text: "🟢 CONFIRMED ALIVE" };
 
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -196,18 +208,18 @@ module.exports = (client) => {
       );
 
       return interaction.message.edit({
-        embeds: [editedEmbed],
+        embeds: [embed],
         components: [row]
       });
     }
 
-    // 🔴 CONFIRM DEAD (3 votos)
+    // 🔴 CONFIRM DEAD (3)
     if (data.dead.size >= 3) {
       data.confirmed = true;
 
-      const editedEmbed = new EmbedBuilder(oldEmbed.data)
-        .setColor(0xff0000)
-        .setFooter({ text: "🔴 CONFIRMED DEAD" });
+      const embed = interaction.message.embeds[0];
+      embed.color = 0xff0000;
+      embed.footer = { text: "🔴 CONFIRMED DEAD" };
 
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -218,12 +230,12 @@ module.exports = (client) => {
       );
 
       return interaction.message.edit({
-        embeds: [editedEmbed],
+        embeds: [embed],
         components: [row]
       });
     }
 
-    // UPDATE NORMAL
+    // NORMAL UPDATE
     const normalRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("gp_alive")
@@ -235,9 +247,7 @@ module.exports = (client) => {
         .setStyle(ButtonStyle.Danger)
     );
 
-    await interaction.message.edit({
-      components: [normalRow]
-    });
+    await interaction.message.edit({ components: [normalRow] });
   });
 
 };
