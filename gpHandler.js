@@ -31,11 +31,23 @@ module.exports = (client) => {
 
     const username = usernameMatch[1];
 
-    // Detectar imagen
-  const attachments = Array.from(message.attachments.values());
+let mainImage = null;
 
-if (attachments.length === 0) {
-  console.log("❌ No se detectaron imágenes");
+// 1️⃣ Revisar attachments normales
+if (message.attachments.size > 0) {
+  mainImage = message.attachments.first().url;
+}
+
+// 2️⃣ Si no hay attachments, revisar embeds (cuando Discord convierte imagen)
+if (!mainImage && message.embeds.length > 0) {
+  const embedImage = message.embeds[0].image;
+  if (embedImage) {
+    mainImage = embedImage.url;
+  }
+}
+
+if (!mainImage) {
+  console.log("❌ No se encontró imagen ni en attachments ni en embeds");
   return;
 }
 
