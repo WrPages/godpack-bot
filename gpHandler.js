@@ -86,7 +86,7 @@ module.exports = (client) => {
 
     if (message.channel.id !== ALLOWED_CHANNEL_ID) return;
     if (!message.webhookId) return;
-    if (!message.content.includes("God Pack found")) return;
+if (!/\[\d\/5\]/.test(message.content)) return;
 
     let imageFile = null;
     let imageName = null;
@@ -118,9 +118,10 @@ const packText = packNumber ? `${packNumber}P` : "1P";
 const embed = new EmbedBuilder()
   .setColor(color)
   .setDescription(
-    `## ✨ ${rarity}/5 • ${packText}  |  **${username}**`
+    `## ${rarity}/5 • ${packText}  |  **${username}**`
   )
-  .setImage(imageFile || null);;
+  .setImage(imageFile);;
+
 
     if (imageFile) {
   embed.setImage(imageFile);
