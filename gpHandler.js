@@ -188,53 +188,54 @@ module.exports = (client) => {
     }
 
     // 🟢 CONFIRM ALIVE (2)
-    if (data.alive.size >= 2) {
-      data.confirmed = true;
+   if (data.alive.size >= 2) {
+  data.confirmed = true;
 
-      statsData.todayCount++;
-      saveData();
-      await updateStats(interaction.client);
+  statsData.todayCount++;
+  saveData();
+  await updateStats(interaction.client);
 
   const oldEmbed = interaction.message.embeds[0];
-const updatedEmbed = EmbedBuilder.from(oldEmbed)
-  .setColor(0x00ff00)
-  .setFooter({ text: "🟢 CONFIRMED ALIVE" });
+  const updatedEmbed = EmbedBuilder.from(oldEmbed)
+    .setColor(0x00ff00)
+    .setFooter({ text: "🟢 CONFIRMED ALIVE" });
 
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("gp_alive")
-          .setLabel(`🟢 Alive (${data.alive.size})`)
-          .setStyle(ButtonStyle.Success)
-          .setDisabled(true)
-      );
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("gp_alive")
+      .setLabel(`🟢 Alive (${data.alive.size})`)
+      .setStyle(ButtonStyle.Success)
+      .setDisabled(true)
+  );
 
-      interaction.message.edit({
-  embeds: [updatedEmbed],
-  components: [row]
-});
-    }
+  return interaction.message.edit({
+    embeds: [updatedEmbed],
+    components: [row]
+  });
+}
 
     // 🔴 CONFIRM DEAD (3)
     if (data.dead.size >= 3) {
-      data.confirmed = true;
+  data.confirmed = true;
 
-      const embed = interaction.message.embeds[0];
-      embed.color = 0xff0000;
-      embed.footer = { text: "🔴 CONFIRMED DEAD" };
+  const oldEmbed = interaction.message.embeds[0];
+  const updatedEmbed = EmbedBuilder.from(oldEmbed)
+    .setColor(0xff0000)
+    .setFooter({ text: "🔴 CONFIRMED DEAD" });
 
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("gp_dead")
-          .setLabel(`🔴 Dead (${data.dead.size})`)
-          .setStyle(ButtonStyle.Danger)
-          .setDisabled(true)
-      );
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("gp_dead")
+      .setLabel(`🔴 Dead (${data.dead.size})`)
+      .setStyle(ButtonStyle.Danger)
+      .setDisabled(true)
+  );
 
-      return interaction.message.edit({
-        embeds: [embed],
-        components: [row]
-      });
-    }
+  return interaction.message.edit({
+    embeds: [updatedEmbed],
+    components: [row]
+  });
+}
 
     // NORMAL UPDATE
     const normalRow = new ActionRowBuilder().addComponents(
