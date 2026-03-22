@@ -113,10 +113,16 @@ module.exports = (client) => {
     if (rarity === 5) color = 0xFFD700;
     if (rarity === 3) color = 0x0099ff;
 
-    const embed = new EmbedBuilder()
-      .setTitle(`✨ GOD PACK ${rarity}/5${packNumber ? ` • Pack ${packNumber}` : ""}`)
-      .setDescription(`👤 **@${username}**`)
-      .setColor(color);
+const packText = packNumber ? `${packNumber}P` : "1P";
+
+const embed = new EmbedBuilder()
+  .setColor(color)
+  .setAuthor({
+    name: `${rarity}/5 • ${packText}`,
+  })
+  .setTitle(`👤 ${username}`)
+  .setDescription("━━━━━━━━━━━━━━━━━━━━━━")
+  .setImage(imageFile || null);
 
     if (imageFile) {
   embed.setImage(imageFile);
