@@ -220,7 +220,27 @@ if (thread) {
   }
 }
 
-    const totalVotes = data.alive.size + data.dead.size;
+// ===== SI LLEGA A 2 ALIVE → QUITAR BOTÓN DEAD =====
+
+if (data.alive.size >= 2 && !data.confirmed) {
+
+  const updatedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
+    .setFooter({ text: "🟢 Likely Alive (2 votes reached)" })
+    .setColor(0x2ecc71);
+
+  const aliveOnlyRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("gp_alive")
+      .setLabel(`🟢 Alive (${data.alive.size})`)
+      .setStyle(ButtonStyle.Success),
+
+  );
+
+  await interaction.message.edit({
+    embeds: [updatedEmbed],
+    components: [aliveOnlyRow]
+  });
+}
 
     if (totalVotes >= 3 && data.alive.size >= 2 && !data.confirmed) {
 
