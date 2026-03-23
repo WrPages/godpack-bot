@@ -188,10 +188,10 @@ const cardsImage = attachments[0]?.proxyURL || attachments[0]?.url || null;
           .setStyle(ButtonStyle.Danger)
       );
 
-     let sentMessage;
-    const finalImage = sentMessage.attachments.first()?.url || cardsImage;
+let sentMessage;
 
 if (cardsImage) {
+  // enviar con archivo
   sentMessage = await message.channel.send({
     embeds: [embed],
     components: [buttons],
@@ -201,7 +201,7 @@ if (cardsImage) {
     }]
   });
 
-  // usar la imagen subida en el embed
+  // usar attachment en embed
   embed.setImage("attachment://cards.png");
 
   await sentMessage.edit({
@@ -215,11 +215,14 @@ if (cardsImage) {
   });
 }
 
-   packVotes.set(sentMessage.id, {
+// 🔥 AQUÍ sí es seguro obtener la URL
+const finalImage = sentMessage.attachments.first()?.url || cardsImage;
+
+packVotes.set(sentMessage.id, {
   alive: new Set(),
   dead: new Set(),
   confirmed: false,
-  image: finalImage // 🔥 guardamos la URL real
+  image: finalImage
 });
 
       // THREAD
