@@ -8,7 +8,8 @@ const {
 
 const fetch = require("node-fetch");
 
-const ALLOWED_CHANNEL_ID = "1484015417411244082";
+const ALLOWED_CHANNEL_ID = "1484015417411244082"; // Canal donde llegan los packs
+const STATS_CHANNEL_ID = "TU_SEGUNDO_CANAL_ID"; // Canal donde se imprimen las estadísticas GP
 
 const GIST_ID = process.env.GIST_ID;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
@@ -55,8 +56,9 @@ async function loadData() {
   }
 }
 
+// Función actualizada para enviar o actualizar estadísticas en el canal STATS_CHANNEL_ID
 async function updateStats(client) {
-  const channel = await client.channels.fetch(ALLOWED_CHANNEL_ID);
+  const channel = await client.channels.fetch(STATS_CHANNEL_ID);
   if (!channel) return;
 
   const now = new Date();
@@ -83,9 +85,7 @@ async function updateStats(client) {
   const embed = new EmbedBuilder()
     .setColor(0x5865f2)
     .setTitle("📊 GP Stats")
-    .setDescription(
-      `**Today:** ${statsData.todayCount}\n\n**Last days:**\n${historyText}`
-    );
+    .setDescription(`**Today:** ${statsData.todayCount}\n\n**Last days:**\n${historyText}`);
 
   try {
     if (!statsData.statsMessageId) {
@@ -118,6 +118,7 @@ async function cleanWebhookMessage(channel) {
 module.exports = async (client) => {
   await loadData();
 
+  // Actualizar panel de estadísticas cada hora
   setInterval(() => {
     updateStats(client).catch(() => {});
   }, 60 * 60 * 1000);
