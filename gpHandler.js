@@ -296,8 +296,7 @@ client.on("interactionCreate", async (interaction) => {
     });
   }
 
-if (!interaction.replied && !interaction.deferred) {
-  await interaction.deferUpdate().catch(() => {});
+
 }
 
   const userId = interaction.user.id;
@@ -325,7 +324,7 @@ if (data.alive.size >= 2 && !data.confirmed) {
   embedData.color = 0x00ff00;
   embedData.footer = { text: "🟢 CONFIRMED ALIVE" };
 
-  return interaction.message.edit({
+  return interaction.update({
     embeds: [embedData],
     components: []
 
@@ -339,7 +338,7 @@ if (data.dead.size >= 3 && !data.confirmed) {
   embedData.color = 0xff0000;
   embedData.footer = { text: "🔴 CONFIRMED DEAD" };
 
-  return interaction.message.edit({
+  return interaction.update({
     embeds: [embedData],
     components: []
 
@@ -358,7 +357,7 @@ if (data.dead.size >= 3 && !data.confirmed) {
         .setStyle(ButtonStyle.Danger)
     );
 
-    await interaction.message.edit({ components: [row] });
+    await interaction.update({ components: [row] });
   });
 
 };
