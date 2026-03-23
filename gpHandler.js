@@ -163,24 +163,26 @@ const cardsImage = attachments[0]?.proxyURL || attachments[0]?.url || null;
 
       // THREAD
       try {
-        const thread = await sentMessage.startThread({
-          name: `GP • ${rarity}/5`,
-          autoArchiveDuration: 1440,
-          type: ChannelType.PublicThread
-        });
+  await new Promise(res => setTimeout(res, 500));
 
-        await thread.send("📂 Original webhook message:");
-        await thread.send({ content: message.content });
+  const thread = await sentMessage.startThread({
+    name: `GP • ${rarity}/5`,
+    autoArchiveDuration: 1440,
+    type: ChannelType.PublicThread
+  });
 
-        if (message.attachments.size > 0) {
-          await thread.send({
-files: [...message.attachments.values()].map(a => a.proxyURL || a.url)
-          });
-        }
+  await thread.send("📂 Original webhook message:");
+  await thread.send({ content: message.content });
 
-      } catch (err) {
-        console.error("THREAD ERROR:", err);
-      }
+  if (message.attachments.size > 0) {
+    await thread.send({
+      files: [...message.attachments.values()].map(a => a.proxyURL || a.url)
+    });
+  }
+
+} catch (err) {
+  console.error("THREAD ERROR:", err);
+}
 
       // DELETE
       try {
