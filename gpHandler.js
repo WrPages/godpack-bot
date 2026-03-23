@@ -216,7 +216,18 @@ if (cardsImage) {
 }
 
 // 🔥 AQUÍ sí es seguro obtener la URL
-const finalImage = sentMessage.attachments.first()?.url || cardsImage;
+let finalImage = cardsImage;
+
+// intentar obtener CDN estable con delay
+try {
+  await new Promise(res => setTimeout(res, 1000)); // 🔥 clave
+
+  const refreshed = await message.channel.messages.fetch(sentMessage.id);
+  finalImage = refreshed.attachments.first()?.url || cardsImage;
+
+} catch (e) {
+  console.log("Image fallback usada");
+}
 
 packVotes.set(sentMessage.id, {
   alive: new Set(),
