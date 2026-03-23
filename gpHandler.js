@@ -120,9 +120,28 @@ async function updateStats(client) {
   }
 }
 
+
+async function cleanWebhookMessage(channel) {
+  try {
+    const messages = await channel.messages.fetch({ limit: 5 });
+
+    const webhookMsg = messages.find(msg =>
+      msg.webhookId &&
+      msg.content.includes("God Pack found")
+    );
+
+    if (webhookMsg) {
+      await webhookMsg.delete().catch(() => {});
+    }
+
+  } catch (err) {
+    console.error("CLEAN ERROR:", err);
+  }
+}
 // =========================
 // MAIN MODULE
 // =========================
+
 module.exports = async (client) => {
 
 await loadData();
@@ -196,18 +215,10 @@ sentMessage = await message.channel.send({
   embeds: [embed],
   components: [buttons]
 });
-
+await cleanWebhookMessage(message.channel);
 // esperar 3 segundos antes de borrar webhook
 
-setTimeout(async () => {
-  try {
-    await message.edit({
-      content: "‎",
-      embeds: [],
-      attachments: []
-    });
-  } catch (err) {}
-}, 5000);
+
 
  packVotes.set(sentMessage.id, {
   alive: new Set(),
