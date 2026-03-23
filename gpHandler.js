@@ -294,11 +294,15 @@ if (cardsImage) {
 
 const oldEmbed = interaction.message.embeds[0];
 
+// obtener URL real (no attachment)
+const imageUrl = oldEmbed.image?.url || null;
+
 const updatedEmbed = new EmbedBuilder()
   .setColor(0x00ff00)
   .setDescription(oldEmbed.description)
   .setImage(oldEmbed.image?.url || null)
   .setFooter({ text: "🟢 CONFIRMED ALIVE" });
+if (imageUrl) updatedEmbed.setImage(imageUrl);
 
     return interaction.message.edit({
   embeds: [updatedEmbed],
@@ -317,6 +321,7 @@ const updatedEmbed = new EmbedBuilder()
   .setDescription(oldEmbed.description)
   .setImage(oldEmbed.image?.url || null)
   .setFooter({ text: "🔴 CONFIRMED DEAD" });
+if (imageUrl) updatedEmbed.setImage(imageUrl);
 
      return interaction.message.edit({
   embeds: [updatedEmbed],
