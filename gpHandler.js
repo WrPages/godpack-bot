@@ -192,37 +192,21 @@ if (cardsImage) {
 
      let sentMessage;
 
-if (cardsImage) {
-  sentMessage = await message.channel.send({
-    embeds: [embed],
-    components: [buttons],
- 
-  });
-  setTimeout(() => {
+const sentMessage = await message.channel.send({
+  embeds: [embed],
+  components: [buttons]
+});
+
+// esperar 3 segundos antes de borrar webhook
+setTimeout(() => {
   message.delete().catch(() => {});
 }, 3000);
-
-  embed.setImage("attachment://gp.png");
-
-  await sentMessage.edit({
-    embeds: [embed]
-  });
-
-} else {
-  sentMessage = await message.channel.send({
-    embeds: [embed],
-    components: [buttons]
-  });
-  setTimeout(() => {
-  message.delete().catch(() => {});
-}, 3000);
-}
 
  packVotes.set(sentMessage.id, {
   alive: new Set(),
   dead: new Set(),
   confirmed: false,
-  imageName: "gp.png" // 👈 guardar nombre
+
 });
 
       // THREAD
@@ -248,19 +232,7 @@ if (cardsImage) {
   console.error("THREAD ERROR:", err);
 }
 
-      // DELETE
-      try {
-        await message.delete();
-      } catch (err) {
-        console.log("Reintentando borrar...");
-        setTimeout(async () => {
-          try {
-            await message.delete();
-          } catch (e) {
-            console.error("DELETE FINAL ERROR:", e);
-          }
-        }, 2000);
-      }
+     
 
     } catch (err) {
       console.error("GP Handler Error:", err);
