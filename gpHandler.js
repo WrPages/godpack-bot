@@ -243,23 +243,16 @@ module.exports = async (client) => {
       data.alive.delete(userId);
     }
 
+    // Solo sumar GP vivos, sin editar mensajes ni embeds
     if (data.alive.size >= 2 && !data.confirmed) {
       data.confirmed = true;
-
       statsData.todayCount++;
       await saveData();
-      await updateStats(interaction.client);
-
-      const updatedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
-        .setColor(0x00ff00)
-        .setFooter({ text: "🟢 CONFIRMED ALIVE" });
-
-      return interaction.message.edit({
-        embeds: [updatedEmbed],
-        components: []
-      });
+      await updateStats(interaction.client); // Opcional, para actualizar stats
+      return;
     }
 
+    // Confirmar muertos
     if (data.dead.size >= 3 && !data.confirmed) {
       data.confirmed = true;
 
