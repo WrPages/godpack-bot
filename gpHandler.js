@@ -9,7 +9,7 @@ const {
 const fetch = require("node-fetch");
 
 const ALLOWED_CHANNEL_ID = "1484015417411244082"; // Canal para packs
-const STATS_CHANNEL_ID = "1484015417411244082"; // Mismo canal para estadísticas (prueba)
+const STATS_CHANNEL_ID = "TU_SEGUNDO_CANAL_ID"; // Canal para estadísticas GP
 
 const GIST_ID = process.env.GIST_ID;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
@@ -56,6 +56,7 @@ async function loadData() {
   }
 }
 
+// Función segura para enviar/actualizar panel de estadísticas
 async function updateStats(client) {
   const channel = await client.channels.fetch(STATS_CHANNEL_ID);
   if (!channel) return;
@@ -127,15 +128,18 @@ async function cleanWebhookMessage(channel) {
 module.exports = async (client) => {
   await loadData();
 
-  // Crear/actualizar panel de estadísticas al iniciar
+  // Crear/actualizar panel de estadísticas inmediatamente al iniciar el bot
   (async () => {
     try {
+      console.log("Intentando enviar/actualizar panel de estadísticas...");
       await updateStats(client);
+      console.log("Panel de estadísticas enviado o actualizado correctamente");
     } catch (err) {
       console.error("Error enviando panel inicial:", err);
     }
   })();
 
+  // Actualizar estadísticas cada hora
   setInterval(() => {
     updateStats(client).catch(() => {});
   }, 60 * 60 * 1000);
@@ -197,9 +201,11 @@ module.exports = async (client) => {
         files: imageFile ? [imageFile] : []
       });
 
+      await cleanWebhookMessage(message.channel);
+
       packVotes.set(sentMessage.id, { alive: new Set(), dead: new Set(), confirmed: false });
 
-      // Crear thread y mover contenido original
+      // Crear thread sobre el panel
       try {
         const thread = await sentMessage.startThread({
           name: `GP • ${rarity}/5`,
@@ -208,10 +214,6 @@ module.exports = async (client) => {
         });
         await thread.send("📂 Original webhook message:");
         await thread.send({ content: message.content });
-
-        // ⚡ Eliminar mensaje original del webhook
-        await message.delete().catch(() => {});
-
       } catch (err) {
         console.error("THREAD ERROR:", err);
       }
