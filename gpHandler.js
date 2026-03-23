@@ -295,12 +295,12 @@ if (!data) {
   }).catch(() => {});
 }
 
-  if (data.confirmed) {
-    return interaction.reply({
-      content: "Este pack ya está confirmado.",
-      ephemeral: true
-    });
-  }
+ if (data.confirmed) {
+  return interaction.reply({
+    content: "Este pack ya está confirmado.",
+    ephemeral: true
+  }).catch(() => {});
+}
 
 
 
