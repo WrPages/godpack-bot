@@ -56,7 +56,6 @@ async function loadData() {
   }
 }
 
-// Función segura para enviar/actualizar panel de estadísticas
 async function updateStats(client) {
   const channel = await client.channels.fetch(STATS_CHANNEL_ID);
   if (!channel) return;
@@ -77,18 +76,13 @@ async function updateStats(client) {
 
   const historyText =
     statsData.lastFiveDays.length > 0
-      ? statsData.lastFiveDays.map(d => `▫️ **${d.day}**: ${d.count} GP`).join("\n")
+      ? statsData.lastFiveDays.map(d => `▫️ ${d.day}: ${d.count}`).join("\n")
       : "No previous records";
 
   const embed = new EmbedBuilder()
     .setColor(0x5865f2)
-    .setTitle("📊 GP Statistics")
-    .addFields(
-      { name: "✨ GP Today", value: `${statsData.todayCount}`, inline: false },
-      { name: "🕘 Last 5 days", value: historyText, inline: false }
-    )
-    .setFooter({ text: "Data synced with Gist" })
-    .setTimestamp();
+    .setTitle("📊 GP Stats")
+    .setDescription(`**Today:** ${statsData.todayCount}\n\n**Last days:**\n${historyText}`);
 
   try {
     let msg;
@@ -128,18 +122,14 @@ async function cleanWebhookMessage(channel) {
 module.exports = async (client) => {
   await loadData();
 
-  // Crear/actualizar panel de estadísticas inmediatamente al iniciar el bot
   (async () => {
     try {
-      console.log("Intentando enviar/actualizar panel de estadísticas...");
       await updateStats(client);
-      console.log("Panel de estadísticas enviado o actualizado correctamente");
     } catch (err) {
       console.error("Error enviando panel inicial:", err);
     }
   })();
 
-  // Actualizar estadísticas cada hora
   setInterval(() => {
     updateStats(client).catch(() => {});
   }, 60 * 60 * 1000);
@@ -205,7 +195,6 @@ module.exports = async (client) => {
 
       packVotes.set(sentMessage.id, { alive: new Set(), dead: new Set(), confirmed: false });
 
-      // Crear thread sobre el panel y mover el contenido original
       try {
         const thread = await sentMessage.startThread({
           name: `GP • ${rarity}/5`,
@@ -215,7 +204,7 @@ module.exports = async (client) => {
         await thread.send("📂 Original webhook message:");
         await thread.send({ content: message.content });
 
-        // Eliminar el mensaje original del webhook
+        // eliminar mensaje original
         await message.delete().catch(() => {});
       } catch (err) {
         console.error("THREAD ERROR:", err);
