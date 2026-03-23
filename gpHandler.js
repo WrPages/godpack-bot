@@ -178,12 +178,12 @@ module.exports = async (client) => {
       const buttons = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId("gp_alive")
-          .setLabel("🟢 Alive")
+          .setLabel("🟢 Alive (0)")
           .setStyle(ButtonStyle.Success),
 
         new ButtonBuilder()
           .setCustomId("gp_dead")
-          .setLabel("🔴 Dead")
+          .setLabel("🔴 Dead (0)")
           .setStyle(ButtonStyle.Danger)
       );
 
@@ -243,13 +243,13 @@ module.exports = async (client) => {
       data.alive.delete(userId);
     }
 
-    // Solo sumar GP vivos, sin editar mensajes ni embeds
+    // Cuando llegan a 2 votos alive, solo suma al gist y stats, no toca embeds
     if (data.alive.size >= 2 && !data.confirmed) {
       data.confirmed = true;
       statsData.todayCount++;
       await saveData();
-      await updateStats(interaction.client); // Opcional, para actualizar stats
-      return;
+      await updateStats(interaction.client); // Solo actualizar stats
+      // No editamos mensaje ni embed
     }
 
     // Confirmar muertos
@@ -266,6 +266,7 @@ module.exports = async (client) => {
       });
     }
 
+    // Actualizar contador en botones
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("gp_alive")
