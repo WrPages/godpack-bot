@@ -190,29 +190,12 @@ const cardsImage = attachments[0]?.proxyURL || attachments[0]?.url || null;
 
      let sentMessage;
 
-if (cardsImage) {
-  sentMessage = await message.channel.send({
-    embeds: [embed],
-    components: [buttons],
-    files: [{
-      attachment: cardsImage,
-      name: "cards.png"
-    }]
-  });
+if (cardsImage) embed.setImage(cardsImage);
 
-  // usar la imagen subida en el embed
-  embed.setImage("attachment://cards.png");
-
-  await sentMessage.edit({
-    embeds: [embed]
-  });
-
-} else {
-  sentMessage = await message.channel.send({
-    embeds: [embed],
-    components: [buttons]
-  });
-}
+sentMessage = await message.channel.send({
+  embeds: [embed],
+  components: [buttons]
+});
 
    packVotes.set(sentMessage.id, {
   alive: new Set(),
