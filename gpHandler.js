@@ -1,13 +1,16 @@
 const {
-  MessageEmbed,
-  MessageActionRow,
-  MessageButton,
-  MessageAttachment
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ChannelType
 } = require("discord.js");
 
-const fetch = require("node-fetch");
+
 
 const ALLOWED_CHANNEL_ID = "1484015417411244082";
+
+const fetch = require("node-fetch");
 
 const GIST_ID = process.env.GIST_ID;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
@@ -24,10 +27,10 @@ let statsData = {
 
 async function saveData() {
   try {
-    await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+    const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
       method: "PATCH",
       headers: {
-        Authorization: `token ${GITHUB_TOKEN}`,
+        "Authorization": `token ${GITHUB_TOKEN}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
@@ -38,6 +41,15 @@ async function saveData() {
         }
       })
     });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error("GIST SAVE ERROR:", data);
+    } else {
+      console.log("✅ Gist actualizado");
+    }
+
   } catch (err) {
     console.error("SAVE GIST ERROR:", err);
   }
@@ -47,13 +59,18 @@ async function loadData() {
   try {
     const res = await fetch(`https://api.github.com/gists/${GIST_ID}`);
     const data = await res.json();
+
     const content = data.files[FILE_NAME].content;
     statsData = JSON.parse(content);
+
   } catch (err) {
     console.error("LOAD GIST ERROR:", err);
   }
 }
 
+// =========================
+// STATS SYSTEM
+// =========================
 async function updateStats(client) {
   const channel = await client.channels.fetch(ALLOWED_CHANNEL_ID);
   if (!channel) return;
@@ -68,6 +85,7 @@ async function updateStats(client) {
     });
 
     statsData.lastFiveDays = statsData.lastFiveDays.slice(0, 5);
+
     statsData.currentDay = today;
     statsData.todayCount = 0;
 
@@ -76,11 +94,13 @@ async function updateStats(client) {
 
   const historyText =
     statsData.lastFiveDays.length > 0
-      ? statsData.lastFiveDays.map(d => `▫️ ${d.day}: ${d.count}`).join("\n")
+      ? statsData.lastFiveDays
+          .map(d => `▫️ ${d.day}: ${d.count}`)
+          .join("\n")
       : "No previous records";
 
-  const embed = new MessageEmbed()
-    .setColor("#5865F2")
+  const embed = new EmbedBuilder()
+    .setColor(0x5865f2)
     .setTitle("📊 GP Stats")
     .setDescription(
       `**Today:** ${statsData.todayCount}\n\n**Last days:**\n${historyText}`
@@ -88,37 +108,24 @@ async function updateStats(client) {
 
   try {
     if (!statsData.statsMessageId) {
-      const msg = await channel.send({ embed: embed });
+      const msg = await channel.send({ embeds: [embed] });
       statsData.statsMessageId = msg.id;
       await saveData();
     } else {
       const msg = await channel.messages.fetch(statsData.statsMessageId);
-      await msg.edit({ embed: embed });
+      await msg.edit({ embeds: [embed] });
     }
   } catch {
     statsData.statsMessageId = null;
   }
 }
 
-async function cleanWebhookMessage(channel) {
-  try {
-    const messages = await channel.messages.fetch({ limit: 5 });
-
-    const webhookMsg = messages.find(
-      msg => msg.webhookId && msg.content.includes("God Pack found")
-    );
-
-    if (webhookMsg) {
-      await webhookMsg.delete().catch(() => {});
-    }
-  } catch (err) {
-    console.error("CLEAN ERROR:", err);
-  }
-}
-
+// =========================
+// MAIN MODULE
+// =========================
 module.exports = async (client) => {
 
-  await loadData();
+await loadData();
 
   setInterval(() => {
     updateStats(client).catch(() => {});
@@ -132,91 +139,123 @@ module.exports = async (client) => {
 
     try {
 
-      const attachment = message.attachments.first();
-      let imageFile = null;
-
-      if (attachment) {
-        imageFile = new MessageAttachment(
-          attachment.proxyURL || attachment.url,
-          "card.png"
-        );
-      }
+      const attachments = [...message.attachments.values()];
+const cardsImage = attachments[0]?.proxyURL || attachments[0]?.url || null;
 
       const rarityMatch = message.content.match(/\[(\d)\/5\]/);
       if (!rarityMatch) return;
 
       const rarity = parseInt(rarityMatch[1]);
+
       const packMatch = message.content.match(/\[(\d)P\]/i);
       const packNumber = packMatch ? parseInt(packMatch[1]) : 1;
 
       const lines = message.content.split("\n");
-      const usernameLine = lines.find(
-        line => line.includes("(") && line.includes(")")
+
+      const usernameLine = lines.find(line =>
+        line.includes("(") && line.includes(")")
       );
 
       let username = "Unknown";
 
       if (usernameLine) {
         const match = usernameLine.match(/^(.+?)\s*\(/);
-        if (match) username = match[1].trim();
+        if (match) {
+          username = match[1].trim();
+        }
       }
 
-      let color = "#999999";
-      if (rarity === 5) color = "#FFD700";
-      if (rarity === 4) color = "#00ffcc";
-      if (rarity === 3) color = "#0099ff";
+      let color = 0x999999;
+      if (rarity === 5) color = 0xFFD700;
+      if (rarity === 4) color = 0x00ffcc;
+      if (rarity === 3) color = 0x0099ff;
 
-      const embed = new MessageEmbed()
+      const embed = new EmbedBuilder()
         .setColor(color)
         .setDescription(`## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`);
 
-      if (imageFile) {
-        embed.setImage("attachment://card.png");
-      }
+      if (cardsImage) embed.setImage(cardsImage);
 
-      const buttons = new MessageActionRow().addComponents(
-        new MessageButton()
+      const buttons = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
           .setCustomId("gp_alive")
           .setLabel("🟢 Alive")
-          .setStyle("SUCCESS"),
+          .setStyle(ButtonStyle.Success),
 
-        new MessageButton()
+        new ButtonBuilder()
           .setCustomId("gp_dead")
           .setLabel("🔴 Dead")
-          .setStyle("DANGER")
+          .setStyle(ButtonStyle.Danger)
       );
 
-      const sentMessage = await message.channel.send({
-        embed: embed,
-        components: [buttons],
-        files: imageFile ? [imageFile] : []
-      });
+     let sentMessage;
 
-      await cleanWebhookMessage(message.channel);
+if (cardsImage) {
+  sentMessage = await message.channel.send({
+    embeds: [embed],
+    components: [buttons],
+    files: [{
+      attachment: cardsImage,
+      name: "cards.png"
+    }]
+  });
 
-      packVotes.set(sentMessage.id, {
-        alive: new Set(),
-        dead: new Set(),
-        confirmed: false
-      });
+  // usar la imagen subida en el embed
+  embed.setImage("attachment://cards.png");
 
+  await sentMessage.edit({
+    embeds: [embed]
+  });
+
+} else {
+  sentMessage = await message.channel.send({
+    embeds: [embed],
+    components: [buttons]
+  });
+}
+
+   packVotes.set(sentMessage.id, {
+  alive: new Set(),
+  dead: new Set(),
+  confirmed: false,
+  image: cardsImage // 🔥 guardamos la URL real
+});
+
+      // THREAD
       try {
-        const thread = await sentMessage.startThread({
-          name: `GP • ${rarity}/5`,
-          autoArchiveDuration: 1440
-        });
+  await new Promise(res => setTimeout(res, 500));
 
-        await thread.send("📂 Original webhook message:");
-        await thread.send({ content: message.content });
+  const thread = await sentMessage.startThread({
+    name: `GP • ${rarity}/5`,
+    autoArchiveDuration: 1440,
+    type: ChannelType.PublicThread
+  });
 
-        if (message.attachments.size > 0) {
-          await thread.send({
-            files: [...message.attachments.values()].map(a => a.proxyURL || a.url)
-          });
-        }
+  await thread.send("📂 Original webhook message:");
+  await thread.send({ content: message.content });
 
+  if (message.attachments.size > 0) {
+    await thread.send({
+      files: [...message.attachments.values()].map(a => a.proxyURL || a.url)
+    });
+  }
+
+} catch (err) {
+  console.error("THREAD ERROR:", err);
+}
+
+      // DELETE
+      try {
+        await message.delete();
       } catch (err) {
-        console.error("THREAD ERROR:", err);
+        console.log("Reintentando borrar...");
+        setTimeout(async () => {
+          try {
+            await message.delete();
+          } catch (e) {
+            console.error("DELETE FINAL ERROR:", e);
+          }
+        }, 2000);
       }
 
     } catch (err) {
@@ -247,50 +286,63 @@ module.exports = async (client) => {
       data.alive.delete(userId);
     }
 
-    if (data.alive.size >= 2 && !data.confirmed) {
-      data.confirmed = true;
+   if (data.alive.size >= 2 && !data.confirmed) {
+  data.confirmed = true;
 
       statsData.todayCount++;
       await saveData();
       await updateStats(interaction.client);
 
-      const updatedEmbed = new MessageEmbed(interaction.message.embeds[0])
-        .setColor("#00ff00")
-        .setFooter("🟢 CONFIRMED ALIVE");
 
-      return interaction.message.edit({
-        embed: updatedEmbed,
-        components: []
-      });
+const imageUrl = data.image || null;
+
+const updatedEmbed = new EmbedBuilder()
+  .setColor(0x00ff00)
+  .setDescription(interaction.message.embeds[0].description)
+  .setFooter({ text: "🟢 CONFIRMED ALIVE" });
+
+if (imageUrl) updatedEmbed.setImage(imageUrl);
+
+    return interaction.message.edit({
+  embeds: [updatedEmbed],
+  components: [],
+  files: [] // 🔥 ESTO SOLUCIONA TODO
+});
     }
 
-    if (data.dead.size >= 3 && !data.confirmed) {
-      data.confirmed = true;
+ if (data.dead.size >= 3 && !data.confirmed) {
+  data.confirmed = true;
 
-      const updatedEmbed = new MessageEmbed(interaction.message.embeds[0])
-        .setColor("#ff0000")
-        .setFooter("🔴 CONFIRMED DEAD");
 
-      return interaction.message.edit({
-        embed: updatedEmbed,
-        components: []
-      });
+const imageUrl = data.image || null;
+
+const updatedEmbed = new EmbedBuilder()
+  .setColor(0xff0000)
+  .setDescription(interaction.message.embeds[0].description)
+  .setFooter({ text: "🔴 CONFIRMED DEAD" });
+
+if (imageUrl) updatedEmbed.setImage(imageUrl);
+
+     return interaction.message.edit({
+  embeds: [updatedEmbed],
+  components: [],
+  files: [] // 🔥 ESTO SOLUCIONA TODO
+});
     }
 
-    const row = new MessageActionRow().addComponents(
-      new MessageButton()
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
         .setCustomId("gp_alive")
         .setLabel(`🟢 Alive (${data.alive.size})`)
-        .setStyle("SUCCESS"),
+        .setStyle(ButtonStyle.Success),
 
-      new MessageButton()
+      new ButtonBuilder()
         .setCustomId("gp_dead")
         .setLabel(`🔴 Dead (${data.dead.size})`)
-        .setStyle("DANGER")
+        .setStyle(ButtonStyle.Danger)
     );
 
     await interaction.message.edit({ components: [row] });
-
   });
 
 };
