@@ -4,7 +4,7 @@ const {
   ButtonBuilder,
   ButtonStyle,
   ChannelType
-  AttachmentBuilder
+  MessageAttachment
 } = require("discord.js");
 
 
@@ -159,13 +159,13 @@ await loadData();
 
     try {
 
- const attachment = message.attachments.first();
+const attachment = message.attachments.first();
 let imageFile = null;
 
 if (attachment) {
-  imageFile = new AttachmentBuilder(
+  imageFile = new MessageAttachment(
     attachment.proxyURL || attachment.url,
-    { name: "card.png" }
+    "card.png"
   );
 }
 
