@@ -296,7 +296,9 @@ client.on("interactionCreate", async (interaction) => {
     });
   }
 
-  await interaction.deferUpdate();
+if (!interaction.replied && !interaction.deferred) {
+  await interaction.deferUpdate().catch(() => {});
+}
 
   const userId = interaction.user.id;
 
