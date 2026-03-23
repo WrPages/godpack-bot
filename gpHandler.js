@@ -119,8 +119,19 @@ module.exports = (client) => {
       const packNumber = packMatch ? parseInt(packMatch[1]) : 1;
 
       // Username más flexible
-      const usernameMatch = message.content.match(/^(.+?) \(/m);
-      const username = usernameMatch ? usernameMatch[1] : "Unknown";
+  // Buscar línea tipo: nombre (123456789)
+const usernameLine = message.content
+  .split("\n")
+  .find(line => /\(\d{5,}\)/.test(line)); // detecta ID largo
+
+let username = "Unknown";
+
+if (usernameLine) {
+  const match = usernameLine.match(/^(.+?) \(/);
+  if (match) {
+    username = match[1].trim();
+  }
+}
 
       let color = 0x999999;
       if (rarity === 5) color = 0xFFD700;
