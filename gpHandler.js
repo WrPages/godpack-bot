@@ -301,55 +301,39 @@ packVotes.set(sentMessage.id, {
       data.alive.delete(userId);
     }
 
-   if (data.alive.size >= 2 && !data.confirmed) {
+if (data.alive.size >= 2 && !data.confirmed) {
   data.confirmed = true;
 
-      statsData.todayCount++;
-      await saveData();
-      await updateStats(interaction.client);
+  statsData.todayCount++;
+  await saveData();
+  await updateStats(interaction.client);
 
+  const oldEmbed = interaction.message.embeds[0];
 
-const imageUrl = data.image || null;
-
-const updatedEmbed = new EmbedBuilder()
-  .setColor(0x00ff00)
-  .setDescription(interaction.message.embeds[0].description)
-  .setFooter({ text: "🟢 CONFIRMED ALIVE" });
-
-if (imageUrl) updatedEmbed.setImage(imageUrl);
+  const updatedEmbed = EmbedBuilder.from(oldEmbed)
+    .setColor(0x00ff00)
+    .setFooter({ text: "🟢 CONFIRMED ALIVE" });
 
   return interaction.message.edit({
-  embeds: [updatedEmbed],
-  components: [],
-  files: imageUrl ? [{
-    attachment: imageUrl,
-    name: "cards.png"
-  }] : []
-});
-    }
+    embeds: [updatedEmbed],
+    components: []
+  });
+}
 
- if (data.dead.size >= 3 && !data.confirmed) {
+if (data.dead.size >= 3 && !data.confirmed) {
   data.confirmed = true;
 
+  const oldEmbed = interaction.message.embeds[0];
 
-const imageUrl = data.image || null;
-
-const updatedEmbed = new EmbedBuilder()
-  .setColor(0xff0000)
-  .setDescription(interaction.message.embeds[0].description)
-  .setFooter({ text: "🔴 CONFIRMED DEAD" });
-
-if (imageUrl) updatedEmbed.setImage(imageUrl);
+  const updatedEmbed = EmbedBuilder.from(oldEmbed)
+    .setColor(0xff0000)
+    .setFooter({ text: "🔴 CONFIRMED DEAD" });
 
   return interaction.message.edit({
-  embeds: [updatedEmbed],
-  components: [],
-  files: imageUrl ? [{
-    attachment: imageUrl,
-    name: "cards.png"
-  }] : []
-});
-    }
+    embeds: [updatedEmbed],
+    components: []
+  });
+}
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
