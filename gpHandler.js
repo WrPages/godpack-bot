@@ -118,7 +118,6 @@ async function cleanWebhookMessage(channel) {
 }
 
 module.exports = async (client) => {
-
   await loadData();
 
   setInterval(() => {
@@ -126,13 +125,11 @@ module.exports = async (client) => {
   }, 60 * 60 * 1000);
 
   client.on("messageCreate", async (message) => {
-
     if (message.channel.id !== ALLOWED_CHANNEL_ID) return;
     if (!message.webhookId) return;
     if (!message.content.includes("God Pack found")) return;
 
     try {
-
       const attachment = message.attachments.first();
       let imageFile = null;
 
@@ -201,28 +198,12 @@ module.exports = async (client) => {
         confirmed: false
       });
 
-      try {
-        const thread = await sentMessage.startThread({
-          name: `GP • ${rarity}/5`,
-          autoArchiveDuration: 1440,
-          type: ChannelType.PublicThread
-        });
-
-        await thread.send("📂 Original webhook message:");
-        await thread.send({ content: message.content });
-
-      } catch (err) {
-        console.error("THREAD ERROR:", err);
-      }
-
     } catch (err) {
       console.error("GP Handler Error:", err);
     }
-
   });
 
   client.on("interactionCreate", async (interaction) => {
-
     if (!interaction.isButton()) return;
 
     const data = packVotes.get(interaction.message.id);
@@ -243,30 +224,44 @@ module.exports = async (client) => {
       data.alive.delete(userId);
     }
 
-    // Cuando llegan a 2 votos alive, solo suma al gist y stats, no toca embeds
+    const msgEmbed = EmbedBuilder.from(interaction.message.embeds[0]);
+
+    // Alive llega a 2 → marcar verde, eliminar dead button
     if (data.alive.size >= 2 && !data.confirmed) {
       data.confirmed = true;
       statsData.todayCount++;
       await saveData();
-      await updateStats(interaction.client); // Solo actualizar stats
-      // No editamos mensaje ni embed
+      await updateStats(interaction.client);
+
+      msgEmbed.setColor(0x00ff00); // verde
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("gp_alive")
+          .setLabel(`🟢 Alive (${data.alive.size})`)
+          .setStyle(ButtonStyle.Success)
+      );
+
+      return interaction.message.edit({ embeds: [msgEmbed], components: [row] });
     }
 
-    // Confirmar muertos
+    // Dead llega a 3 → marcar rojo, eliminar alive button
     if (data.dead.size >= 3 && !data.confirmed) {
       data.confirmed = true;
 
-      const updatedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
-        .setColor(0xff0000)
-        .setFooter({ text: "🔴 CONFIRMED DEAD" });
+      msgEmbed.setColor(0xff0000); // rojo
 
-      return interaction.message.edit({
-        embeds: [updatedEmbed],
-        components: []
-      });
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("gp_dead")
+          .setLabel(`🔴 Dead (${data.dead.size})`)
+          .setStyle(ButtonStyle.Danger)
+      );
+
+      return interaction.message.edit({ embeds: [msgEmbed], components: [row] });
     }
 
-    // Actualizar contador en botones
+    // Actualizar contadores si aún no se confirma
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("gp_alive")
@@ -280,7 +275,5 @@ module.exports = async (client) => {
     );
 
     await interaction.message.edit({ components: [row] });
-
   });
-
 };
