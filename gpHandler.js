@@ -146,7 +146,7 @@ if (usernameLine) {
         .setColor(color)
         .setDescription(`## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`)
         .setImage(cardsImage)
-        .setThumbnail(profileImage);
+
 
       const buttons = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
