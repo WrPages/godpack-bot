@@ -9,7 +9,7 @@ const {
 const fetch = require("node-fetch");
 
 const ALLOWED_CHANNEL_ID = "1484015417411244082"; // Canal para packs
-const STATS_CHANNEL_ID = "1483860387882602597"; // Canal para estadísticas GP
+const STATS_CHANNEL_ID = "TU_SEGUNDO_CANAL_ID"; // Canal para estadísticas GP
 
 const GIST_ID = process.env.GIST_ID;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
@@ -56,7 +56,7 @@ async function loadData() {
   }
 }
 
-// Función para enviar/actualizar panel de estadísticas bonito
+// Función segura para enviar/actualizar panel de estadísticas
 async function updateStats(client) {
   const channel = await client.channels.fetch(STATS_CHANNEL_ID);
   if (!channel) return;
@@ -69,20 +69,15 @@ async function updateStats(client) {
       day: statsData.currentDay,
       count: statsData.todayCount
     });
-
     statsData.lastFiveDays = statsData.lastFiveDays.slice(0, 5);
     statsData.currentDay = today;
     statsData.todayCount = 0;
-
     await saveData();
   }
 
-  // Formatear últimos 5 días bonito
   const historyText =
     statsData.lastFiveDays.length > 0
-      ? statsData.lastFiveDays
-          .map(d => `▫️ **${d.day}**: ${d.count} GP`)
-          .join("\n")
+      ? statsData.lastFiveDays.map(d => `▫️ **${d.day}**: ${d.count} GP`).join("\n")
       : "No previous records";
 
   const embed = new EmbedBuilder()
@@ -96,15 +91,24 @@ async function updateStats(client) {
     .setTimestamp();
 
   try {
+    let msg;
+    if (statsData.statsMessageId) {
+      try {
+        msg = await channel.messages.fetch(statsData.statsMessageId);
+      } catch {
+        statsData.statsMessageId = null;
+      }
+    }
+
     if (!statsData.statsMessageId) {
-      const msg = await channel.send({ embeds: [embed] });
+      msg = await channel.send({ embeds: [embed] });
       statsData.statsMessageId = msg.id;
       await saveData();
-    } else {
-      const msg = await channel.messages.fetch(statsData.statsMessageId);
+    } else if (msg) {
       await msg.edit({ embeds: [embed] });
     }
-  } catch {
+  } catch (err) {
+    console.error("Error creando/actualizando panel de estadísticas:", err);
     statsData.statsMessageId = null;
   }
 }
@@ -125,9 +129,15 @@ module.exports = async (client) => {
   await loadData();
 
   // Crear/actualizar panel de estadísticas inmediatamente al iniciar el bot
-  updateStats(client).catch(err =>
-    console.error("Error enviando panel inicial:", err)
-  );
+  (async () => {
+    try {
+      console.log("Intentando enviar/actualizar panel de estadísticas...");
+      await updateStats(client);
+      console.log("Panel de estadísticas enviado o actualizado correctamente");
+    } catch (err) {
+      console.error("Error enviando panel inicial:", err);
+    }
+  })();
 
   // Actualizar estadísticas cada hora
   setInterval(() => {
