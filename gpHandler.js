@@ -172,26 +172,25 @@ if (usernameLine) {
       });
 
       // THREAD
-      const thread = await sentMessage.startThread({
-        name: `GP • ${rarity}/5`,
-        autoArchiveDuration: 1440,
-        type: ChannelType.PublicThread
-      });
+try {
+  const thread = await sentMessage.startThread({
+    name: `GP • ${rarity}/5`,
+    autoArchiveDuration: 1440,
+    type: 11 // PublicThread (evita bugs)
+  });
 
-      await thread.send("📂 Original webhook message:");
-      await thread.send({ content: message.content });
+  await thread.send("📂 Original webhook message:");
+  await thread.send({ content: message.content });
 
-      if (attachments.length > 0) {
-        await thread.send({
-          files: attachments.map(a => a.url)
-        });
-      }
+  if (message.attachments.size > 0) {
+    await thread.send({
+      files: message.attachments.map(a => a.url)
+    });
+  }
 
-      await message.delete().catch(() => {});
-
-    } catch (err) {
-      console.error("GP Handler Error:", err);
-    }
+} catch (err) {
+  console.error("THREAD ERROR:", err);
+}
   });
 
   // =========================
