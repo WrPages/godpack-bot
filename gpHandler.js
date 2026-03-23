@@ -262,10 +262,11 @@ const updatedEmbed = new EmbedBuilder()
   .setImage(oldEmbed.image?.url || null)
   .setFooter({ text: "🟢 CONFIRMED ALIVE" });
 
-      return interaction.message.edit({
-        embeds: [updatedEmbed],
-        components: []
-      });
+    return interaction.message.edit({
+  embeds: [updatedEmbed],
+  components: [],
+  files: [] // 🔥 ESTO SOLUCIONA TODO
+});
     }
 
     if (data.dead.size >= 3) {
@@ -279,10 +280,11 @@ const updatedEmbed = new EmbedBuilder()
   .setImage(oldEmbed.image?.url || null)
   .setFooter({ text: "🔴 CONFIRMED DEAD" });
 
-      return interaction.message.edit({
-        embeds: [updatedEmbed],
-        components: []
-      });
+     return interaction.message.edit({
+  embeds: [updatedEmbed],
+  components: [],
+  files: [] // 🔥 ESTO SOLUCIONA TODO
+});
     }
 
     const row = new ActionRowBuilder().addComponents(
