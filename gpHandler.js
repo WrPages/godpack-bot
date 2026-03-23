@@ -2,13 +2,13 @@ const {
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
-  ButtonStyle
+  ButtonStyle,
+  ChannelType
 } = require("discord.js");
 
 const fs = require("fs");
 
 const ALLOWED_CHANNEL_ID = "1484015417411244082";
-const STATS_CHANNEL_ID = "1484015417411244082";
 const DATA_FILE = "./gp_stats.json";
 
 let packVotes = new Map();
@@ -30,30 +30,62 @@ function loadData() {
   }
 }
 
+// =========================
+// FIXED STATS SYSTEM
+// =========================
 async function updateStats(client) {
+  const channel = await client.channels.fetch(ALLOWED_CHANNEL_ID);
+  if (!channel) return;
+
   const now = new Date();
   const today = now.toDateString();
 
+  // Cambio de día
   if (today !== statsData.currentDay) {
     statsData.lastFiveDays.unshift({
       day: statsData.currentDay,
       count: statsData.todayCount
-zzzz
-      (statsData.lastFiveDays.length > 0
-        ? statsData.lastFiveDays.map(d => `▫️ ${d.day}: ${d.count}`).join("\n")
-        : "No previous records")
+    });
+
+    statsData.lastFiveDays = statsData.lastFiveDays.slice(0, 5);
+
+    statsData.currentDay = today;
+    statsData.todayCount = 0;
+
+    saveData();
+  }
+
+  const historyText =
+    statsData.lastFiveDays.length > 0
+      ? statsData.lastFiveDays
+          .map(d => `▫️ ${d.day}: ${d.count}`)
+          .join("\n")
+      : "No previous records";
+
+  const embed = new EmbedBuilder()
+    .setColor(0x5865f2)
+    .setTitle("📊 GP Stats")
+    .setDescription(
+      `**Today:** ${statsData.todayCount}\n\n**Last days:**\n${historyText}`
     );
 
-  if (!statsData.statsMessageId) {
-    const msg = await channel.send({ embeds: [embed] });
-    statsData.statsMessageId = msg.id;
-    saveData();
-  } else {
-    const msg = await channel.messages.fetch(statsData.statsMessageId);
-    await msg.edit({ embeds: [embed] });
+  try {
+    if (!statsData.statsMessageId) {
+      const msg = await channel.send({ embeds: [embed] });
+      statsData.statsMessageId = msg.id;
+      saveData();
+    } else {
+      const msg = await channel.messages.fetch(statsData.statsMessageId);
+      await msg.edit({ embeds: [embed] });
+    }
+  } catch {
+    statsData.statsMessageId = null;
   }
 }
 
+// =========================
+// MAIN MODULE
+// =========================
 module.exports = (client) => {
 
   loadData();
@@ -71,89 +103,87 @@ module.exports = (client) => {
     if (!message.webhookId) return;
     if (!message.content.includes("God Pack found")) return;
 
-    let imageFile = null;
-    let imageName = null;
+    try {
 
-    if (message.attachments.size > 0) {
-      const attachment = message.attachments.first();
-      imageFile = attachment.url;
-      imageName = attachment.name;
-    }
+      const attachments = [...message.attachments.values()];
 
-    const rarityMatch = message.content.match(/\[(\d)\/5\]/);
-    if (!rarityMatch) return;
+      const cardsImage = attachments[0]?.url || null;
+      const profileImage = attachments[1]?.url || null;
 
-    const rarity = parseInt(rarityMatch[1]);
-    const packMatch = message.content.match(/\[(\d)P\]/i);
-    const packNumber = packMatch ? parseInt(packMatch[1]) : null;
+      const rarityMatch = message.content.match(/\[(\d)\/5\]/);
+      if (!rarityMatch) return;
 
-    const usernameMatch = message.content.match(/^(.+?) \(\d+\)$/m);
-    if (!usernameMatch) return;
+      const rarity = parseInt(rarityMatch[1]);
 
-    const username = usernameMatch[1];
+      const packMatch = message.content.match(/\[(\d)P\]/i);
+      const packNumber = packMatch ? parseInt(packMatch[1]) : 1;
 
-    let color = 0x999999;
-    if (rarity === 5) color = 0xFFD700;
-    if (rarity === 3) color = 0x0099ff;
+      // Username más flexible
+      const usernameMatch = message.content.match(/^(.+?) \(/m);
+      const username = usernameMatch ? usernameMatch[1] : "Unknown";
 
-const packText = packNumber ? `${packNumber}P` : "1P";
+      let color = 0x999999;
+      if (rarity === 5) color = 0xFFD700;
+      if (rarity === 4) color = 0x00ffcc;
+      if (rarity === 3) color = 0x0099ff;
 
-const embed = new EmbedBuilder()
-  .setColor(color)
-  .setDescription(
-    `## ✨ ${rarity}/5 • ${packText}  |  **${username}**`
-  )
-  .setImage(imageFile || null);;
+      const embed = new EmbedBuilder()
+        .setColor(color)
+        .setDescription(`## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`)
+        .setImage(cardsImage)
+        .setThumbnail(profileImage);
 
-    if (imageFile) {
-  embed.setImage(imageFile);
-}
+      const buttons = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("gp_alive")
+          .setLabel("🟢 Alive")
+          .setStyle(ButtonStyle.Success),
 
-    const buttons = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("gp_alive")
-        .setLabel("🟢 Alive")
-        .setStyle(ButtonStyle.Success),
-      new ButtonBuilder()
-        .setCustomId("gp_dead")
-        .setLabel("🔴 Dead")
-        .setStyle(ButtonStyle.Danger)
-    );
+        new ButtonBuilder()
+          .setCustomId("gp_dead")
+          .setLabel("🔴 Dead")
+          .setStyle(ButtonStyle.Danger)
+      );
 
-    const sentMessage = await message.channel.send({
-      embeds: [embed],
-
-      components: [buttons]
-    });
-
-    packVotes.set(sentMessage.id, {
-      alive: new Set(),
-      dead: new Set(),
-      confirmed: false
-    });
-
-    // 🔥 THREAD RESTORED
-    const thread = await sentMessage.startThread({
-      name: `GP • ${rarity}/5`,
-      autoArchiveDuration: 1440
-    });
-
-    await thread.send("📂 Original webhook message:");
-    await thread.send({ content: message.content });
-
-    if (message.attachments.size > 0) {
-      await thread.send({
-        files: message.attachments.map(a => a.url)
+      const sentMessage = await message.channel.send({
+        embeds: [embed],
+        components: [buttons]
       });
-    }
 
-    await message.delete().catch(() => {});
+      packVotes.set(sentMessage.id, {
+        alive: new Set(),
+        dead: new Set(),
+        confirmed: false
+      });
+
+      // THREAD
+      const thread = await sentMessage.startThread({
+        name: `GP • ${rarity}/5`,
+        autoArchiveDuration: 1440,
+        type: ChannelType.PublicThread
+      });
+
+      await thread.send("📂 Original webhook message:");
+      await thread.send({ content: message.content });
+
+      if (attachments.length > 0) {
+        await thread.send({
+          files: attachments.map(a => a.url)
+        });
+      }
+
+      await message.delete().catch(() => {});
+
+    } catch (err) {
+      console.error("GP Handler Error:", err);
+    }
   });
 
   // =========================
   // BUTTON SYSTEM
   // =========================
   client.on("interactionCreate", async (interaction) => {
+
     if (!interaction.isButton()) return;
 
     const data = packVotes.get(interaction.message.id);
@@ -174,69 +204,52 @@ const embed = new EmbedBuilder()
       data.alive.delete(userId);
     }
 
-    // 🟢 CONFIRM ALIVE (2)
-   if (data.alive.size >= 2) {
-  data.confirmed = true;
+    // 🟢 ALIVE
+    if (data.alive.size >= 2) {
+      data.confirmed = true;
 
-  statsData.todayCount++;
-  saveData();
-  await updateStats(interaction.client);
+      statsData.todayCount++;
+      saveData();
+      await updateStats(interaction.client);
 
-  const oldEmbed = interaction.message.embeds[0];
-  const updatedEmbed = EmbedBuilder.from(oldEmbed)
-    .setColor(0x00ff00)
-    .setFooter({ text: "🟢 CONFIRMED ALIVE" });
+      const updatedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
+        .setColor(0x00ff00)
+        .setFooter({ text: "🟢 CONFIRMED ALIVE" });
 
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("gp_alive")
-      .setLabel(`🟢 Alive (${data.alive.size})`)
-      .setStyle(ButtonStyle.Success)
-      .setDisabled(true)
-  );
+      return interaction.message.edit({
+        embeds: [updatedEmbed],
+        components: []
+      });
+    }
 
-  return interaction.message.edit({
-    embeds: [updatedEmbed],
-    components: [row]
-  });
-}
-
-    // 🔴 CONFIRM DEAD (3)
+    // 🔴 DEAD
     if (data.dead.size >= 3) {
-  data.confirmed = true;
+      data.confirmed = true;
 
-  const oldEmbed = interaction.message.embeds[0];
-  const updatedEmbed = EmbedBuilder.from(oldEmbed)
-    .setColor(0xff0000)
-    .setFooter({ text: "🔴 CONFIRMED DEAD" });
+      const updatedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
+        .setColor(0xff0000)
+        .setFooter({ text: "🔴 CONFIRMED DEAD" });
 
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("gp_dead")
-      .setLabel(`🔴 Dead (${data.dead.size})`)
-      .setStyle(ButtonStyle.Danger)
-      .setDisabled(true)
-  );
+      return interaction.message.edit({
+        embeds: [updatedEmbed],
+        components: []
+      });
+    }
 
-  return interaction.message.edit({
-    embeds: [updatedEmbed],
-    components: [row]
-  });
-}
-
-    // NORMAL UPDATE
-    const normalRow = new ActionRowBuilder().addComponents(
+    // UPDATE NORMAL
+    const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("gp_alive")
         .setLabel(`🟢 Alive (${data.alive.size})`)
         .setStyle(ButtonStyle.Success),
+
       new ButtonBuilder()
         .setCustomId("gp_dead")
         .setLabel(`🔴 Dead (${data.dead.size})`)
         .setStyle(ButtonStyle.Danger)
     );
 
-    await interaction.message.edit({ components: [normalRow] });
+    await interaction.message.edit({ components: [row] });
   });
 
 };
