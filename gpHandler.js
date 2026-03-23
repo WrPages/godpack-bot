@@ -134,10 +134,13 @@ module.exports = async (client) => {
     try {
 
       const attachment = message.attachments.first();
-      let imageUrl = null;
+      let imageFile = null;
 
       if (attachment) {
-        imageUrl = attachment.proxyURL || attachment.url;
+        imageFile = {
+          attachment: attachment.proxyURL || attachment.url,
+          name: "card.png"
+        };
       }
 
       const rarityMatch = message.content.match(/\[(\d)\/5\]/);
@@ -168,8 +171,8 @@ module.exports = async (client) => {
         .setColor(color)
         .setDescription(`## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`);
 
-      if (imageUrl) {
-        embed.setImage(imageUrl);
+      if (imageFile) {
+        embed.setImage("attachment://card.png");
       }
 
       const buttons = new ActionRowBuilder().addComponents(
@@ -186,7 +189,8 @@ module.exports = async (client) => {
 
       const sentMessage = await message.channel.send({
         embeds: [embed],
-        components: [buttons]
+        components: [buttons],
+        files: imageFile ? [imageFile] : []
       });
 
       await cleanWebhookMessage(message.channel);
@@ -206,12 +210,6 @@ module.exports = async (client) => {
 
         await thread.send("📂 Original webhook message:");
         await thread.send({ content: message.content });
-
-        if (message.attachments.size > 0) {
-          await thread.send({
-            files: [...message.attachments.values()].map(a => a.proxyURL || a.url)
-          });
-        }
 
       } catch (err) {
         console.error("THREAD ERROR:", err);
