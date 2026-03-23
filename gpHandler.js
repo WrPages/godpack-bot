@@ -213,11 +213,11 @@ if (cardsImage) {
   });
 }
 
-   packVotes.set(sentMessage.id, {
+ packVotes.set(sentMessage.id, {
   alive: new Set(),
   dead: new Set(),
   confirmed: false,
-  image: cardsImage // 🔥 guardamos la URL real
+  imageName: "gp.png" // 👈 guardar nombre
 });
 
       // THREAD
@@ -301,7 +301,11 @@ const updatedEmbed = EmbedBuilder.from(oldEmbed)
 
 return interaction.message.edit({
   embeds: [updatedEmbed],
-  components: []
+  components: [],
+  files: [{
+    attachment: interaction.message.attachments.first().url,
+    name: "gp.png"
+  }]
 });
     }
 
@@ -317,7 +321,11 @@ const updatedEmbed = EmbedBuilder.from(oldEmbed)
 
 return interaction.message.edit({
   embeds: [updatedEmbed],
-  components: []
+  components: [],
+  files: [{
+    attachment: interaction.message.attachments.first().url,
+    name: "gp.png"
+  }]
 });
     }
 
