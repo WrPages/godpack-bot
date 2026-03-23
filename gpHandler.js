@@ -192,7 +192,7 @@ if (cardsImage) {
 
      let sentMessage;
 
-const sentMessage = await message.channel.send({
+sentMessage = await message.channel.send({
   embeds: [embed],
   components: [buttons]
 });
