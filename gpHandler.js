@@ -214,11 +214,12 @@ if (cardsImage) {
   });
 }
 
-      packVotes.set(sentMessage.id, {
-        alive: new Set(),
-        dead: new Set(),
-        confirmed: false
-      });
+   packVotes.set(sentMessage.id, {
+  alive: new Set(),
+  dead: new Set(),
+  confirmed: false,
+  image: cardsImage // 🔥 guardamos la URL real
+});
 
       // THREAD
       try {
@@ -292,16 +293,14 @@ if (cardsImage) {
       await saveData();
       await updateStats(interaction.client);
 
-const oldEmbed = interaction.message.embeds[0];
-
-// obtener URL real (no attachment)
-const imageUrl = oldEmbed.image?.url || null;
+const data = packVotes.get(interaction.message.id);
+const imageUrl = data.image || null;
 
 const updatedEmbed = new EmbedBuilder()
   .setColor(0x00ff00)
-  .setDescription(oldEmbed.description)
-  .setImage(oldEmbed.image?.url || null)
+  .setDescription(interaction.message.embeds[0].description)
   .setFooter({ text: "🟢 CONFIRMED ALIVE" });
+
 if (imageUrl) updatedEmbed.setImage(imageUrl);
 
     return interaction.message.edit({
@@ -314,13 +313,14 @@ if (imageUrl) updatedEmbed.setImage(imageUrl);
  if (data.dead.size >= 3 && !data.confirmed) {
   data.confirmed = true;
 
-const oldEmbed = interaction.message.embeds[0];
+const data = packVotes.get(interaction.message.id);
+const imageUrl = data.image || null;
 
 const updatedEmbed = new EmbedBuilder()
   .setColor(0xff0000)
-  .setDescription(oldEmbed.description)
-  .setImage(oldEmbed.image?.url || null)
+  .setDescription(interaction.message.embeds[0].description)
   .setFooter({ text: "🔴 CONFIRMED DEAD" });
+
 if (imageUrl) updatedEmbed.setImage(imageUrl);
 
      return interaction.message.edit({
