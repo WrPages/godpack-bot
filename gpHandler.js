@@ -318,10 +318,13 @@ const updatedEmbed = new EmbedBuilder()
 
 if (imageUrl) updatedEmbed.setImage(imageUrl);
 
-    return interaction.message.edit({
+  return interaction.message.edit({
   embeds: [updatedEmbed],
   components: [],
-  files: [] // 🔥 ESTO SOLUCIONA TODO
+  files: imageUrl ? [{
+    attachment: imageUrl,
+    name: "cards.png"
+  }] : []
 });
     }
 
@@ -338,10 +341,13 @@ const updatedEmbed = new EmbedBuilder()
 
 if (imageUrl) updatedEmbed.setImage(imageUrl);
 
-     return interaction.message.edit({
+  return interaction.message.edit({
   embeds: [updatedEmbed],
   components: [],
-  files: [] // 🔥 ESTO SOLUCIONA TODO
+  files: imageUrl ? [{
+    attachment: imageUrl,
+    name: "cards.png"
+  }] : []
 });
     }
 
