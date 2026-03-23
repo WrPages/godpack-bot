@@ -294,19 +294,15 @@ if (cardsImage) {
       await updateStats(interaction.client);
 
 
-const imageUrl = data.image || null;
+const oldEmbed = interaction.message.embeds[0];
 
-const updatedEmbed = new EmbedBuilder()
+const updatedEmbed = EmbedBuilder.from(oldEmbed)
   .setColor(0x00ff00)
-  .setDescription(interaction.message.embeds[0].description)
   .setFooter({ text: "🟢 CONFIRMED ALIVE" });
 
-if (imageUrl) updatedEmbed.setImage(imageUrl);
-
-    return interaction.message.edit({
+return interaction.message.edit({
   embeds: [updatedEmbed],
-  components: [],
-  files: [] // 🔥 ESTO SOLUCIONA TODO
+  components: []
 });
     }
 
@@ -314,19 +310,15 @@ if (imageUrl) updatedEmbed.setImage(imageUrl);
   data.confirmed = true;
 
 
-const imageUrl = data.image || null;
+const oldEmbed = interaction.message.embeds[0];
 
-const updatedEmbed = new EmbedBuilder()
+const updatedEmbed = EmbedBuilder.from(oldEmbed)
   .setColor(0xff0000)
-  .setDescription(interaction.message.embeds[0].description)
   .setFooter({ text: "🔴 CONFIRMED DEAD" });
 
-if (imageUrl) updatedEmbed.setImage(imageUrl);
-
-     return interaction.message.edit({
+return interaction.message.edit({
   embeds: [updatedEmbed],
-  components: [],
-  files: [] // 🔥 ESTO SOLUCIONA TODO
+  components: []
 });
     }
 
