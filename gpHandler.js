@@ -172,8 +172,6 @@ if (usernameLine) {
       });
 
       // THREAD
-const { ChannelType } = require("discord.js");
-
 try {
   const thread = await sentMessage.startThread({
     name: `GP • ${rarity}/5`,
