@@ -4,6 +4,7 @@ const {
   ButtonBuilder,
   ButtonStyle,
   ChannelType
+  AttachmentBuilder
 } = require("discord.js");
 
 
@@ -158,8 +159,15 @@ await loadData();
 
     try {
 
-      const attachments = [...message.attachments.values()];
-const cardsImage = attachments[0]?.url || null;
+ const attachment = message.attachments.first();
+let imageFile = null;
+
+if (attachment) {
+  imageFile = new AttachmentBuilder(
+    attachment.proxyURL || attachment.url,
+    { name: "card.png" }
+  );
+}
 
       const rarityMatch = message.content.match(/\[(\d)\/5\]/);
       if (!rarityMatch) return;
@@ -193,8 +201,8 @@ const cardsImage = attachments[0]?.url || null;
         .setColor(color)
         .setDescription(`## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`);
 
-if (cardsImage) {
-  embed.setImage(cardsImage); // 👈 SOLO URL
+if (imageFile) {
+  embed.setImage("attachment://card.png");
 }
 
       const buttons = new ActionRowBuilder().addComponents(
@@ -213,7 +221,8 @@ if (cardsImage) {
 
 sentMessage = await message.channel.send({
   embeds: [embed],
-  components: [buttons]
+  components: [buttons],
+  files: imageFile ? [imageFile] : []
 });
 await cleanWebhookMessage(message.channel);
 // esperar 3 segundos antes de borrar webhook
