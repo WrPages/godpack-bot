@@ -191,6 +191,21 @@ module.exports = async (client) => {
         dead: new Set(),
         confirmed: false
       });
+
+      // CREAR THREAD sobre el mensaje del panel
+      try {
+        const thread = await sentMessage.startThread({
+          name: `GP • ${rarity}/5`,
+          autoArchiveDuration: 1440,
+          type: ChannelType.PublicThread
+        });
+
+        await thread.send("📂 Original webhook message:");
+        await thread.send({ content: message.content });
+      } catch (err) {
+        console.error("THREAD ERROR:", err);
+      }
+
     } catch (err) {
       console.error("GP Handler Error:", err);
     }
