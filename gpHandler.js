@@ -280,27 +280,35 @@ packVotes.set(sentMessage.id, {
 
   });
 
-  client.on("interactionCreate", async (interaction) => {
 
-    if (!interaction.isButton()) return;
 
-    const data = packVotes.get(interaction.message.id);
-    if (!data) return;
+client.on("interactionCreate", async (interaction) => {
 
-    await interaction.deferUpdate();
-    if (data.confirmed) return;
+  if (!interaction.isButton()) return;
 
-    const userId = interaction.user.id;
+  const data = packVotes.get(interaction.message.id);
+  if (!data) return;
 
-    if (interaction.customId === "gp_alive") {
-      data.alive.add(userId);
-      data.dead.delete(userId);
-    }
+  if (data.confirmed) {
+    return interaction.reply({
+      content: "Este pack ya está confirmado.",
+      ephemeral: true
+    });
+  }
 
-    if (interaction.customId === "gp_dead") {
-      data.dead.add(userId);
-      data.alive.delete(userId);
-    }
+  await interaction.deferUpdate();
+
+  const userId = interaction.user.id;
+
+  if (interaction.customId === "gp_alive") {
+    data.alive.add(userId);
+    data.dead.delete(userId);
+  }
+
+  if (interaction.customId === "gp_dead") {
+    data.dead.add(userId);
+    data.alive.delete(userId);
+  }
 
 if (data.alive.size >= 2 && !data.confirmed) {
   data.confirmed = true;
