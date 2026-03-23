@@ -198,6 +198,7 @@ sentMessage = await message.channel.send({
 });
 
 // esperar 3 segundos antes de borrar webhook
+
 setTimeout(async () => {
   try {
     await message.edit({
