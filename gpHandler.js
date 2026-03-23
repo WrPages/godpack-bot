@@ -191,7 +191,6 @@ const cardsImage = attachments[0]?.proxyURL || attachments[0]?.url || null;
 let sentMessage;
 
 if (cardsImage) {
-  // enviar con archivo
   sentMessage = await message.channel.send({
     embeds: [embed],
     components: [buttons],
@@ -201,12 +200,14 @@ if (cardsImage) {
     }]
   });
 
-  // usar attachment en embed
   embed.setImage("attachment://cards.png");
 
   await sentMessage.edit({
     embeds: [embed]
   });
+
+  // 🔥 FIX FINAL
+  await sentMessage.suppressEmbeds(true);
 
 } else {
   sentMessage = await message.channel.send({
