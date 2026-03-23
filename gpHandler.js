@@ -189,6 +189,7 @@ const cardsImage = attachments[0]?.proxyURL || attachments[0]?.url || null;
       );
 
      let sentMessage;
+    const finalImage = sentMessage.attachments.first()?.url || cardsImage;
 
 if (cardsImage) {
   sentMessage = await message.channel.send({
@@ -218,7 +219,7 @@ if (cardsImage) {
   alive: new Set(),
   dead: new Set(),
   confirmed: false,
-  image: cardsImage // 🔥 guardamos la URL real
+  image: finalImage // 🔥 guardamos la URL real
 });
 
       // THREAD
