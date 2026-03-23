@@ -287,7 +287,13 @@ client.on("interactionCreate", async (interaction) => {
   if (!interaction.isButton()) return;
 
   const data = packVotes.get(interaction.message.id);
-  if (!data) return;
+
+if (!data) {
+  return interaction.reply({
+    content: "Este panel ya no está activo.",
+    ephemeral: true
+  }).catch(() => {});
+}
 
   if (data.confirmed) {
     return interaction.reply({
