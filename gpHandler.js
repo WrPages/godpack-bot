@@ -120,14 +120,18 @@ module.exports = (client) => {
 
       // Username más flexible
   // Buscar línea tipo: nombre (123456789)
-const usernameLine = message.content
-  .split("\n")
-  .find(line => /\(\d{5,}\)/.test(line)); // detecta ID largo
+const lines = message.content.split("\n");
+
+// Buscar línea tipo: nombre (xxxx-xxxx-xxxx)
+const lines = message.content.split("\n");
+
+// Buscar línea que tenga formato: algo (algo)
+const usernameLine = lines.find(line => line.includes("(") && line.includes(")"));
 
 let username = "Unknown";
 
 if (usernameLine) {
-  const match = usernameLine.match(/^(.+?) \(/);
+  const match = usernameLine.match(/^(.+?)\s*\(/);
   if (match) {
     username = match[1].trim();
   }
