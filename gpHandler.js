@@ -281,7 +281,7 @@ packVotes.set(sentMessage.id, {
   });
 
 
-
+client.removeAllListeners("interactionCreate");
 client.on("interactionCreate", async (interaction) => {
 
   if (!interaction.isButton()) return;
