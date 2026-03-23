@@ -8,8 +8,8 @@ const {
 
 const fetch = require("node-fetch");
 
-const ALLOWED_CHANNEL_ID = "1484015417411244082"; // Canal para packs
-const STATS_CHANNEL_ID = "1483910560117555221"; // Canal para estadísticas GP
+const ALLOWED_CHANNEL_ID = "1483616248406474832"; // Canal para packs
+const STATS_CHANNEL_ID = "1484015417411244082"; // Canal para estadísticas GP
 
 const GIST_ID = process.env.GIST_ID;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
