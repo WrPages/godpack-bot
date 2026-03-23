@@ -104,11 +104,9 @@ async function updateStats(client) {
 async function cleanWebhookMessage(channel) {
   try {
     const messages = await channel.messages.fetch({ limit: 5 });
-
     const webhookMsg = messages.find(
       msg => msg.webhookId && msg.content.includes("God Pack found")
     );
-
     if (webhookMsg) {
       await webhookMsg.delete().catch(() => {});
     }
@@ -132,7 +130,6 @@ module.exports = async (client) => {
     try {
       const attachment = message.attachments.first();
       let imageFile = null;
-
       if (attachment) {
         imageFile = {
           attachment: attachment.proxyURL || attachment.url,
@@ -142,7 +139,6 @@ module.exports = async (client) => {
 
       const rarityMatch = message.content.match(/\[(\d)\/5\]/);
       if (!rarityMatch) return;
-
       const rarity = parseInt(rarityMatch[1]);
       const packMatch = message.content.match(/\[(\d)P\]/i);
       const packNumber = packMatch ? parseInt(packMatch[1]) : 1;
@@ -153,7 +149,6 @@ module.exports = async (client) => {
       );
 
       let username = "Unknown";
-
       if (usernameLine) {
         const match = usernameLine.match(/^(.+?)\s*\(/);
         if (match) username = match[1].trim();
@@ -177,7 +172,6 @@ module.exports = async (client) => {
           .setCustomId("gp_alive")
           .setLabel("🟢 Alive (0)")
           .setStyle(ButtonStyle.Success),
-
         new ButtonBuilder()
           .setCustomId("gp_dead")
           .setLabel("🔴 Dead (0)")
@@ -197,7 +191,6 @@ module.exports = async (client) => {
         dead: new Set(),
         confirmed: false
       });
-
     } catch (err) {
       console.error("GP Handler Error:", err);
     }
@@ -224,16 +217,12 @@ module.exports = async (client) => {
       data.alive.delete(userId);
     }
 
-    const msgEmbed = EmbedBuilder.from(interaction.message.embeds[0]);
-
-    // Alive llega a 2 → marcar verde, eliminar dead button
+    // Alive llega a 2 → eliminar botón Dead
     if (data.alive.size >= 2 && !data.confirmed) {
       data.confirmed = true;
       statsData.todayCount++;
       await saveData();
       await updateStats(interaction.client);
-
-      msgEmbed.setColor(0x00ff00); // verde
 
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -242,14 +231,12 @@ module.exports = async (client) => {
           .setStyle(ButtonStyle.Success)
       );
 
-      return interaction.message.edit({ embeds: [msgEmbed], components: [row] });
+      return interaction.message.edit({ components: [row] });
     }
 
-    // Dead llega a 3 → marcar rojo, eliminar alive button
+    // Dead llega a 3 → eliminar botón Alive
     if (data.dead.size >= 3 && !data.confirmed) {
       data.confirmed = true;
-
-      msgEmbed.setColor(0xff0000); // rojo
 
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -258,16 +245,15 @@ module.exports = async (client) => {
           .setStyle(ButtonStyle.Danger)
       );
 
-      return interaction.message.edit({ embeds: [msgEmbed], components: [row] });
+      return interaction.message.edit({ components: [row] });
     }
 
-    // Actualizar contadores si aún no se confirma
+    // Actualizar contadores mientras no se confirme
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("gp_alive")
         .setLabel(`🟢 Alive (${data.alive.size})`)
         .setStyle(ButtonStyle.Success),
-
       new ButtonBuilder()
         .setCustomId("gp_dead")
         .setLabel(`🔴 Dead (${data.dead.size})`)
