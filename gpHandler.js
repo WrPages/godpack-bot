@@ -174,7 +174,7 @@ const cardsImage = attachments[0]?.proxyURL || attachments[0]?.url || null;
 
         if (message.attachments.size > 0) {
           await thread.send({
-            files: [...message.attachments.values()].map(a => a.url)
+files: [...message.attachments.values()].map(a => a.proxyURL || a.url)
           });
         }
 
