@@ -150,10 +150,31 @@ const cardsImage = attachments[0]?.proxyURL || attachments[0]?.url || null;
           .setStyle(ButtonStyle.Danger)
       );
 
-      const sentMessage = await message.channel.send({
-        embeds: [embed],
-        components: [buttons]
-      });
+     let sentMessage;
+
+if (cardsImage) {
+  sentMessage = await message.channel.send({
+    embeds: [embed],
+    components: [buttons],
+    files: [{
+      attachment: cardsImage,
+      name: "cards.png"
+    }]
+  });
+
+  // usar la imagen subida en el embed
+  embed.setImage("attachment://cards.png");
+
+  await sentMessage.edit({
+    embeds: [embed]
+  });
+
+} else {
+  sentMessage = await message.channel.send({
+    embeds: [embed],
+    components: [buttons]
+  });
+}
 
       packVotes.set(sentMessage.id, {
         alive: new Set(),
