@@ -123,7 +123,7 @@ module.exports = (client) => {
 const lines = message.content.split("\n");
 
 // Buscar línea tipo: nombre (xxxx-xxxx-xxxx)
-const lines = message.content.split("\n");
+
 
 // Buscar línea que tenga formato: algo (algo)
 const usernameLine = lines.find(line => line.includes("(") && line.includes(")"));
