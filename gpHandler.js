@@ -190,12 +190,28 @@ const cardsImage = attachments[0]?.url || null;
 
      let sentMessage;
 
-if (cardsImage) embed.setImage(cardsImage);
+if (cardsImage) {
+  sentMessage = await message.channel.send({
+    embeds: [embed],
+    components: [buttons],
+    files: [{
+      attachment: cardsImage,
+      name: "gp.png"
+    }]
+  });
 
-sentMessage = await message.channel.send({
-  embeds: [embed],
-  components: [buttons]
-});
+  embed.setImage("attachment://gp.png");
+
+  await sentMessage.edit({
+    embeds: [embed]
+  });
+
+} else {
+  sentMessage = await message.channel.send({
+    embeds: [embed],
+    components: [buttons]
+  });
+}
 
    packVotes.set(sentMessage.id, {
   alive: new Set(),
