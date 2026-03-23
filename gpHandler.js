@@ -8,7 +8,7 @@ const {
 
 const fs = require("fs");
 
-const ALLOWED_CHANNEL_ID = "1484015417411244082";
+const ALLOWED_CHANNEL_ID = "1483616248406474832";
 const DATA_FILE = "./gp_stats.json";
 
 let packVotes = new Map();
