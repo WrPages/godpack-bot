@@ -3,8 +3,7 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ChannelType,
-  AttachmentBuilder
+  ChannelType
 } = require("discord.js");
 
 const fetch = require("node-fetch");
@@ -135,13 +134,10 @@ module.exports = async (client) => {
     try {
 
       const attachment = message.attachments.first();
-      let imageFile = null;
+      let imageUrl = null;
 
       if (attachment) {
-        imageFile = new AttachmentBuilder(
-          attachment.proxyURL || attachment.url,
-          { name: "card.png" }
-        );
+        imageUrl = attachment.proxyURL || attachment.url;
       }
 
       const rarityMatch = message.content.match(/\[(\d)\/5\]/);
@@ -172,8 +168,8 @@ module.exports = async (client) => {
         .setColor(color)
         .setDescription(`## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`);
 
-      if (imageFile) {
-        embed.setImage("attachment://card.png");
+      if (imageUrl) {
+        embed.setImage(imageUrl);
       }
 
       const buttons = new ActionRowBuilder().addComponents(
@@ -190,8 +186,7 @@ module.exports = async (client) => {
 
       const sentMessage = await message.channel.send({
         embeds: [embed],
-        components: [buttons],
-        files: imageFile ? [imageFile] : []
+        components: [buttons]
       });
 
       await cleanWebhookMessage(message.channel);
