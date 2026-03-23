@@ -174,7 +174,9 @@ const cardsImage = attachments[0]?.url || null;
         .setColor(color)
         .setDescription(`## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`);
 
-      if (cardsImage) embed.setImage(cardsImage);
+if (cardsImage) {
+  embed.setImage(cardsImage); // 👈 SOLO URL
+}
 
       const buttons = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -194,11 +196,11 @@ if (cardsImage) {
   sentMessage = await message.channel.send({
     embeds: [embed],
     components: [buttons],
-    files: [{
-      attachment: cardsImage,
-      name: "gp.png"
-    }]
+ 
   });
+  setTimeout(() => {
+  message.delete().catch(() => {});
+}, 3000);
 
   embed.setImage("attachment://gp.png");
 
@@ -211,6 +213,9 @@ if (cardsImage) {
     embeds: [embed],
     components: [buttons]
   });
+  setTimeout(() => {
+  message.delete().catch(() => {});
+}, 3000);
 }
 
  packVotes.set(sentMessage.id, {
