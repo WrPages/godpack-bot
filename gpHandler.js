@@ -308,29 +308,27 @@ if (data.alive.size >= 2 && !data.confirmed) {
   await saveData();
   await updateStats(interaction.client);
 
-  const oldEmbed = interaction.message.embeds[0];
+  // 🔥 CLON DIRECTO SIN RECONSTRUIR
+  const embedData = { ...interaction.message.embeds[0].data };
 
-  const updatedEmbed = EmbedBuilder.from(oldEmbed)
-    .setColor(0x00ff00)
-    .setFooter({ text: "🟢 CONFIRMED ALIVE" });
+  embedData.color = 0x00ff00;
+  embedData.footer = { text: "🟢 CONFIRMED ALIVE" };
 
   return interaction.message.edit({
-    embeds: [updatedEmbed],
+    embeds: [embedData],
     components: []
   });
 }
-
 if (data.dead.size >= 3 && !data.confirmed) {
   data.confirmed = true;
 
-  const oldEmbed = interaction.message.embeds[0];
+  const embedData = { ...interaction.message.embeds[0].data };
 
-  const updatedEmbed = EmbedBuilder.from(oldEmbed)
-    .setColor(0xff0000)
-    .setFooter({ text: "🔴 CONFIRMED DEAD" });
+  embedData.color = 0xff0000;
+  embedData.footer = { text: "🔴 CONFIRMED DEAD" };
 
   return interaction.message.edit({
-    embeds: [updatedEmbed],
+    embeds: [embedData],
     components: []
   });
 }
