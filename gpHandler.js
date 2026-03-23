@@ -6,10 +6,15 @@ const {
   ChannelType
 } = require("discord.js");
 
-const fs = require("fs");
+
 
 const ALLOWED_CHANNEL_ID = "1484015417411244082";
-const DATA_FILE = "./gp_stats.json";
+
+const fetch = require("node-fetch");
+
+const GIST_ID = process.env.GIST_ID;
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const FILE_NAME = "gp_record.txt";
 
 let packVotes = new Map();
 
@@ -20,13 +25,33 @@ let statsData = {
   statsMessageId: null
 };
 
-function saveData() {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(statsData, null, 2));
+async function saveData() {
+  await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+    method: "PATCH",
+    headers: {
+      "Authorization": `token ${GITHUB_TOKEN}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      files: {
+        [FILE_NAME]: {
+          content: JSON.stringify(statsData, null, 2)
+        }
+      }
+    })
+  });
 }
 
-function loadData() {
-  if (fs.existsSync(DATA_FILE)) {
-    statsData = JSON.parse(fs.readFileSync(DATA_FILE));
+async function loadData() {
+  try {
+    const res = await fetch(`https://api.github.com/gists/${GIST_ID}`);
+    const data = await res.json();
+
+    const content = data.files[FILE_NAME].content;
+    statsData = JSON.parse(content);
+
+  } catch (err) {
+    console.error("LOAD GIST ERROR:", err);
   }
 }
 
@@ -51,7 +76,7 @@ async function updateStats(client) {
     statsData.currentDay = today;
     statsData.todayCount = 0;
 
-    saveData();
+    await saveData();
   }
 
   const historyText =
@@ -72,7 +97,7 @@ async function updateStats(client) {
     if (!statsData.statsMessageId) {
       const msg = await channel.send({ embeds: [embed] });
       statsData.statsMessageId = msg.id;
-      saveData();
+      await saveData();
     } else {
       const msg = await channel.messages.fetch(statsData.statsMessageId);
       await msg.edit({ embeds: [embed] });
@@ -85,9 +110,9 @@ async function updateStats(client) {
 // =========================
 // MAIN MODULE
 // =========================
-module.exports = (client) => {
+module.exports = async (client) => {
 
-  loadData();
+await loadData();
 
   setInterval(() => {
     updateStats(client).catch(() => {});
@@ -251,7 +276,7 @@ if (cardsImage) {
   data.confirmed = true;
 
       statsData.todayCount++;
-      saveData();
+      await saveData();
       await updateStats(interaction.client);
 
 const oldEmbed = interaction.message.embeds[0];
