@@ -9,7 +9,7 @@ const {
 const fetch = require("node-fetch");
 
 const ALLOWED_CHANNEL_ID = "1484015417411244082"; // Canal para packs
-const STATS_CHANNEL_ID = "1484015417411244082"; // Mismo canal para probar
+const STATS_CHANNEL_ID = "TU_SEGUNDO_CANAL_ID"; // Canal para estadísticas GP
 
 const GIST_ID = process.env.GIST_ID;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
@@ -56,6 +56,7 @@ async function loadData() {
   }
 }
 
+// Función segura para enviar/actualizar panel de estadísticas
 async function updateStats(client) {
   const channel = await client.channels.fetch(STATS_CHANNEL_ID);
   if (!channel) return;
@@ -233,20 +234,14 @@ module.exports = async (client) => {
 
     const userId = interaction.user.id;
 
-    // Manejo seguro del voto Alive
     if (interaction.customId === "gp_alive") {
-      const beforeSize = data.alive.size;
       data.alive.add(userId);
       data.dead.delete(userId);
-      if (data.alive.size === beforeSize) return; // ya votó, no hacer nada
     }
 
-    // Manejo seguro del voto Dead
     if (interaction.customId === "gp_dead") {
-      const beforeSize = data.dead.size;
       data.dead.add(userId);
       data.alive.delete(userId);
-      if (data.dead.size === beforeSize) return; // ya votó, no hacer nada
     }
 
     // Alive llega a 2 → eliminar botón Dead
