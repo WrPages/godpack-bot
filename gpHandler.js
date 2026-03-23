@@ -26,20 +26,33 @@ let statsData = {
 };
 
 async function saveData() {
-  await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-    method: "PATCH",
-    headers: {
-      "Authorization": `token ${GITHUB_TOKEN}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      files: {
-        [FILE_NAME]: {
-          content: JSON.stringify(statsData, null, 2)
+  try {
+    const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+      method: "PATCH",
+      headers: {
+        "Authorization": `token ${GITHUB_TOKEN}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        files: {
+          [FILE_NAME]: {
+            content: JSON.stringify(statsData, null, 2)
+          }
         }
-      }
-    })
-  });
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error("GIST SAVE ERROR:", data);
+    } else {
+      console.log("✅ Gist actualizado");
+    }
+
+  } catch (err) {
+    console.error("SAVE GIST ERROR:", err);
+  }
 }
 
 async function loadData() {
@@ -290,7 +303,7 @@ const updatedEmbed = new EmbedBuilder()
     return interaction.message.edit({
   embeds: [updatedEmbed],
   components: [],
-  files: [] // 🔥 ESTO SOLUCIONA TODO
+ // files: [] // 🔥 ESTO SOLUCIONA TODO
 });
     }
 
