@@ -9,7 +9,7 @@ const {
 const fetch = require("node-fetch");
 
 const ALLOWED_CHANNEL_ID = "1484015417411244082"; // Canal para packs
-const STATS_CHANNEL_ID = "TU_SEGUNDO_CANAL_ID";   // Canal para estadísticas GP
+const STATS_CHANNEL_ID = "TU_SEGUNDO_CANAL_ID"; // Canal para estadísticas GP
 
 const GIST_ID = process.env.GIST_ID;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
@@ -77,13 +77,18 @@ async function updateStats(client) {
 
   const historyText =
     statsData.lastFiveDays.length > 0
-      ? statsData.lastFiveDays.map(d => `▫️ ${d.day}: ${d.count} GP`).join("\n")
+      ? statsData.lastFiveDays.map(d => `▫️ **${d.day}**: ${d.count} GP`).join("\n")
       : "No previous records";
 
   const embed = new EmbedBuilder()
     .setColor(0x5865f2)
-    .setTitle("📊 GP Stats")
-    .setDescription(`**Today:** ${statsData.todayCount}\n\n**Last days:**\n${historyText}`);
+    .setTitle("📊 GP Statistics")
+    .addFields(
+      { name: "✨ GP Today", value: `${statsData.todayCount}`, inline: false },
+      { name: "🕘 Last 5 days", value: historyText, inline: false }
+    )
+    .setFooter({ text: "Data synced with Gist" })
+    .setTimestamp();
 
   try {
     let msg;
@@ -206,8 +211,9 @@ module.exports = async (client) => {
         await thread.send("📂 Original webhook message:");
         await thread.send({ content: message.content });
 
-        // eliminar mensaje original del webhook
+        // ⚡ Solo se elimina el mensaje original del webhook
         await message.delete().catch(() => {});
+
       } catch (err) {
         console.error("THREAD ERROR:", err);
       }
