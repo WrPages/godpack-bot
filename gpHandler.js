@@ -188,7 +188,7 @@ const cardsImage = attachments[0]?.proxyURL || attachments[0]?.url || null;
           .setStyle(ButtonStyle.Danger)
       );
 
-let sentMessage;
+     let sentMessage;
 
 if (cardsImage) {
   sentMessage = await message.channel.send({
@@ -200,14 +200,12 @@ if (cardsImage) {
     }]
   });
 
+  // usar la imagen subida en el embed
   embed.setImage("attachment://cards.png");
 
   await sentMessage.edit({
     embeds: [embed]
   });
-
-  // 🔥 FIX FINAL
-  await sentMessage.suppressEmbeds(true);
 
 } else {
   sentMessage = await message.channel.send({
@@ -216,25 +214,11 @@ if (cardsImage) {
   });
 }
 
-// 🔥 AQUÍ sí es seguro obtener la URL
-let finalImage = cardsImage;
-
-// intentar obtener CDN estable con delay
-try {
-  await new Promise(res => setTimeout(res, 1000)); // 🔥 clave
-
-  const refreshed = await message.channel.messages.fetch(sentMessage.id);
-  finalImage = refreshed.attachments.first()?.url || cardsImage;
-
-} catch (e) {
-  console.log("Image fallback usada");
-}
-
-packVotes.set(sentMessage.id, {
+   packVotes.set(sentMessage.id, {
   alive: new Set(),
   dead: new Set(),
   confirmed: false,
-  image: finalImage
+  image: cardsImage // 🔥 guardamos la URL real
 });
 
       // THREAD
@@ -280,76 +264,71 @@ packVotes.set(sentMessage.id, {
 
   });
 
+  client.on("interactionCreate", async (interaction) => {
 
-client.removeAllListeners("interactionCreate");
-client.on("interactionCreate", async (interaction) => {
+    if (!interaction.isButton()) return;
 
-  if (!interaction.isButton()) return;
+    const data = packVotes.get(interaction.message.id);
+    if (!data) return;
 
-  const data = packVotes.get(interaction.message.id);
+    await interaction.deferUpdate();
+    if (data.confirmed) return;
 
-if (!data) {
-  return interaction.reply({
-    content: "Este panel ya no está activo.",
-    ephemeral: true
-  }).catch(() => {});
-}
+    const userId = interaction.user.id;
 
- if (data.confirmed) {
-  return interaction.reply({
-    content: "Este pack ya está confirmado.",
-    ephemeral: true
-  }).catch(() => {});
-}
+    if (interaction.customId === "gp_alive") {
+      data.alive.add(userId);
+      data.dead.delete(userId);
+    }
 
+    if (interaction.customId === "gp_dead") {
+      data.dead.add(userId);
+      data.alive.delete(userId);
+    }
 
-
-
-  const userId = interaction.user.id;
-
-  if (interaction.customId === "gp_alive") {
-    data.alive.add(userId);
-    data.dead.delete(userId);
-  }
-
-  if (interaction.customId === "gp_dead") {
-    data.dead.add(userId);
-    data.alive.delete(userId);
-  }
-
-if (data.alive.size >= 2 && !data.confirmed) {
+   if (data.alive.size >= 2 && !data.confirmed) {
   data.confirmed = true;
 
-  statsData.todayCount++;
-  await saveData();
-  await updateStats(interaction.client);
+      statsData.todayCount++;
+      await saveData();
+      await updateStats(interaction.client);
 
-  // 🔥 CLON DIRECTO SIN RECONSTRUIR
-  const embedData = { ...interaction.message.embeds[0].data };
 
-  embedData.color = 0x00ff00;
-  embedData.footer = { text: "🟢 CONFIRMED ALIVE" };
+const imageUrl = data.image || null;
 
-  return interaction.update({
-    embeds: [embedData],
-    components: []
+const updatedEmbed = new EmbedBuilder()
+  .setColor(0x00ff00)
+  .setDescription(interaction.message.embeds[0].description)
+  .setFooter({ text: "🟢 CONFIRMED ALIVE" });
 
-  });
-}
-if (data.dead.size >= 3 && !data.confirmed) {
+if (imageUrl) updatedEmbed.setImage(imageUrl);
+
+    return interaction.message.edit({
+  embeds: [updatedEmbed],
+  components: [],
+  files: [] // 🔥 ESTO SOLUCIONA TODO
+});
+    }
+
+ if (data.dead.size >= 3 && !data.confirmed) {
   data.confirmed = true;
 
-  const embedData = { ...interaction.message.embeds[0].data };
 
-  embedData.color = 0xff0000;
-  embedData.footer = { text: "🔴 CONFIRMED DEAD" };
+const imageUrl = data.image || null;
 
-  return interaction.update({
-    embeds: [embedData],
-    components: []
+const updatedEmbed = new EmbedBuilder()
+  .setColor(0xff0000)
+  .setDescription(interaction.message.embeds[0].description)
+  .setFooter({ text: "🔴 CONFIRMED DEAD" });
 
-  });
-}
+if (imageUrl) updatedEmbed.setImage(imageUrl);
+
+     return interaction.message.edit({
+  embeds: [updatedEmbed],
+  components: [],
+  files: [] // 🔥 ESTO SOLUCIONA TODO
+});
+    }
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
@@ -363,7 +342,7 @@ if (data.dead.size >= 3 && !data.confirmed) {
         .setStyle(ButtonStyle.Danger)
     );
 
-    await interaction.update({ components: [row] });
+    await interaction.message.edit({ components: [row] });
   });
 
 };
