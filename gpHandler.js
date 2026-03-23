@@ -200,7 +200,7 @@ sentMessage = await message.channel.send({
 // esperar 3 segundos antes de borrar webhook
 setTimeout(() => {
   message.delete().catch(() => {});
-}, 3000);
+}, 15000);
 
  packVotes.set(sentMessage.id, {
   alive: new Set(),
