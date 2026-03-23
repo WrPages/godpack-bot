@@ -9,7 +9,7 @@ const {
 const fetch = require("node-fetch");
 
 const ALLOWED_CHANNEL_ID = "1484015417411244082"; // Canal para packs
-const STATS_CHANNEL_ID = "1484015417411244082"; // Canal para estadísticas GP
+const STATS_CHANNEL_ID = "1484015417411244082"; // Mismo canal para estadísticas (prueba)
 
 const GIST_ID = process.env.GIST_ID;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
@@ -56,7 +56,6 @@ async function loadData() {
   }
 }
 
-// Función para enviar/actualizar panel de estadísticas
 async function updateStats(client) {
   const channel = await client.channels.fetch(STATS_CHANNEL_ID);
   if (!channel) return;
@@ -128,6 +127,7 @@ async function cleanWebhookMessage(channel) {
 module.exports = async (client) => {
   await loadData();
 
+  // Crear/actualizar panel de estadísticas al iniciar
   (async () => {
     try {
       await updateStats(client);
@@ -197,11 +197,9 @@ module.exports = async (client) => {
         files: imageFile ? [imageFile] : []
       });
 
-      await cleanWebhookMessage(message.channel);
-
       packVotes.set(sentMessage.id, { alive: new Set(), dead: new Set(), confirmed: false });
 
-      // Crear thread sobre el panel y mover contenido original
+      // Crear thread y mover contenido original
       try {
         const thread = await sentMessage.startThread({
           name: `GP • ${rarity}/5`,
@@ -211,7 +209,7 @@ module.exports = async (client) => {
         await thread.send("📂 Original webhook message:");
         await thread.send({ content: message.content });
 
-        // ⚡ Solo se elimina el mensaje original del webhook
+        // ⚡ Eliminar mensaje original del webhook
         await message.delete().catch(() => {});
 
       } catch (err) {
