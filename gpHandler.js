@@ -293,7 +293,7 @@ if (cardsImage) {
       await saveData();
       await updateStats(interaction.client);
 
-const data = packVotes.get(interaction.message.id);
+
 const imageUrl = data.image || null;
 
 const updatedEmbed = new EmbedBuilder()
@@ -313,7 +313,7 @@ if (imageUrl) updatedEmbed.setImage(imageUrl);
  if (data.dead.size >= 3 && !data.confirmed) {
   data.confirmed = true;
 
-const data = packVotes.get(interaction.message.id);
+
 const imageUrl = data.image || null;
 
 const updatedEmbed = new EmbedBuilder()
