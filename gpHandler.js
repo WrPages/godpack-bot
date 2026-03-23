@@ -8,8 +8,8 @@ const {
 
 const fetch = require("node-fetch");
 
-const ALLOWED_CHANNEL_ID = "1484015417411244082"; // Canal donde llegan los packs
-const STATS_CHANNEL_ID = "TU_SEGUNDO_CANAL_ID"; // Canal donde se imprimen las estadísticas GP
+const ALLOWED_CHANNEL_ID = "1484015417411244082"; // Canal para packs
+const STATS_CHANNEL_ID = "TU_SEGUNDO_CANAL_ID"; // Canal para estadísticas GP
 
 const GIST_ID = process.env.GIST_ID;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
@@ -56,7 +56,7 @@ async function loadData() {
   }
 }
 
-// Función actualizada para enviar o actualizar estadísticas en el canal STATS_CHANNEL_ID
+// Función para enviar/actualizar panel de estadísticas bonito
 async function updateStats(client) {
   const channel = await client.channels.fetch(STATS_CHANNEL_ID);
   if (!channel) return;
@@ -77,15 +77,23 @@ async function updateStats(client) {
     await saveData();
   }
 
+  // Formatear últimos 5 días bonito
   const historyText =
     statsData.lastFiveDays.length > 0
-      ? statsData.lastFiveDays.map(d => `▫️ ${d.day}: ${d.count}`).join("\n")
+      ? statsData.lastFiveDays
+          .map(d => `▫️ **${d.day}**: ${d.count} GP`)
+          .join("\n")
       : "No previous records";
 
   const embed = new EmbedBuilder()
     .setColor(0x5865f2)
-    .setTitle("📊 GP Stats")
-    .setDescription(`**Today:** ${statsData.todayCount}\n\n**Last days:**\n${historyText}`);
+    .setTitle("📊 GP Statistics")
+    .addFields(
+      { name: "✨ GP Today", value: `${statsData.todayCount}`, inline: false },
+      { name: "🕘 Last 5 days", value: historyText, inline: false }
+    )
+    .setFooter({ text: "Data synced with Gist" })
+    .setTimestamp();
 
   try {
     if (!statsData.statsMessageId) {
@@ -107,9 +115,7 @@ async function cleanWebhookMessage(channel) {
     const webhookMsg = messages.find(
       msg => msg.webhookId && msg.content.includes("God Pack found")
     );
-    if (webhookMsg) {
-      await webhookMsg.delete().catch(() => {});
-    }
+    if (webhookMsg) await webhookMsg.delete().catch(() => {});
   } catch (err) {
     console.error("CLEAN ERROR:", err);
   }
@@ -118,7 +124,7 @@ async function cleanWebhookMessage(channel) {
 module.exports = async (client) => {
   await loadData();
 
-  // Actualizar panel de estadísticas cada hora
+  // Actualizar estadísticas cada hora
   setInterval(() => {
     updateStats(client).catch(() => {});
   }, 60 * 60 * 1000);
@@ -145,10 +151,7 @@ module.exports = async (client) => {
       const packNumber = packMatch ? parseInt(packMatch[1]) : 1;
 
       const lines = message.content.split("\n");
-      const usernameLine = lines.find(
-        line => line.includes("(") && line.includes(")")
-      );
-
+      const usernameLine = lines.find(line => line.includes("(") && line.includes(")"));
       let username = "Unknown";
       if (usernameLine) {
         const match = usernameLine.match(/^(.+?)\s*\(/);
@@ -164,9 +167,7 @@ module.exports = async (client) => {
         .setColor(color)
         .setDescription(`## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`);
 
-      if (imageFile) {
-        embed.setImage("attachment://card.png");
-      }
+      if (imageFile) embed.setImage("attachment://card.png");
 
       const buttons = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -187,20 +188,15 @@ module.exports = async (client) => {
 
       await cleanWebhookMessage(message.channel);
 
-      packVotes.set(sentMessage.id, {
-        alive: new Set(),
-        dead: new Set(),
-        confirmed: false
-      });
+      packVotes.set(sentMessage.id, { alive: new Set(), dead: new Set(), confirmed: false });
 
-      // CREAR THREAD sobre el mensaje del panel
+      // Crear thread sobre el panel
       try {
         const thread = await sentMessage.startThread({
           name: `GP • ${rarity}/5`,
           autoArchiveDuration: 1440,
           type: ChannelType.PublicThread
         });
-
         await thread.send("📂 Original webhook message:");
         await thread.send({ content: message.content });
       } catch (err) {
@@ -246,7 +242,6 @@ module.exports = async (client) => {
           .setLabel(`🟢 Alive (${data.alive.size})`)
           .setStyle(ButtonStyle.Success)
       );
-
       return interaction.message.edit({ components: [row] });
     }
 
@@ -260,7 +255,6 @@ module.exports = async (client) => {
           .setLabel(`🔴 Dead (${data.dead.size})`)
           .setStyle(ButtonStyle.Danger)
       );
-
       return interaction.message.edit({ components: [row] });
     }
 
@@ -275,7 +269,6 @@ module.exports = async (client) => {
         .setLabel(`🔴 Dead (${data.dead.size})`)
         .setStyle(ButtonStyle.Danger)
     );
-
     await interaction.message.edit({ components: [row] });
   });
 };
