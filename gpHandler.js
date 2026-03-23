@@ -102,7 +102,7 @@ module.exports = (client) => {
     try {
 
       const attachments = [...message.attachments.values()];
-      const cardsImage = attachments[0]?.url || null;
+const cardsImage = attachments[0]?.proxyURL || attachments[0]?.url || null;
 
       const rarityMatch = message.content.match(/\[(\d)\/5\]/);
       if (!rarityMatch) return;
