@@ -93,9 +93,6 @@ module.exports = (client) => {
     updateStats(client).catch(() => {});
   }, 60 * 60 * 1000);
 
-  // =========================
-  // PANEL CREATION
-  // =========================
   client.on("messageCreate", async (message) => {
 
     if (message.channel.id !== ALLOWED_CHANNEL_ID) return;
@@ -105,7 +102,6 @@ module.exports = (client) => {
     try {
 
       const attachments = [...message.attachments.values()];
-
       const cardsImage = attachments[0]?.url || null;
 
       const rarityMatch = message.content.match(/\[(\d)\/5\]/);
@@ -116,7 +112,6 @@ module.exports = (client) => {
       const packMatch = message.content.match(/\[(\d)P\]/i);
       const packNumber = packMatch ? parseInt(packMatch[1]) : 1;
 
-      // USERNAME DETECTION
       const lines = message.content.split("\n");
 
       const usernameLine = lines.find(line =>
@@ -166,9 +161,7 @@ module.exports = (client) => {
         confirmed: false
       });
 
-      // =========================
-      // THREAD (FIXED)
-      // =========================
+      // THREAD
       try {
         const thread = await sentMessage.startThread({
           name: `GP • ${rarity}/5`,
@@ -189,23 +182,26 @@ module.exports = (client) => {
         console.error("THREAD ERROR:", err);
       }
 
+      // DELETE
       try {
-  await message.delete();
-} catch (err) {
-  console.log("Reintentando borrar...");
-  setTimeout(async () => {
-    try {
-      await message.delete();
-    } catch (e) {
-      console.error("DELETE FINAL ERROR:", e);
+        await message.delete();
+      } catch (err) {
+        console.log("Reintentando borrar...");
+        setTimeout(async () => {
+          try {
+            await message.delete();
+          } catch (e) {
+            console.error("DELETE FINAL ERROR:", e);
+          }
+        }, 2000);
+      }
+
+    } catch (err) {
+      console.error("GP Handler Error:", err);
     }
-  }, 2000);
-}
+
   });
 
-  // =========================
-  // BUTTON SYSTEM
-  // =========================
   client.on("interactionCreate", async (interaction) => {
 
     if (!interaction.isButton()) return;
@@ -228,7 +224,6 @@ module.exports = (client) => {
       data.alive.delete(userId);
     }
 
-    // 🟢 ALIVE
     if (data.alive.size >= 2) {
       data.confirmed = true;
 
@@ -246,7 +241,6 @@ module.exports = (client) => {
       });
     }
 
-    // 🔴 DEAD
     if (data.dead.size >= 3) {
       data.confirmed = true;
 
@@ -260,7 +254,6 @@ module.exports = (client) => {
       });
     }
 
-    // UPDATE NORMAL
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("gp_alive")
