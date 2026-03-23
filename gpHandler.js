@@ -307,7 +307,7 @@ if (imageUrl) updatedEmbed.setImage(imageUrl);
     return interaction.message.edit({
   embeds: [updatedEmbed],
   components: [],
- // files: [] // 🔥 ESTO SOLUCIONA TODO
+  files: [] // 🔥 ESTO SOLUCIONA TODO
 });
     }
 
