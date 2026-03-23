@@ -172,11 +172,13 @@ if (usernameLine) {
       });
 
       // THREAD
+const { ChannelType } = require("discord.js");
+
 try {
   const thread = await sentMessage.startThread({
     name: `GP • ${rarity}/5`,
     autoArchiveDuration: 1440,
-    type: 11 // PublicThread (evita bugs)
+    type: ChannelType.PublicThread
   });
 
   await thread.send("📂 Original webhook message:");
