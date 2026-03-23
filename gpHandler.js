@@ -318,7 +318,7 @@ if (data.alive.size >= 2 && !data.confirmed) {
   return interaction.message.edit({
     embeds: [embedData],
     components: []
-    attachments: []
+
   });
 }
 if (data.dead.size >= 3 && !data.confirmed) {
@@ -332,7 +332,7 @@ if (data.dead.size >= 3 && !data.confirmed) {
   return interaction.message.edit({
     embeds: [embedData],
     components: []
-    attachments: []
+
   });
 }
 
