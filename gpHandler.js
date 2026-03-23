@@ -254,9 +254,13 @@ if (cardsImage) {
       saveData();
       await updateStats(interaction.client);
 
-      const updatedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
-        .setColor(0x00ff00)
-        .setFooter({ text: "🟢 CONFIRMED ALIVE" });
+const oldEmbed = interaction.message.embeds[0];
+
+const updatedEmbed = new EmbedBuilder()
+  .setColor(0x00ff00)
+  .setDescription(oldEmbed.description)
+  .setImage(oldEmbed.image?.url || null)
+  .setFooter({ text: "🟢 CONFIRMED ALIVE" });
 
       return interaction.message.edit({
         embeds: [updatedEmbed],
@@ -267,9 +271,13 @@ if (cardsImage) {
     if (data.dead.size >= 3) {
       data.confirmed = true;
 
-      const updatedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
-        .setColor(0xff0000)
-        .setFooter({ text: "🔴 CONFIRMED DEAD" });
+const oldEmbed = interaction.message.embeds[0];
+
+const updatedEmbed = new EmbedBuilder()
+  .setColor(0xff0000)
+  .setDescription(oldEmbed.description)
+  .setImage(oldEmbed.image?.url || null)
+  .setFooter({ text: "🔴 CONFIRMED DEAD" });
 
       return interaction.message.edit({
         embeds: [updatedEmbed],
