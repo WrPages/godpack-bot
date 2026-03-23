@@ -247,8 +247,8 @@ if (cardsImage) {
       data.alive.delete(userId);
     }
 
-    if (data.alive.size >= 2) {
-      data.confirmed = true;
+   if (data.alive.size >= 2 && !data.confirmed) {
+  data.confirmed = true;
 
       statsData.todayCount++;
       saveData();
@@ -269,8 +269,8 @@ const updatedEmbed = new EmbedBuilder()
 });
     }
 
-    if (data.dead.size >= 3) {
-      data.confirmed = true;
+ if (data.dead.size >= 3 && !data.confirmed) {
+  data.confirmed = true;
 
 const oldEmbed = interaction.message.embeds[0];
 
