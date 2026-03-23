@@ -9,7 +9,7 @@ const {
 const fetch = require("node-fetch");
 
 const ALLOWED_CHANNEL_ID = "1484015417411244082"; // Canal para packs
-const STATS_CHANNEL_ID = "1484015417411244082"; // Mismo canal para estadísticas (prueba)
+const STATS_CHANNEL_ID = "1484015417411244082"; // Mismo canal para probar
 
 const GIST_ID = process.env.GIST_ID;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
@@ -127,15 +127,18 @@ async function cleanWebhookMessage(channel) {
 module.exports = async (client) => {
   await loadData();
 
-  // Crear/actualizar panel de estadísticas al iniciar
+  // Crear/actualizar panel de estadísticas inmediatamente al iniciar el bot
   (async () => {
     try {
+      console.log("Intentando enviar/actualizar panel de estadísticas...");
       await updateStats(client);
+      console.log("Panel de estadísticas enviado o actualizado correctamente");
     } catch (err) {
       console.error("Error enviando panel inicial:", err);
     }
   })();
 
+  // Actualizar estadísticas cada hora
   setInterval(() => {
     updateStats(client).catch(() => {});
   }, 60 * 60 * 1000);
@@ -197,9 +200,11 @@ module.exports = async (client) => {
         files: imageFile ? [imageFile] : []
       });
 
+      await cleanWebhookMessage(message.channel);
+
       packVotes.set(sentMessage.id, { alive: new Set(), dead: new Set(), confirmed: false });
 
-      // Crear thread y mover contenido original
+      // Crear thread sobre el panel
       try {
         const thread = await sentMessage.startThread({
           name: `GP • ${rarity}/5`,
@@ -208,10 +213,6 @@ module.exports = async (client) => {
         });
         await thread.send("📂 Original webhook message:");
         await thread.send({ content: message.content });
-
-        // ⚡ Eliminar mensaje original del webhook
-        await message.delete().catch(() => {});
-
       } catch (err) {
         console.error("THREAD ERROR:", err);
       }
@@ -232,14 +233,20 @@ module.exports = async (client) => {
 
     const userId = interaction.user.id;
 
+    // Manejo seguro del voto Alive
     if (interaction.customId === "gp_alive") {
+      const beforeSize = data.alive.size;
       data.alive.add(userId);
       data.dead.delete(userId);
+      if (data.alive.size === beforeSize) return; // ya votó, no hacer nada
     }
 
+    // Manejo seguro del voto Dead
     if (interaction.customId === "gp_dead") {
+      const beforeSize = data.dead.size;
       data.dead.add(userId);
       data.alive.delete(userId);
+      if (data.dead.size === beforeSize) return; // ya votó, no hacer nada
     }
 
     // Alive llega a 2 → eliminar botón Dead
@@ -285,4 +292,3 @@ module.exports = async (client) => {
     await interaction.message.edit({ components: [row] });
   });
 };
-
