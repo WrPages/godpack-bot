@@ -31,7 +31,7 @@ function loadData() {
 }
 
 // =========================
-// FIXED STATS SYSTEM
+// STATS SYSTEM
 // =========================
 async function updateStats(client) {
   const channel = await client.channels.fetch(ALLOWED_CHANNEL_ID);
@@ -40,7 +40,6 @@ async function updateStats(client) {
   const now = new Date();
   const today = now.toDateString();
 
-  // Cambio de día
   if (today !== statsData.currentDay) {
     statsData.lastFiveDays.unshift({
       day: statsData.currentDay,
@@ -108,7 +107,6 @@ module.exports = (client) => {
       const attachments = [...message.attachments.values()];
 
       const cardsImage = attachments[0]?.url || null;
-      const profileImage = attachments[1]?.url || null;
 
       const rarityMatch = message.content.match(/\[(\d)\/5\]/);
       if (!rarityMatch) return;
@@ -118,24 +116,21 @@ module.exports = (client) => {
       const packMatch = message.content.match(/\[(\d)P\]/i);
       const packNumber = packMatch ? parseInt(packMatch[1]) : 1;
 
-      // Username más flexible
-  // Buscar línea tipo: nombre (123456789)
-const lines = message.content.split("\n");
+      // USERNAME DETECTION
+      const lines = message.content.split("\n");
 
-// Buscar línea tipo: nombre (xxxx-xxxx-xxxx)
+      const usernameLine = lines.find(line =>
+        line.includes("(") && line.includes(")")
+      );
 
+      let username = "Unknown";
 
-// Buscar línea que tenga formato: algo (algo)
-const usernameLine = lines.find(line => line.includes("(") && line.includes(")"));
-
-let username = "Unknown";
-
-if (usernameLine) {
-  const match = usernameLine.match(/^(.+?)\s*\(/);
-  if (match) {
-    username = match[1].trim();
-  }
-}
+      if (usernameLine) {
+        const match = usernameLine.match(/^(.+?)\s*\(/);
+        if (match) {
+          username = match[1].trim();
+        }
+      }
 
       let color = 0x999999;
       if (rarity === 5) color = 0xFFD700;
@@ -144,9 +139,9 @@ if (usernameLine) {
 
       const embed = new EmbedBuilder()
         .setColor(color)
-        .setDescription(`## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`)
-        .setImage(cardsImage)
+        .setDescription(`## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`);
 
+      if (cardsImage) embed.setImage(cardsImage);
 
       const buttons = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -171,26 +166,34 @@ if (usernameLine) {
         confirmed: false
       });
 
-      // THREAD
-try {
-  const thread = await sentMessage.startThread({
-    name: `GP • ${rarity}/5`,
-    autoArchiveDuration: 1440,
-    type: ChannelType.PublicThread
-  });
+      // =========================
+      // THREAD (FIXED)
+      // =========================
+      try {
+        const thread = await sentMessage.startThread({
+          name: `GP • ${rarity}/5`,
+          autoArchiveDuration: 1440,
+          type: ChannelType.PublicThread
+        });
 
-  await thread.send("📂 Original webhook message:");
-  await thread.send({ content: message.content });
+        await thread.send("📂 Original webhook message:");
+        await thread.send({ content: message.content });
 
-  if (message.attachments.size > 0) {
-    await thread.send({
-      files: message.attachments.map(a => a.url)
-    });
-  }
+        if (message.attachments.size > 0) {
+          await thread.send({
+            files: message.attachments.map(a => a.url)
+          });
+        }
 
-} catch (err) {
-  console.error("THREAD ERROR:", err);
-}
+      } catch (err) {
+        console.error("THREAD ERROR:", err);
+      }
+
+      await message.delete().catch(() => {});
+
+    } catch (err) {
+      console.error("GP Handler Error:", err);
+    }
   });
 
   // =========================
