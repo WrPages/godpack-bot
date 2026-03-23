@@ -220,7 +220,7 @@ if (imageFile) {
      let sentMessage;
 
 sentMessage = await message.channel.send({
-  embeds: [embed],
+  embed: embed,
   components: [buttons],
   files: imageFile ? [imageFile] : []
 });
