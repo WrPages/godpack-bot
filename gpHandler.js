@@ -174,7 +174,7 @@ module.exports = (client) => {
 
         if (message.attachments.size > 0) {
           await thread.send({
-            files: message.attachments.map(a => a.url)
+            files: [...message.attachments.values()].map(a => a.url)
           });
         }
 
