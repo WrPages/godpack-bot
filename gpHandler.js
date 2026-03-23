@@ -189,11 +189,18 @@ module.exports = (client) => {
         console.error("THREAD ERROR:", err);
       }
 
-      await message.delete().catch(() => {});
-
-    } catch (err) {
-      console.error("GP Handler Error:", err);
+      try {
+  await message.delete();
+} catch (err) {
+  console.log("Reintentando borrar...");
+  setTimeout(async () => {
+    try {
+      await message.delete();
+    } catch (e) {
+      console.error("DELETE FINAL ERROR:", e);
     }
+  }, 2000);
+}
   });
 
   // =========================
