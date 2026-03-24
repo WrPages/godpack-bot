@@ -263,7 +263,7 @@ let mentionList = [];
 for (const discordId in users) {
   const gameId = users[discordId].id;
   if (onlineIDs.includes(gameId)) {
-mentionList.push(`@${users[discordId].name || "User"}`);
+mentionList.push(`<@${discordId}>`);
   }
 }
 
