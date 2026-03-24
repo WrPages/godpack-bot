@@ -271,13 +271,8 @@ const onlineMention = mentionList.join(" ");
 
 // 🔔 1️⃣ Enviar SOLO la mención (sin hilo)
 if (onlineMention) {
-  const notifyEmbed = new EmbedBuilder()
-    .setColor(0xFFD700)
-    .setDescription(`🔔 **GP encontrado!**\n${onlineMention}`);
-
   await message.channel.send({
-    content: onlineMention, // necesario para que notifique
-    embeds: [notifyEmbed],
+    content: onlineMention,
     allowedMentions: { parse: ["users"] }
   });
 }
@@ -310,7 +305,7 @@ let cleanContent = message.content
 
 await thread.send({
   content: cleanContent,
-  allowedMentions: { parse: [] }
+  allowedMentions: { parse: ["users"] }
 });
       } catch (err) {
         console.error("THREAD ERROR:", err);
