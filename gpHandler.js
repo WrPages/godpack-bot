@@ -36,7 +36,7 @@ async function getUsers() {
 }
 
 
-const ALLOWED_CHANNEL_ID = "1483616248406474832"; // Canal para packs y prueba
+const ALLOWED_CHANNEL_ID = "1484015417411244082"; // Canal para packs y prueba
 const STATS_CHANNEL_ID = "1485756209519788063"; // Mismo canal para estadísticas
 
 const GIST_ID = process.env.GIST_ID;
