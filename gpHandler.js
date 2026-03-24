@@ -289,7 +289,18 @@ const sentMessage = await message.channel.send({
           type: ChannelType.PublicThread
         });
         await thread.send("📂 Original webhook message:");
-        await thread.send({ content: message.content,allowedMentions: { parse: [] }});
+// Quitar cualquier tipo de mención del contenido
+let cleanContent = message.content
+  .replace(/<@!?(\d+)>/g, "User")      // usuarios
+  .replace(/<@&(\d+)>/g, "Role")       // roles
+  .replace(/<#(\d+)>/g, "Channel")     // canales
+  .replace(/@everyone/g, "everyone")
+  .replace(/@here/g, "here");
+
+await thread.send({
+  content: cleanContent,
+  allowedMentions: { parse: [] }
+});
       } catch (err) {
         console.error("THREAD ERROR:", err);
       }
