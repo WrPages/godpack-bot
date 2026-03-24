@@ -270,14 +270,14 @@ mentionList.push(`<@${discordId}>`);
 const onlineMention = mentionList.join(" ");
 
 // 🔔 1️⃣ Enviar SOLO la mención (sin hilo)
-if (onlineMention) {
-  await message.channel.send({
-    content: onlineMention,
-    allowedMentions: { parse: ["users"] }
-  });
-}
+//if (onlineMention) {
+  //await message.channel.send({
+    //content: onlineMention,
+    //2allowedMentions: { parse: ["users"] }
+  //});
+//}
 
-// 🧵 2️⃣ Enviar el panel SIN mención (aquí se creará el hilo)
+//🧵 2️⃣ Enviar el panel SIN mención (aquí se creará el hilo)
 const sentMessage = await message.channel.send({
   embeds: [embed],
   components: [buttons],
