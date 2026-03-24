@@ -243,7 +243,7 @@ module.exports = async (client) => {
           type: ChannelType.PublicThread
         });
         await thread.send("📂 Original webhook message:");
-        await thread.send({ content: message.content });
+        await thread.send({ content: message.content,allowedMentions: { parse: [] }});
       } catch (err) {
         console.error("THREAD ERROR:", err);
       }
