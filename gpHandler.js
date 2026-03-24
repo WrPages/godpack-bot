@@ -271,8 +271,13 @@ const onlineMention = mentionList.join(" ");
 
 // 🔔 1️⃣ Enviar SOLO la mención (sin hilo)
 if (onlineMention) {
+  const notifyEmbed = new EmbedBuilder()
+    .setColor(0xFFD700)
+    .setDescription(`🔔 **GP encontrado!**\n${onlineMention}`);
+
   await message.channel.send({
-    content: onlineMention,
+    content: onlineMention, // necesario para que notifique
+    embeds: [notifyEmbed],
     allowedMentions: { parse: ["users"] }
   });
 }
