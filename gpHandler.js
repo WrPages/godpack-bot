@@ -8,6 +8,34 @@ const {
 
 const fetch = require("node-fetch");
 
+// ===== SISTEMA DE MENCIONES ONLINE =====
+const USERS_GIST_ID = "312803a8e6964070593081d99a705d19"; // tu gist users.json
+const IDS_GIST_RAW_URL = "https://gist.githubusercontent.com/WrPages/1fc02ff0921e82b3af1d3101cee44e4c/raw/ids.txt";
+
+async function getOnlineIDs() {
+  try {
+    const res = await fetch(IDS_GIST_RAW_URL + "?t=" + Date.now());
+    const text = await res.text();
+    return text.split("\n").map(x => x.trim()).filter(x => x.length > 0);
+  } catch {
+    return [];
+  }
+}
+
+async function getUsers() {
+  try {
+    const res = await fetch(`https://api.github.com/gists/${USERS_GIST_ID}?t=${Date.now()}`, {
+      headers: { Authorization: `token ${GITHUB_TOKEN}` }
+    });
+    const data = await res.json();
+    if (!data.files || !data.files["users.json"]) return {};
+    return JSON.parse(data.files["users.json"].content || "{}");
+  } catch {
+    return {};
+  }
+}
+
+
 const ALLOWED_CHANNEL_ID = "1483616248406474832"; // Canal para packs y prueba
 const STATS_CHANNEL_ID = "1485756209519788063"; // Mismo canal para estadísticas
 
@@ -226,11 +254,29 @@ module.exports = async (client) => {
           .setStyle(ButtonStyle.Danger)
       );
 
-      const sentMessage = await message.channel.send({
-        embeds: [embed],
-        components: [buttons],
-        files: imageFile ? [imageFile] : []
-      });
+     // ===== CONSTRUIR MENCIONES ONLINE =====
+const onlineIDs = await getOnlineIDs();
+const users = await getUsers();
+
+let mentionList = [];
+
+for (const discordId in users) {
+  const gameId = users[discordId].id;
+  if (onlineIDs.includes(gameId)) {
+    mentionList.push(`<@${discordId}>`);
+  }
+}
+
+const onlineMention = mentionList.join(" ");
+
+// ===== ENVIAR PANEL CON MENCIONES =====
+const sentMessage = await message.channel.send({
+  content: onlineMention || null,
+  embeds: [embed],
+  components: [buttons],
+  files: imageFile ? [imageFile] : [],
+  allowedMentions: { parse: ["users"] }
+});
 
       await cleanWebhookMessage(message.channel);
 
