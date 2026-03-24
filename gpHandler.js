@@ -269,13 +269,19 @@ mentionList.push(`@${users[discordId].name || "User"}`);
 
 const onlineMention = mentionList.join(" ");
 
-// ===== ENVIAR PANEL CON MENCIONES =====
+// 🔔 1️⃣ Enviar SOLO la mención (sin hilo)
+if (onlineMention) {
+  await message.channel.send({
+    content: onlineMention,
+    allowedMentions: { parse: ["users"] }
+  });
+}
+
+// 🧵 2️⃣ Enviar el panel SIN mención (aquí se creará el hilo)
 const sentMessage = await message.channel.send({
-  content: onlineMention || null,
   embeds: [embed],
   components: [buttons],
-  files: imageFile ? [imageFile] : [],
-  allowedMentions: { parse: ["users"] }
+  files: imageFile ? [imageFile] : []
 });
 
       await cleanWebhookMessage(message.channel);
