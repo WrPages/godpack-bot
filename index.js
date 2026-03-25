@@ -510,7 +510,11 @@ if (interaction.commandName === "add_sec") {
     return interaction.reply("❌ ID must be 16 digits")
   }
 
-  let users = await getUsers(config.USERS_GIST_ID)
+  // 🔥 Cargar desde el archivo correcto
+  let users = await getUsers(
+    config.USERS_GIST_ID,
+    config.USERS_FILENAME
+  )
 
   const userData = users[interaction.user.id]
 
@@ -520,7 +524,12 @@ if (interaction.commandName === "add_sec") {
 
   userData.sec_id = secId
 
-  await saveUsers(users, config.USERS_GIST_ID)
+  // 🔥 Guardar en el archivo correcto
+  await saveUsers(
+    users,
+    config.USERS_GIST_ID,
+    config.USERS_FILENAME
+  )
 
   return interaction.reply("✅ Secondary ID added")
 }
