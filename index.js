@@ -19,16 +19,19 @@ const GITHUB_TOKEN = process.env.GITHUB_TOKEN
 //detecta onlineppm
 const GROUP_CONFIG = {
   Trainer: {
+    USERS_FILENAME: "trainer_users.json",
     USERS_GIST_ID: "1c066922bc39ac136b6f234fad6d9420",
     IDS_GIST_ID: "4edcf4d341cd4f7d5d0fb8a50f8b8c3c",
     VIP_GIST_ID: "16541fd83785a49ad4a0f22bbeb06000"
   },
   Gym_Leader: {
+    USERS_FILENAME: "gym_users.json",
     USERS_GIST_ID: "a3f5f3d8a2e6ddf2378fb3481dff49f6",
     IDS_GIST_ID: "e110c37b3e0b8de83a33a1b0a5eb64e8",
     VIP_GIST_ID: "79a0e30c401cfd63e78d9ec5a9210091"
   },
   Elite_Four: {
+    USERS_FILENAME: "elite_users.json",
     USERS_GIST_ID: "bb18eda2ea748723d8fe0131dd740b70",
     IDS_GIST_ID: "d9db3a72fed74c496fd6cc830f9ca6e9",
     VIP_GIST_ID: "5f2f23e0391882ab4e255bd67e98334a"
@@ -98,7 +101,7 @@ function saveHistory(data) {
 
 //let onlineUsers = {}
 
-async function getUsers(gistId) {
+async function getUsers(gistId, fileName) {
   try {
     const res = await fetch(`https://api.github.com/gists/${gistId}?t=${Date.now()}`, {
       headers: {
@@ -110,11 +113,11 @@ async function getUsers(gistId) {
 
     const data = await res.json()
 
-    if (!data.files || !data.files["users.json"]) {
+    if (!data.files || !data.files[fileName]) {
       return {}
     }
 
-    return JSON.parse(data.files["users.json"].content || "{}")
+    return JSON.parse(data.files[fileName].content || "{}")
 
   } catch (err) {
     console.error("Error loading users:", err)
@@ -123,7 +126,7 @@ async function getUsers(gistId) {
 }
 
 
-async function saveUsers(users, gistId) {
+async function saveUsers(users, gistId, fileName) {
   await fetch(`https://api.github.com/gists/${gistId}`, {
     method: "PATCH",
     headers: {
@@ -132,7 +135,7 @@ async function saveUsers(users, gistId) {
     },
     body: JSON.stringify({
       files: {
-        "users.json": {
+        [fileName]: {
           content: JSON.stringify(users, null, 2)
         }
       }
@@ -451,7 +454,7 @@ if (interaction.commandName === "gp") {
   return interaction.reply(`🔥 VIP ID añadido: ${id}`)
 }
 
-
+//tegister
 
 if (interaction.commandName === "register") {
 
@@ -468,7 +471,11 @@ if (interaction.commandName === "register") {
     return interaction.reply("❌ ID must be 16 digits")
   }
 
-  let users = await getUsers(config.USERS_GIST_ID)
+  // 🔥 Cargar archivo correcto del gist correcto
+  let users = await getUsers(
+    config.USERS_GIST_ID,
+    config.USERS_FILENAME
+  )
 
   users[interaction.user.id] = {
     main_id: id,
@@ -476,7 +483,12 @@ if (interaction.commandName === "register") {
     name: interaction.member.displayName
   }
 
-  await saveUsers(users, config.USERS_GIST_ID)
+  // 🔥 Guardar en archivo correcto del gist correcto
+  await saveUsers(
+    users,
+    config.USERS_GIST_ID,
+    config.USERS_FILENAME
+  )
 
   return interaction.reply(`✅ Main ID registered in ${group}`)
 }
