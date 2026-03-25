@@ -330,6 +330,35 @@ for (const msg of messages.values()) {
 }
 //FinishPPM
 
+client.on("guildMemberUpdate", async (oldMember, newMember) => {
+
+  try {
+
+    const rolesToWatch = ["Trainer", "Gym_Leader", "Elite_Four"]
+
+    // Detectar rol nuevo añadido
+    const addedRole = newMember.roles.cache.find(role =>
+      rolesToWatch.includes(role.name) &&
+      !oldMember.roles.cache.has(role.id)
+    )
+
+    if (!addedRole) return
+
+    // Canal donde quieres que mande el mensaje
+    const channel = newMember.guild.channels.cache.get("ID_DEL_CANAL_AQUI")
+
+    if (!channel) return
+
+    await channel.send(
+      `🎉 ${newMember} has been promoted to **${addedRole.name}**!`
+    )
+
+  } catch (err) {
+    console.error("Role update error:", err)
+  }
+})
+
+
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return
 
