@@ -345,7 +345,7 @@ client.on("guildMemberUpdate", async (oldMember, newMember) => {
     if (!addedRole) return
 
     // Canal donde quieres que mande el mensaje
-    const channel = newMember.guild.channels.cache.get("ID_DEL_CANAL_AQUI")
+    const channel = newMember.guild.channels.cache.get("1484475482647822517")
 
     if (!channel) return
 
