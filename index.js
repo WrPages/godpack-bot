@@ -729,31 +729,30 @@ if (userData.sec_id) {
 // 🔹 LIST
 if (interaction.commandName === "list") {
 
-  const group = getUserGroup(interaction)
+  const group = getUserGroup(interaction);
   if (!group) {
-    return interaction.reply("❌ No reroll group detected")
+    return interaction.reply("❌ No reroll group detected");
   }
 
-  const config = GROUP_CONFIG[group]
-const registeredUsers = await getUsers(
-  config.USERS_GIST_ID,
-  config.USERS_FILENAME
-)
+  const config = GROUP_CONFIG[group];
+  const registeredUsers = await getUsers(
+    config.USERS_GIST_ID,
+    config.USERS_FILENAME
+  );
 
   if (Object.keys(registeredUsers).length === 0) {
-    return interaction.reply("📭 No users registered")
+    return interaction.reply("📭 No users registered");
   }
 
-  let msg = `📋 **Registered users in ${group}:**\n\n`
+  let msg = `📋 **Registered users in ${group}:**\n\n`;
 
   for (const uid in registeredUsers) {
-    const user = registeredUsers[uid]
-    msg += `👤 ${user.name} → Main ID: ${user.main_id}\n`
+    const user = registeredUsers[uid];
+    msg += `👤 ${user.name} → Main ID: ${user.main_id}\n`;
   }
 
-  return interaction.reply(msg)
+  return interaction.reply(msg);
 }
-
 
 // 🔹 ONLINE LIST
 if (interaction.commandName === "online_list") {
@@ -831,32 +830,9 @@ if (interaction.commandName === "online_list") {
     return interaction.editReply("❌ Something went wrong");
   }
 }
-//anuncio rol
-client.on("guildMemberUpdate", async (oldMember, newMember) => {
 
-  const watchedRoles = ["Trainer", "Gym_Leader", "Elite_Four"]
-
-  const addedRoles = newMember.roles.cache.filter(role =>
-    watchedRoles.includes(role.name) &&
-    !oldMember.roles.cache.has(role.id)
-  )
-
-  if (addedRoles.size === 0) return
-
-  const channel = newMember.guild.channels.cache.get("1484015417411244082")
-
-  if (!channel) {
-    console.log("Canal no encontrado")
-    return
-  }
-
-  for (const role of addedRoles.values()) {
-    await channel.send(
-      `🎉 ${newMember} has been promoted to **${role.name}**!`
-    )
-  }
-
-})
+// 🔹 FIN DE TODOS LOS COMANDOS DEL INTERACTIONCREATE
+}); // 🔹 CIERRE CORRECTO DE client.on("interactionCreate")
 
     
 
