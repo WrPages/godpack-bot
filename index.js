@@ -319,17 +319,21 @@ async function updateTotalPPM() {
     const processedUsers = new Set()
 
     // 🔥 Obtener IDs online reales
-    const onlineIDs = await getOnlineIDs()
+const config = GROUP_CONFIG["Elite_Four"] // o el grupo que quieras
+const onlineIDs = await getOnlineIDs(config.IDS_GIST_ID)
 
     // 🔥 Obtener usuarios registrados
 const config = GROUP_CONFIG["Elite_Four"] // o el grupo que quieras
-const users = await getUsers(config.USERS_GIST_ID)
+const users = await getUsers(
+  config.USERS_GIST_ID,
+  config.USERS_FILENAME
+)
 
     // 🔥 Construir set de nombres realmente online (por ID)
     const onlineNames = new Set()
 
     for (const uid in users) {
-      if (onlineIDs.includes(users[uid].id)) {
+      if (onlineIDs.includes(users[uid].main_id)) {
         // Quitamos #1234 por seguridad
         const cleanName = users[uid].name.split("#")[0].trim()
         onlineNames.add(cleanName)
