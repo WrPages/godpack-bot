@@ -203,17 +203,6 @@ client.once("ready", async () => {
 
   try {
 
-// 🗑️ BORRAR COMANDOS GLOBALES
-await rest.put(
-  Routes.applicationCommands(process.env.CLIENT_ID),
-  { body: [] }
-);
-
-console.log("🗑️ Comandos globales eliminados");
-
-
-
-
 
     // 🗑️ BORRAR COMANDOS ANTIGUOS DEL SERVIDOR
     await rest.put(
