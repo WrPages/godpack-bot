@@ -1,5 +1,13 @@
-const { REST, Routes, SlashCommandBuilder } = require("discord.js")
-require("dotenv").config()
+const { REST, Routes, SlashCommandBuilder } = require("discord.js");
+require("dotenv").config();
+
+/*
+Asegúrate de tener en tu .env:
+
+TOKEN=TU_NUEVO_TOKEN
+CLIENT_ID=TU_APPLICATION_ID
+GUILD_ID=TU_SERVER_ID
+*/
 
 const commands = [
 
@@ -7,8 +15,7 @@ const commands = [
     .setName("register")
     .setDescription("Register your main game ID")
     .addStringOption(option =>
-      option
-        .setName("id")
+      option.setName("id")
         .setDescription("Your 16 digit main ID")
         .setRequired(true)
     ),
@@ -17,8 +24,7 @@ const commands = [
     .setName("add_sec")
     .setDescription("Register your secondary game ID")
     .addStringOption(option =>
-      option
-        .setName("id")
+      option.setName("id")
         .setDescription("Your 16 digit secondary ID")
         .setRequired(true)
     ),
@@ -27,8 +33,7 @@ const commands = [
     .setName("change")
     .setDescription("Change your main game ID")
     .addStringOption(option =>
-      option
-        .setName("id")
+      option.setName("id")
         .setDescription("New 16 digit ID")
         .setRequired(true)
     ),
@@ -57,30 +62,31 @@ const commands = [
     .setName("gp")
     .setDescription("Add VIP ID")
     .addStringOption(option =>
-      option
-        .setName("id")
+      option.setName("id")
         .setDescription("16 digit VIP ID")
         .setRequired(true)
     )
 
-].map(command => command.toJSON())
+].map(command => command.toJSON());
 
-const rest = new REST({ version: "10" }).setToken(process.env.MTQ4MzY4NzM0MzU2NjIyNTUxOQ.G8CAlO.nh1B7i2oMeaWUj8o3HY2_JLsVtHu51_9RRyDNc
-)
+const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
-;(async () => {
+(async () => {
   try {
-
-    console.log("🔄 Registering slash commands...")
+    console.log("🔄 Registering slash commands...");
 
     await rest.put(
-      Routes.applicationCommands(process.env.CLIENT_ID,"1483687343566225519"),
+      Routes.applicationGuildCommands(
+        process.env.CLIENT_ID,
+        process.env.GUILD_ID
+      ),
       { body: commands }
-    )
+    );
 
-    console.log("✅ Slash commands registered successfully!")
+    console.log("✅ Slash commands registered successfully!");
 
   } catch (error) {
-    console.error("❌ Error registering commands:", error)
+    console.error("❌ Error registering commands:");
+    console.error(error);
   }
-})()
+})();
