@@ -30,7 +30,7 @@ const GROUP_CONFIG = {
   },
   Elite_Four: {
     USERS_GIST_ID: "bb18eda2ea748723d8fe0131dd740b70",
-    IDS_GIST_ID: "1fc02ff0921e82b3af1d3101cee44e4c",
+    IDS_GIST_ID: "5f2f23e0391882ab4e255bd67e98334a",
     VIP_GIST_ID: "5f2f23e0391882ab4e255bd67e98334a"
   }
 }
