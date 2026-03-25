@@ -13,7 +13,7 @@ GatewayIntentBits.GuildMembers,
 const TOKEN = process.env.TOKEN
 const API_URL = "https://add-ids.netlify.app/.netlify/functions/api"
 
-const USERS_GIST_ID = "312803a8e6964070593081d99a705d19"
+
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
 
 //detecta onlineppm
