@@ -661,6 +661,100 @@ if (interaction.commandName === "change") {
 
 
 //online sec
+if (interaction.commandName === "online_sec") {
+
+  const group = getUserGroup(interaction)
+  if (!group) {
+    return interaction.reply("❌ You don't belong to any reroll group")
+  }
+
+  const config = GROUP_CONFIG[group]
+
+  let users = await getUsers(
+    config.USERS_GIST_ID,
+    config.USERS_FILENAME
+  )
+
+  const userData = users[interaction.user.id]
+
+  if (!userData || !userData.sec_id) {
+    return interaction.reply("❌ You must register your secondary ID first")
+  }
+
+  await fetch(`${API_URL}?action=online&id=${userData.sec_id}&group=${group}`)
+
+  return interaction.reply("🟢 Secondary account set online")
+}
+
+
+
+  // 🔹 OFFLINE
+  if (interaction.commandName === "offline") {
+
+  await interaction.deferReply()
+
+  // 🔎 Detectar grupo por rol
+  const group = getUserGroup(interaction)
+
+  if (!group) {
+    return interaction.editReply("❌ You don't belong to any reroll group")
+  }
+
+  const config = GROUP_CONFIG[group]
+
+  // 📂 Cargar users del grupo correcto
+let users = await getUsers(
+  config.USERS_GIST_ID,
+  config.USERS_FILENAME
+)
+
+  const userData = users[interaction.user.id]
+
+  if (!userData) {
+    return interaction.editReply("❌ You are not registered in your group")
+  }
+
+  // 🌐 Llamar API con grupo
+if (userData.main_id) {
+  await fetch(`${API_URL}?action=offline&id=${userData.main_id}&group=${group}`)
+}
+
+if (userData.sec_id) {
+  await fetch(`${API_URL}?action=offline&id=${userData.sec_id}&group=${group}`)
+}
+
+  return interaction.editReply(`🔴 ${userData.name} is now OFFLINE in ${group}`)
+}
+
+// 🔹 LIST
+if (interaction.commandName === "list") {
+
+  const group = getUserGroup(interaction)
+  if (!group) {
+    return interaction.reply("❌ No reroll group detected")
+  }
+
+  const config = GROUP_CONFIG[group]
+const registeredUsers = await getUsers(
+  config.USERS_GIST_ID,
+  config.USERS_FILENAME
+)
+
+  if (Object.keys(registeredUsers).length === 0) {
+    return interaction.reply("📭 No users registered")
+  }
+
+  let msg = `📋 **Registered users in ${group}:**\n\n`
+
+  for (const uid in registeredUsers) {
+    const user = registeredUsers[uid]
+    msg += `👤 ${user.name} → Main ID: ${user.main_id}\n`
+  }
+
+  return interaction.reply(msg)
+}
+
+
 // 🔹 ONLINE LIST
 if (interaction.commandName === "online_list") {
   try {
@@ -736,152 +830,6 @@ if (interaction.commandName === "online_list") {
     console.error("Online list error:", error);
     return interaction.editReply("❌ Something went wrong");
   }
-}
-
-
-
-  // 🔹 OFFLINE
-  if (interaction.commandName === "offline") {
-
-  await interaction.deferReply()
-
-  // 🔎 Detectar grupo por rol
-  const group = getUserGroup(interaction)
-
-  if (!group) {
-    return interaction.editReply("❌ You don't belong to any reroll group")
-  }
-
-  const config = GROUP_CONFIG[group]
-
-  // 📂 Cargar users del grupo correcto
-let users = await getUsers(
-  config.USERS_GIST_ID,
-  config.USERS_FILENAME
-)
-
-  const userData = users[interaction.user.id]
-
-  if (!userData) {
-    return interaction.editReply("❌ You are not registered in your group")
-  }
-
-  // 🌐 Llamar API con grupo
-if (userData.main_id) {
-  await fetch(`${API_URL}?action=offline&id=${userData.main_id}&group=${group}`)
-}
-
-if (userData.sec_id) {
-  await fetch(`${API_URL}?action=offline&id=${userData.sec_id}&group=${group}`)
-}
-
-  return interaction.editReply(`🔴 ${userData.name} is now OFFLINE in ${group}`)
-}
-
-// 🔹 LIST
-if (interaction.commandName === "list") {
-
-  const group = getUserGroup(interaction)
-  if (!group) {
-    return interaction.reply("❌ No reroll group detected")
-  }
-
-  const config = GROUP_CONFIG[group]
-const registeredUsers = await getUsers(
-  config.USERS_GIST_ID,
-  config.USERS_FILENAME
-)
-
-  if (Object.keys(registeredUsers).length === 0) {
-    return interaction.reply("📭 No users registered")
-  }
-
-  let msg = `📋 **Registered users in ${group}:**\n\n`
-
-  for (const uid in registeredUsers) {
-    const user = registeredUsers[uid]
-    msg += `👤 ${user.name} → Main ID: ${user.main_id}\n`
-  }
-
-  return interaction.reply(msg)
-}
-
-
-// 🔹 ONLINE LIST
-if (interaction.commandName === "online_list") {
-
-  try {
-
-    await interaction.deferReply()
-
-    const group = getUserGroup(interaction)
-
-    if (!group) {
-      return interaction.editReply("❌ You don't belong to any reroll group")
-    }
-
-    const config = GROUP_CONFIG[group]
-
-    const res = await fetch(
-      `https://api.github.com/gists/${config.IDS_GIST_ID}?t=${Date.now()}`,
-      {
-        headers: {
-          Authorization: `Bearer ${GITHUB_TOKEN}`,
-          Accept: "application/vnd.github+json",
-          "Cache-Control": "no-cache"
-        }
-      }
-    )
-
-    if (!res.ok) {
-      return interaction.editReply("❌ Error fetching online list")
-    }
-
-    const gistData = await res.json()
-    const content = gistData.files["ids.txt"]?.content || ""
-
-    const ids = content
-      .split("\n")
-      .map(x => x.trim())
-      .filter(x => x !== "" && x !== "\u200B")
-
-    if (ids.length === 0) {
-      return interaction.editReply(`⚫ No users online in ${group}`)
-    }
-
-const registeredUsers = await getUsers(
-  config.USERS_GIST_ID,
-  config.USERS_FILENAME
-)
-
-    let msg = `🟢 **Online users in ${group}:**\n\n`
-
-    for (const id of ids) {
-
-      let name = "Unknown"
-
-      for (const uid in registeredUsers) {
-        const user = registeredUsers[uid]
-
-        if (
-          user.main_id === id ||
-          user.sec_id === id
-        ) {
-          name = user.name
-          break
-        }
-      }
-
-      msg += `🟢 ${name} → ${id}\n`
-    }
-
-    return interaction.editReply(msg)
-
-  } catch (error) {
-    console.error("Online list error:", error)
-    return interaction.editReply("❌ Something went wrong")
-  }
-}
 })
 //anuncio rol
 client.on("guildMemberUpdate", async (oldMember, newMember) => {
