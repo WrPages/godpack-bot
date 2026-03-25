@@ -65,7 +65,8 @@ const commands = [
 
 ].map(command => command.toJSON())
 
-const rest = new REST({ version: "10" }).setToken(process.env.TOKEN)
+const rest = new REST({ version: "10" }).setToken(process.env.MTQ4MzY4NzM0MzU2NjIyNTUxOQ.G8CAlO.nh1B7i2oMeaWUj8o3HY2_JLsVtHu51_9RRyDNc
+)
 
 ;(async () => {
   try {
@@ -73,7 +74,7 @@ const rest = new REST({ version: "10" }).setToken(process.env.TOKEN)
     console.log("🔄 Registering slash commands...")
 
     await rest.put(
-      Routes.applicationCommands(process.env.CLIENT_ID),
+      Routes.applicationCommands(process.env.1483687343566225519),
       { body: commands }
     )
 
