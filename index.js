@@ -629,48 +629,58 @@ if (interaction.commandName === "change") {
 }
 
   
-  // 🔹 ONLINE
-if (interaction.commandName === "online") {
+  if (interaction.commandName === "online") {
 
   const group = getUserGroup(interaction)
   if (!group) {
-    return interaction.reply("❌ No reroll group detected")
+    return interaction.reply("❌ You don't belong to any reroll group")
   }
 
   const config = GROUP_CONFIG[group]
 
-  let users = await getUsers(config.USERS_GIST_ID)
+  let users = await getUsers(
+    config.USERS_GIST_ID,
+    config.USERS_FILENAME
+  )
+
   const userData = users[interaction.user.id]
 
-  if (!userData) {
-    return interaction.reply("❌ You must register first")
+  // 🔥 CAMBIO IMPORTANTE
+  if (!userData || !userData.main_id) {
+    return interaction.reply("❌ You must register your main ID first")
   }
 
-await fetch(`${API_URL}?action=online&id=${userData.main_id}&group=${group}`)
+  await fetch(`${API_URL}?action=online&id=${userData.main_id}&group=${group}`)
 
-  return interaction.reply(`🟢 Online in ${group}`)
+  return interaction.reply("🟢 Main account set online")
 }
+
+
 //online sec
 if (interaction.commandName === "online_sec") {
 
   const group = getUserGroup(interaction)
   if (!group) {
-    return interaction.reply("❌ No reroll group detected")
+    return interaction.reply("❌ You don't belong to any reroll group")
   }
 
   const config = GROUP_CONFIG[group]
 
-  let users = await getUsers(config.USERS_GIST_ID)
+  let users = await getUsers(
+    config.USERS_GIST_ID,
+    config.USERS_FILENAME
+  )
 
   const userData = users[interaction.user.id]
 
+  // 🔥 AQUÍ EL CAMBIO
   if (!userData || !userData.sec_id) {
-    return interaction.reply("❌ No secondary ID registered")
+    return interaction.reply("❌ You must register your secondary ID first")
   }
 
   await fetch(`${API_URL}?action=online&id=${userData.sec_id}&group=${group}`)
 
-  return interaction.reply(`🟢 Secondary account online in ${group}`)
+  return interaction.reply("🟢 Secondary account set online")
 }
 
 
