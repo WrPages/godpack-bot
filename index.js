@@ -16,9 +16,40 @@ const USERS_GIST_ID = "312803a8e6964070593081d99a705d19"
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
 
 //detecta onlineppm
-
+const GROUP_CONFIG = {
+  Trainer: {
+    USERS_GIST_ID: "GIST_USERS_TRAINER",
+    IDS_GIST_ID: "GIST_IDS_TRAINER",
+    VIP_GIST_ID: "GIST_VIP_TRAINER"
+  },
+  Gym_Leader: {
+    USERS_GIST_ID: "GIST_USERS_GYM",
+    IDS_GIST_ID: "GIST_IDS_GYM",
+    VIP_GIST_ID: "GIST_VIP_GYM"
+  },
+  Elite_Four: {
+    USERS_GIST_ID: "GIST_USERS_ELITE",
+    IDS_GIST_ID: "GIST_IDS_ELITE",
+    VIP_GIST_ID: "GIST_VIP_ELITE"
+  }
+}
 
 const IDS_GIST_RAW_URL = "https://gist.githubusercontent.com/WrPages/1fc02ff0921e82b3af1d3101cee44e4c/raw/ids.txt"
+
+
+function getUserGroup(interaction) {
+  const member = interaction.member
+
+  const role = member.roles.cache.find(r =>
+    Object.keys(GROUP_CONFIG).includes(r.name)
+  )
+
+  if (!role) return null
+
+  return role.name
+}
+
+
 
 async function getOnlineIDs() {
   try {
@@ -53,9 +84,9 @@ function saveHistory(data) {
 
 //let onlineUsers = {}
 
-async function getUsers() {
+async function getUsers(gistId) {
   try {
-    const res = await fetch(`https://api.github.com/gists/${USERS_GIST_ID}?t=${Date.now()}`, {
+    const res = await fetch(`https://api.github.com/gists/${gistId}?t=${Date.now()}`, {
       headers: {
         Authorization: `Bearer ${GITHUB_TOKEN}`,
         Accept: "application/vnd.github+json",
@@ -78,8 +109,8 @@ async function getUsers() {
 }
 
 
-async function saveUsers(users) {
-  await fetch(`https://api.github.com/gists/${USERS_GIST_ID}`, {
+async function saveUsers(users, gistId) {
+  await fetch(`https://api.github.com/gists/${gistId}`, {
     method: "PATCH",
     headers: {
       Authorization: `Bearer ${GITHUB_TOKEN}`,
@@ -318,33 +349,47 @@ if (interaction.commandName === "gp") {
 }
   
   // 🔹 REGISTER
-  if (interaction.commandName === "register") {
-    const id = interaction.options.getString("id")
+if (interaction.commandName === "register") {
 
-    if (!/^\d{16}$/.test(id)) {
-      return interaction.reply("❌ ID must be exactly 16 digits (numbers only)")
-    }
-
-const displayName = interaction.member
-  ? interaction.member.displayName
-  : interaction.user.username
-
-    
-  users[userId] = {
-  id: id,
-  name: interaction.member.displayName
-    }
-
-    await saveUsers(users)
-
-    return interaction.reply(`✅ ID registered: ${id} (${interaction.user.tag})`)
+  const group = getUserGroup(interaction)
+  if (!group) {
+    return interaction.reply("❌ You don't belong to any reroll group")
   }
 
-  // 🔹 CHANGE
+  const config = GROUP_CONFIG[group]
+
+  const id = interaction.options.getString("id")
+
+  if (!/^\d{16}$/.test(id)) {
+    return interaction.reply("❌ ID must be 16 digits")
+  }
+
+  let users = await getUsers(config.USERS_GIST_ID)
+
+  users[interaction.user.id] = {
+    id: id,
+    name: interaction.member.displayName
+  }
+
+  await saveUsers(users, config.USERS_GIST_ID)
+
+  return interaction.reply(`✅ Registered in ${group}`)
+}
+
 if (interaction.commandName === "change") {
+
   try {
 
     await interaction.deferReply({ ephemeral: true })
+
+    // 🔎 Detectar grupo por rol
+    const group = getUserGroup(interaction)
+
+    if (!group) {
+      return interaction.editReply("❌ You don't belong to any reroll group")
+    }
+
+    const config = GROUP_CONFIG[group]
 
     const newId = interaction.options.getString("id")
 
@@ -352,30 +397,32 @@ if (interaction.commandName === "change") {
       return interaction.editReply("❌ ID must be exactly 16 digits (numbers only)")
     }
 
-    let users = await getUsers()
+    // 📂 Cargar users del grupo correcto
+    let users = await getUsers(config.USERS_GIST_ID)
 
-    const userData = users[userId]
+    const userData = users[interaction.user.id]
 
-    // Si existe ID anterior → poner offline
+    // 🔴 Si tenía ID anterior → ponerlo offline en SU grupo
     if (userData?.id) {
       try {
-        await fetch(`${API_URL}?action=offline&id=${userData.id}`)
+        await fetch(`${API_URL}?action=offline&id=${userData.id}&group=${group}`)
       } catch (e) {
         console.error("Error putting old ID offline:", e)
       }
     }
 
-    // Actualizar ID
-    users[userId] = {
+    // 🔄 Actualizar ID en el users.json del grupo
+    users[interaction.user.id] = {
       id: newId,
-      name: interaction.user.tag
+      name: interaction.member.displayName
     }
 
-    await saveUsers(users)
+    await saveUsers(users, config.USERS_GIST_ID)
 
-    return interaction.editReply(`🔄 ID updated to ${newId}`)
+    return interaction.editReply(`🔄 ID updated in ${group}`)
 
   } catch (error) {
+
     console.error("CHANGE ERROR:", error)
 
     if (interaction.deferred || interaction.replied) {
@@ -390,19 +437,23 @@ if (interaction.commandName === "change") {
   // 🔹 ONLINE
 if (interaction.commandName === "online") {
 
-  await interaction.deferReply()
-
-  const users = await getUsers()
-  const userData = users[userId]
-  const id = userData?.id
-
-  if (!id) {
-    return interaction.editReply("❌ You must register first using /register")
+  const group = getUserGroup(interaction)
+  if (!group) {
+    return interaction.reply("❌ No reroll group detected")
   }
 
-  await fetch(`${API_URL}?action=online&id=${id}`)
+  const config = GROUP_CONFIG[group]
 
-  return interaction.editReply(`🟢 ${userData.name} is now ONLINE with ID ${id}`)
+  let users = await getUsers(config.USERS_GIST_ID)
+  const userData = users[interaction.user.id]
+
+  if (!userData) {
+    return interaction.reply("❌ You must register first")
+  }
+
+  await fetch(`${API_URL}?action=online&id=${userData.id}&group=${group}`)
+
+  return interaction.reply(`🟢 Online in ${group}`)
 }
 
   // 🔹 OFFLINE
@@ -410,17 +461,28 @@ if (interaction.commandName === "online") {
 
   await interaction.deferReply()
 
-  const users = await getUsers()
-  const userData = users[userId]
-  const id = userData?.id
+  // 🔎 Detectar grupo por rol
+  const group = getUserGroup(interaction)
 
-  if (!id) {
-    return interaction.editReply("❌ No ID registered")
+  if (!group) {
+    return interaction.editReply("❌ You don't belong to any reroll group")
   }
 
-  await fetch(`${API_URL}?action=offline&id=${id}`)
+  const config = GROUP_CONFIG[group]
 
-  return interaction.editReply(`🔴 ${userData.name} is now OFFLINE with ID ${id}`)
+  // 📂 Cargar users del grupo correcto
+  let users = await getUsers(config.USERS_GIST_ID)
+
+  const userData = users[interaction.user.id]
+
+  if (!userData) {
+    return interaction.editReply("❌ You are not registered in your group")
+  }
+
+  // 🌐 Llamar API con grupo
+  await fetch(`${API_URL}?action=offline&id=${userData.id}&group=${group}`)
+
+  return interaction.editReply(`🔴 ${userData.name} is now OFFLINE in ${group}`)
 }
 
   // 🔹 LIST
@@ -440,27 +502,50 @@ if (interaction.commandName === "online") {
 
   // 🔹 ONLINE LIST
  if (interaction.commandName === "online_list") {
+
   try {
 
-    // 🔥 obtener IDs online desde gist
-    const res = await fetch("https://gist.githubusercontent.com/WrPages/1fc02ff0921e82b3af1d3101cee44e4c/raw/ids.txt?t=" + Date.now())
-    const text = await res.text()
+    await interaction.deferReply()
 
-    const ids = text.split("\n").filter(x => x.trim() !== "")
+    // 🔎 Detectar grupo por rol
+    const group = getUserGroup(interaction)
 
-    if (ids.length === 0) {
-      return interaction.reply("⚫ No users are online")
+    if (!group) {
+      return interaction.editReply("❌ You don't belong to any reroll group")
     }
 
-    // 🔥 obtener usuarios registrados
-    const users = await getUsers()
+    const config = GROUP_CONFIG[group]
 
-    let msg = "🟢 **Online users:**\n\n"
+    // 🔥 Obtener IDs online del GIST del grupo
+    const res = await fetch(`https://api.github.com/gists/${config.IDS_GIST_ID}?t=${Date.now()}`, {
+      headers: {
+        Authorization: `Bearer ${GITHUB_TOKEN}`,
+        Accept: "application/vnd.github+json",
+        "Cache-Control": "no-cache"
+      }
+    })
+
+    const data = await res.json()
+
+    const content = data.files["ids.txt"]?.content || ""
+
+    const ids = content
+      .split("\n")
+      .map(x => x.trim())
+      .filter(x => x !== "" && x !== "\u200B")
+
+    if (ids.length === 0) {
+      return interaction.editReply(`⚫ No users online in ${group}`)
+    }
+
+    // 🔥 Obtener usuarios registrados del grupo
+    const users = await getUsers(config.USERS_GIST_ID)
+
+    let msg = `🟢 **Online users in ${group}:**\n\n`
 
     for (const id of ids) {
 
-      // 🔍 buscar nombre correspondiente
-      let name = ""
+      let name = "Unknown"
 
       for (const uid in users) {
         if (users[uid].id === id) {
@@ -472,11 +557,11 @@ if (interaction.commandName === "online") {
       msg += `🟢 ${name} → ${id}\n`
     }
 
-    return interaction.reply(msg)
+    return interaction.editReply(msg)
 
   } catch (err) {
     console.error(err)
-    return interaction.reply("❌ Error fetching online list")
+    return interaction.editReply("❌ Error fetching online list")
   }
 }
 })
