@@ -71,7 +71,7 @@ async function getOnlineIDs(gistId) {
 
     const data = await res.json()
 
-    const content = data.files["ids.txt"]?.content || ""
+const content = gistData.files["elite_ids.txt"]?.content || "";
 
     return content
       .split("\n")
