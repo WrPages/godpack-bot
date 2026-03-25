@@ -767,46 +767,7 @@ client.on("guildMemberUpdate", async (oldMember, newMember) => {
 
 })
 
-    const data = await res.json()
-
-    const content = data.files["ids.txt"]?.content || ""
-
-    const ids = content
-      .split("\n")
-      .map(x => x.trim())
-      .filter(x => x !== "" && x !== "\u200B")
-
-    if (ids.length === 0) {
-      return interaction.editReply(`⚫ No users online in ${group}`)
-    }
-
-    // 🔥 Obtener usuarios registrados del grupo
-    const users = await getUsers(config.USERS_GIST_ID)
-
-    let msg = `🟢 **Online users in ${group}:**\n\n`
-
-    for (const id of ids) {
-
-      let name = "Unknown"
-
-      for (const uid in users) {
-        if (users[uid].id === id) {
-          name = users[uid].name
-          break
-        }
-      }
-
-      msg += `🟢 ${name} → ${id}\n`
-    }
-
-    return interaction.editReply(msg)
-
-  } catch (err) {
-    console.error(err)
-    return interaction.editReply("❌ Error fetching online list")
-  }
-}
-})
+    
 
 client.on("messageCreate", async (message) => {
 
