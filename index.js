@@ -199,6 +199,26 @@ client.once("ready", async () => {
 
   const { REST, Routes, SlashCommandBuilder } = require("discord.js");
 
+  const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
+
+  try {
+
+    // 🗑️ BORRAR COMANDOS ANTIGUOS DEL SERVIDOR
+    await rest.put(
+      Routes.applicationGuildCommands(
+        process.env.CLIENT_ID,
+        process.env.GUILD_ID
+      ),
+      { body: [] }
+    );
+
+    console.log("🗑️ Comandos antiguos eliminados");
+
+  } catch (error) {
+    console.error("❌ Error borrando comandos:", error);
+  }
+
+  // 🔥 DEFINIR COMANDOS NUEVOS
   const commands = [
 
     new SlashCommandBuilder()
@@ -259,9 +279,9 @@ client.once("ready", async () => {
 
   ].map(cmd => cmd.toJSON());
 
-  const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
-
   try {
+
+    // 🚀 REGISTRAR NUEVOS COMANDOS
     await rest.put(
       Routes.applicationGuildCommands(
         process.env.CLIENT_ID,
@@ -271,6 +291,7 @@ client.once("ready", async () => {
     );
 
     console.log("✅ Slash commands registrados automáticamente");
+
   } catch (error) {
     console.error("❌ Error registrando comandos:", error);
   }
