@@ -319,7 +319,7 @@ async function updateTotalPPM() {
     const processedUsers = new Set()
 
     // 🔥 Obtener IDs online reales
-const config = GROUP_CONFIG["Elite_Four"] // o el grupo que quieras
+const eliteConfig = GROUP_CONFIG["Elite_Four"]
 const onlineIDs = await getOnlineIDs(config.IDS_GIST_ID)
 
     // 🔥 Obtener usuarios registrados
