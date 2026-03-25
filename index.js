@@ -306,157 +306,141 @@ client.login(process.env.TOKEN)
 const HEARTBEAT_CHANNEL_ID = "1483616146996465735"
 const TOTAL_CHANNEL_ID = "1484416376436424794"
 
+// ===== CONTADOR DE PPM =====
+const HISTORY_FILE = "./ppm_history.json";
+const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+
+function loadHistory() {
+  if (!fs.existsSync(HISTORY_FILE)) return [];
+  return JSON.parse(fs.readFileSync(HISTORY_FILE));
+}
+
+function saveHistory(data) {
+  fs.writeFileSync(HISTORY_FILE, JSON.stringify(data));
+}
+
 async function updateTotalPPM() {
   try {
+    // 🔹 Config y canales
+    const config = GROUP_CONFIG["Elite_Four"];
+    const heartbeatChannel = await client.channels.fetch(HEARTBEAT_CHANNEL_ID);
+    const totalChannel = await client.channels.fetch(TOTAL_CHANNEL_ID);
 
-    const heartbeatChannel = await client.channels.fetch(HEARTBEAT_CHANNEL_ID)
-    const totalChannel = await client.channels.fetch(TOTAL_CHANNEL_ID)
+    // 🔹 IDs online desde gist elite_ids.txt
+    const onlineIDs = await getOnlineIDs(config.IDS_GIST_ID);
+    console.log("Online IDs detected:", onlineIDs);
 
-    const messages = await heartbeatChannel.messages.fetch({ limit: 10 })
+    // 🔹 Usuarios registrados
+    const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME);
+    console.log("Registered users loaded:", Object.keys(users).length);
 
-    let totalPPM = 0
-    let ppmUsers = []
-    const processedUsers = new Set()
+    // 🔹 Preparar datos
+    let totalPPM = 0;
+    let ppmUsers = [];
+    const processedUsers = new Set();
 
-    // 🔥 Obtener IDs online reales
-const eliteConfig = GROUP_CONFIG["Elite_Four"]
-const onlineIDs = await getOnlineIDs(config.IDS_GIST_ID)
+    // 🔹 Leer últimos mensajes heartbeat
+    const messages = await heartbeatChannel.messages.fetch({ limit: 10 });
 
-    // 🔥 Obtener usuarios registrados
-const config = GROUP_CONFIG["Elite_Four"] // o el grupo que quieras
-const users = await getUsers(
-  config.USERS_GIST_ID,
-  config.USERS_FILENAME
-)
+    for (const msg of messages.values()) {
+      if (!msg.author.bot) continue;
 
-    // 🔥 Construir set de nombres realmente online (por ID)
-    const onlineNames = new Set()
+      const lines = msg.content.split("\n").map(l => l.trim());
+      if (lines.length < 3) continue;
 
-    for (const uid in users) {
-      if (onlineIDs.includes(users[uid].main_id)) {
-        // Quitamos #1234 por seguridad
-        const cleanName = users[uid].name.split("#")[0].trim()
-        onlineNames.add(cleanName)
+      const heartbeatName = lines[0].replace(":", "").split("#")[0].trim();
+
+      // 🔹 Buscar ID registrado
+      let foundId = null;
+      for (const uid in users) {
+        const registeredName = users[uid].name.split("#")[0].trim();
+        if (heartbeatName.toLowerCase() === registeredName.toLowerCase()) {
+          // Coincide nombre, tomamos main_id
+          foundId = users[uid].main_id;
+          break;
+        }
       }
-    }
 
-    // 🔥 Leer mensajes heartbeat
-for (const msg of messages.values()) {
+      if (!foundId) continue;
+      if (!onlineIDs.includes(foundId)) continue;
+      if (processedUsers.has(heartbeatName)) continue;
 
-  if (!msg.author.bot) continue
+      // 🔹 Extraer PPM
+      const avgLine = lines.find(l => l.includes("Avg:"));
+      if (!avgLine) continue;
 
-  const lines = msg.content.split("\n")
-  if (lines.length < 3) continue
+      const match = avgLine.match(/Avg:\s*([\d.]+)/);
+      if (!match) continue;
 
-  const heartbeatName = lines[0]
-    .replace(":", "")
-    .trim()
+      const ppm = parseFloat(match[1]);
+      if (isNaN(ppm)) continue;
 
-  let foundId = null
-
-  for (const discordId in users) {
-
-    const registeredName = users[discordId].name
-      .split("#")[0]
-      .trim()
-
-    if (registeredName.toLowerCase() === heartbeatName.toLowerCase()) {
-      foundId = users[discordId].id
-      break
-    }
-  }
-
-  if (!foundId) continue
-  if (!onlineIDs.includes(foundId)) continue
-
-    
-
-      if (processedUsers.has(heartbeatName)) continue
-
-      const onlineLine = lines.find(l => l.startsWith("Online:"))
-      const avgLine = lines.find(l => l.includes("Avg:"))
-
-      if (!onlineLine || !avgLine) continue
-
-      const onlineContent = onlineLine.replace("Online:", "").trim()
-      if (!onlineContent || onlineContent.toLowerCase() === "none") continue
-
-      const match = avgLine.match(/Avg:\s*([\d.]+)/)
-      if (!match) continue
-
-      const ppm = parseFloat(match[1])
-      if (isNaN(ppm)) continue
-
-      totalPPM += ppm
-      
-     // ppmUsers.push({ name: foundName, ppm })
-  ppmUsers.push({ name: heartbeatName, ppm })
-
-      processedUsers.add(heartbeatName)
+      totalPPM += ppm;
+      ppmUsers.push({ name: heartbeatName, ppm });
+      processedUsers.add(heartbeatName);
     }
 
     // ===== HISTORIAL 12H =====
-    let history = loadHistory()
-    const now = Date.now()
+    let history = loadHistory();
+    const now = Date.now();
 
-    history.push({
-      timestamp: now,
-      value: totalPPM
-    })
+    history.push({ timestamp: now, value: totalPPM });
+    history = history.filter(entry => now - entry.timestamp <= TWELVE_HOURS);
+    saveHistory(history);
 
-    history = history.filter(entry => now - entry.timestamp <= TWELVE_HOURS)
-    saveHistory(history)
-
-    let average12h = 0
+    let average12h = 0;
     if (history.length > 0) {
-      const sum = history.reduce((acc, entry) => acc + entry.value, 0)
-      average12h = sum / history.length
+      const sum = history.reduce((acc, entry) => acc + entry.value, 0);
+      average12h = sum / history.length;
     }
 
-    // ===== MENSAJE =====
+    // ===== CONSTRUIR MENSAJE =====
+    ppmUsers.sort((a, b) => b.ppm - a.ppm);
 
-    ppmUsers.sort((a, b) => b.ppm - a.ppm)
-
-    let messageContent = ""
-    messageContent += "━━━━━━━━━━━━━━━━━━━━━━\n"
-    messageContent += "🚀 **Global PPM**\n"
-    messageContent += "━━━━━━━━━━━━━━━━━━━━━━\n\n"
-
-    messageContent += `# 🔥 ${totalPPM.toFixed(2)}\n`
-    messageContent += "**Current PPM**\n\n"
-
-    messageContent += "━━━━━━━━━━━━━━━━━━━━━━\n"
-    messageContent += `📊 **12H Average:** ${average12h.toFixed(2)} ppm\n`
-    messageContent += "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    let messageContent = "━━━━━━━━━━━━━━━━━━━━━━\n";
+    messageContent += "🚀 **Global PPM**\n";
+    messageContent += "━━━━━━━━━━━━━━━━━━━━━━\n\n";
+    messageContent += `# 🔥 ${totalPPM.toFixed(2)}\n`;
+    messageContent += "**Current PPM**\n\n";
+    messageContent += "━━━━━━━━━━━━━━━━━━━━━━\n";
+    messageContent += `📊 **12H Average:** ${average12h.toFixed(2)} ppm\n`;
+    messageContent += "━━━━━━━━━━━━━━━━━━━━━━\n\n";
 
     if (ppmUsers.length === 0) {
-      messageContent += "⚫ No users online\n"
+      messageContent += "⚫ No users online\n";
     } else {
-      messageContent += "🟢 **Online users**\n"
-      messageContent += "────────────────────\n"
-
+      messageContent += "🟢 **Online users**\n";
+      messageContent += "────────────────────\n";
       for (const user of ppmUsers) {
-        messageContent += `• **${user.name}** → \`${user.ppm.toFixed(2)} ppm\`\n`
+        messageContent += `• **${user.name}** → \`${user.ppm.toFixed(2)} ppm\`\n`;
       }
     }
 
-    messageContent += "\n━━━━━━━━━━━━━━━━━━━━━━"
+    messageContent += "\n━━━━━━━━━━━━━━━━━━━━━━";
 
-    const existingMessages = await totalChannel.messages.fetch({ limit: 5 })
-    const botMessage = existingMessages.find(m => m.author.id === client.user.id)
+    // 🔹 Editar o enviar mensaje en canal de resultados
+    const existingMessages = await totalChannel.messages.fetch({ limit: 5 });
+    const botMessage = existingMessages.find(m => m.author.id === client.user.id);
 
     if (botMessage) {
-      await botMessage.edit(messageContent)
+      await botMessage.edit(messageContent);
     } else {
-      await totalChannel.send(messageContent)
+      await totalChannel.send(messageContent);
     }
 
-    console.log("PPM total actualizado")
+    console.log("PPM total actualizado");
 
   } catch (err) {
-    console.error("Error actualizando PPM:", err)
+    console.error("Error actualizando PPM:", err);
   }
 }
+
+// 🔹 Reemplazar el setInterval original
+client.on("ready", () => {
+  setInterval(updateTotalPPM, 5 * 60 * 1000); // cada 5 min
+  updateTotalPPM();
+  console.log("Bot listo y PPM counter activo 🔥");
+});
 //FinishPPM
 
 
