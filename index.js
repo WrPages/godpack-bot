@@ -35,7 +35,7 @@ const GROUP_CONFIG = {
   }
 }
 
-const IDS_GIST_RAW_URL = "https://gist.githubusercontent.com/WrPages/1fc02ff0921e82b3af1d3101cee44e4c/raw/ids.txt"
+
 
 
 function getUserGroup(interaction) {
@@ -52,18 +52,31 @@ function getUserGroup(interaction) {
 
 
 
-async function getOnlineIDs() {
+async function getOnlineIDs(gistId) {
   try {
-    const response = await fetch(IDS_GIST_RAW_URL)
-    const text = await response.text()
 
-    return text
+    const res = await fetch(
+      `https://api.github.com/gists/${gistId}?t=${Date.now()}`,
+      {
+        headers: {
+          Authorization: `Bearer ${GITHUB_TOKEN}`,
+          Accept: "application/vnd.github+json",
+          "Cache-Control": "no-cache"
+        }
+      }
+    )
+
+    const data = await res.json()
+
+    const content = data.files["ids.txt"]?.content || ""
+
+    return content
       .split("\n")
-      .map(line => line.trim())
-      .filter(line => line.length > 0)
+      .map(x => x.trim())
+      .filter(x => x.length > 0)
 
   } catch (err) {
-    console.error("Error leyendo ids.txt:", err)
+    console.error("Error leyendo ids:", err)
     return []
   }
 }
@@ -284,7 +297,8 @@ async function updateTotalPPM() {
     const onlineIDs = await getOnlineIDs()
 
     // 🔥 Obtener usuarios registrados
-    const users = await getUsers()
+const config = GROUP_CONFIG["Elite_Four"] // o el grupo que quieras
+const users = await getUsers(config.USERS_GIST_ID)
 
     // 🔥 Construir set de nombres realmente online (por ID)
     const onlineNames = new Set()
