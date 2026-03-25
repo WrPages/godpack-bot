@@ -366,7 +366,7 @@ if (interaction.commandName === "gp") {
     if (!addedRole) return
 
     // Canal donde quieres que mande el mensaje
-    const channel = newMember.guild.channels.cache.get("ID_DEL_CANAL_AQUI")
+    const channel = newMember.guild.channels.cache.get("1484015417411244082")
 
     if (!channel) return
 
