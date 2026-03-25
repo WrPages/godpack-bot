@@ -319,53 +319,54 @@ function saveHistory(data) {
   fs.writeFileSync(HISTORY_FILE, JSON.stringify(data));
 }
 
+// ====== NUEVO updateTotalPPM ======
+const HISTORY_FILE = "./ppm_history.json";
+const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+
+function loadHistory() {
+  if (!fs.existsSync(HISTORY_FILE)) return [];
+  return JSON.parse(fs.readFileSync(HISTORY_FILE));
+}
+
+function saveHistory(data) {
+  fs.writeFileSync(HISTORY_FILE, JSON.stringify(data));
+}
+
 async function updateTotalPPM() {
   try {
-    // 🔹 Config y canales
-    const config = GROUP_CONFIG["Elite_Four"];
     const heartbeatChannel = await client.channels.fetch(HEARTBEAT_CHANNEL_ID);
     const totalChannel = await client.channels.fetch(TOTAL_CHANNEL_ID);
 
-    // 🔹 IDs online desde gist elite_ids.txt
-    const onlineIDs = await getOnlineIDs(config.IDS_GIST_ID);
-    console.log("Online IDs detected:", onlineIDs);
+    const messages = await heartbeatChannel.messages.fetch({ limit: 20 });
 
-    // 🔹 Usuarios registrados
-    const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME);
-    console.log("Registered users loaded:", Object.keys(users).length);
+    // 🔹 Cargar lista online actual
+    const eliteConfig = GROUP_CONFIG["Elite_Four"];
+    const onlineUsers = await getUsers(eliteConfig.USERS_GIST_ID, eliteConfig.USERS_FILENAME);
+    
+    // Solo los usuarios que tienen main_id o sec_id online (simplificamos)
+    const onlineNamesSet = new Set();
+    for (const uid in onlineUsers) {
+      const u = onlineUsers[uid];
+      if (u.main_id || u.sec_id) onlineNamesSet.add(u.name.split("#")[0].trim());
+    }
 
-    // 🔹 Preparar datos
     let totalPPM = 0;
-    let ppmUsers = [];
-    const processedUsers = new Set();
-
-    // 🔹 Leer últimos mensajes heartbeat
-    const messages = await heartbeatChannel.messages.fetch({ limit: 10 });
+    const ppmUsers = [];
+    const processedNames = new Set();
 
     for (const msg of messages.values()) {
       if (!msg.author.bot) continue;
 
       const lines = msg.content.split("\n").map(l => l.trim());
-      if (lines.length < 3) continue;
+      if (lines.length < 2) continue;
 
-      const heartbeatName = lines[0].replace(":", "").split("#")[0].trim();
+      const heartbeatName = lines[0].replace(":", "").trim();
 
-      // 🔹 Buscar ID registrado
-      let foundId = null;
-      for (const uid in users) {
-        const registeredName = users[uid].name.split("#")[0].trim();
-        if (heartbeatName.toLowerCase() === registeredName.toLowerCase()) {
-          // Coincide nombre, tomamos main_id
-          foundId = users[uid].main_id;
-          break;
-        }
-      }
+      // ✅ Solo procesar si el nombre está en la lista online
+      if (![...onlineNamesSet].some(n => heartbeatName.toLowerCase() === n.toLowerCase())) continue;
+      if (processedNames.has(heartbeatName)) continue;
 
-      if (!foundId) continue;
-      if (!onlineIDs.includes(foundId)) continue;
-      if (processedUsers.has(heartbeatName)) continue;
-
-      // 🔹 Extraer PPM
+      // Buscar línea de ppm
       const avgLine = lines.find(l => l.includes("Avg:"));
       if (!avgLine) continue;
 
@@ -377,33 +378,29 @@ async function updateTotalPPM() {
 
       totalPPM += ppm;
       ppmUsers.push({ name: heartbeatName, ppm });
-      processedUsers.add(heartbeatName);
+      processedNames.add(heartbeatName);
     }
 
     // ===== HISTORIAL 12H =====
     let history = loadHistory();
     const now = Date.now();
-
     history.push({ timestamp: now, value: totalPPM });
     history = history.filter(entry => now - entry.timestamp <= TWELVE_HOURS);
     saveHistory(history);
 
-    let average12h = 0;
-    if (history.length > 0) {
-      const sum = history.reduce((acc, entry) => acc + entry.value, 0);
-      average12h = sum / history.length;
-    }
+    const avg12h = history.length > 0 ? history.reduce((a, b) => a + b.value, 0) / history.length : 0;
 
     // ===== CONSTRUIR MENSAJE =====
     ppmUsers.sort((a, b) => b.ppm - a.ppm);
 
-    let messageContent = "━━━━━━━━━━━━━━━━━━━━━━\n";
+    let messageContent = "";
+    messageContent += "━━━━━━━━━━━━━━━━━━━━━━\n";
     messageContent += "🚀 **Global PPM**\n";
     messageContent += "━━━━━━━━━━━━━━━━━━━━━━\n\n";
     messageContent += `# 🔥 ${totalPPM.toFixed(2)}\n`;
     messageContent += "**Current PPM**\n\n";
     messageContent += "━━━━━━━━━━━━━━━━━━━━━━\n";
-    messageContent += `📊 **12H Average:** ${average12h.toFixed(2)} ppm\n`;
+    messageContent += `📊 **12H Average:** ${avg12h.toFixed(2)} ppm\n`;
     messageContent += "━━━━━━━━━━━━━━━━━━━━━━\n\n";
 
     if (ppmUsers.length === 0) {
@@ -415,10 +412,9 @@ async function updateTotalPPM() {
         messageContent += `• **${user.name}** → \`${user.ppm.toFixed(2)} ppm\`\n`;
       }
     }
-
     messageContent += "\n━━━━━━━━━━━━━━━━━━━━━━";
 
-    // 🔹 Editar o enviar mensaje en canal de resultados
+    // 🔹 Editar o enviar mensaje
     const existingMessages = await totalChannel.messages.fetch({ limit: 5 });
     const botMessage = existingMessages.find(m => m.author.id === client.user.id);
 
@@ -428,19 +424,16 @@ async function updateTotalPPM() {
       await totalChannel.send(messageContent);
     }
 
-    console.log("PPM total actualizado");
+    console.log("✅ PPM total actualizado");
 
   } catch (err) {
-    console.error("Error actualizando PPM:", err);
+    console.error("❌ Error actualizando PPM:", err);
   }
 }
 
-// 🔹 Reemplazar el setInterval original
-client.on("ready", () => {
-  setInterval(updateTotalPPM, 5 * 60 * 1000); // cada 5 min
-  updateTotalPPM();
-  console.log("Bot listo y PPM counter activo 🔥");
-});
+// 🔹 Activar contador cada 5 minutos
+setInterval(updateTotalPPM, 5 * 60 * 1000);
+updateTotalPPM();
 //FinishPPM
 
 
