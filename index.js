@@ -352,32 +352,7 @@ if (interaction.commandName === "gp") {
   return interaction.reply(`🔥 VIP ID añadido: ${id}`)
 }
 
-client.on("guildMemberUpdate", async (oldMember, newMember) => {
 
-  const watchedRoles = ["Trainer", "Gym_Leader", "Elite_Four"]
-
-  // Detectar roles añadidos
-  const addedRoles = newMember.roles.cache.filter(role =>
-    watchedRoles.includes(role.name) &&
-    !oldMember.roles.cache.has(role.id)
-  )
-
-  if (addedRoles.size === 0) return
-
-  const channel = newMember.guild.channels.cache.get("1483860387882602597")
-
-  if (!channel) {
-    console.log("Canal no encontrado")
-    return
-  }
-
-  for (const role of addedRoles.values()) {
-    await channel.send(
-      `🎉 ${newMember} has been promoted to **${role.name}**!`
-    )
-  }
-
-})
 
   // 🔹 REGISTER
 if (interaction.commandName === "register") {
@@ -555,6 +530,33 @@ if (interaction.commandName === "online") {
         "Cache-Control": "no-cache"
       }
     })
+
+//anuncio rol
+client.on("guildMemberUpdate", async (oldMember, newMember) => {
+
+  const watchedRoles = ["Trainer", "Gym_Leader", "Elite_Four"]
+
+  const addedRoles = newMember.roles.cache.filter(role =>
+    watchedRoles.includes(role.name) &&
+    !oldMember.roles.cache.has(role.id)
+  )
+
+  if (addedRoles.size === 0) return
+
+  const channel = newMember.guild.channels.cache.get("1483860387882602597")
+
+  if (!channel) {
+    console.log("Canal no encontrado")
+    return
+  }
+
+  for (const role of addedRoles.values()) {
+    await channel.send(
+      `🎉 ${newMember} has been promoted to **${role.name}**!`
+    )
+  }
+
+})
 
     const data = await res.json()
 
