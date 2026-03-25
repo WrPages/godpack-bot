@@ -739,7 +739,7 @@ if (interaction.commandName === "online_list") {
     return interaction.editReply("❌ Something went wrong")
   }
 }
-
+})
 //anuncio rol
 client.on("guildMemberUpdate", async (oldMember, newMember) => {
 
