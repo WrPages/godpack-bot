@@ -176,6 +176,91 @@ client.on("ready", () => {
 })
 require("./gpHandler")(client);
 
+
+//Comandos
+client.once("ready", async () => {
+  console.log(`✅ Bot listo como ${client.user.tag}`);
+
+  const { REST, Routes, SlashCommandBuilder } = require("discord.js");
+
+  const commands = [
+
+    new SlashCommandBuilder()
+      .setName("register")
+      .setDescription("Register your main game ID")
+      .addStringOption(option =>
+        option.setName("id")
+          .setDescription("Your 16 digit main ID")
+          .setRequired(true)
+      ),
+
+    new SlashCommandBuilder()
+      .setName("add_sec")
+      .setDescription("Register your secondary game ID")
+      .addStringOption(option =>
+        option.setName("id")
+          .setDescription("Your 16 digit secondary ID")
+          .setRequired(true)
+      ),
+
+    new SlashCommandBuilder()
+      .setName("change")
+      .setDescription("Change your main game ID")
+      .addStringOption(option =>
+        option.setName("id")
+          .setDescription("New 16 digit ID")
+          .setRequired(true)
+      ),
+
+    new SlashCommandBuilder()
+      .setName("online")
+      .setDescription("Set your main account online"),
+
+    new SlashCommandBuilder()
+      .setName("online_sec")
+      .setDescription("Set your secondary account online"),
+
+    new SlashCommandBuilder()
+      .setName("offline")
+      .setDescription("Set your accounts offline"),
+
+    new SlashCommandBuilder()
+      .setName("list")
+      .setDescription("List registered users"),
+
+    new SlashCommandBuilder()
+      .setName("online_list")
+      .setDescription("List online users in your group"),
+
+    new SlashCommandBuilder()
+      .setName("gp")
+      .setDescription("Add VIP ID")
+      .addStringOption(option =>
+        option.setName("id")
+          .setDescription("16 digit VIP ID")
+          .setRequired(true)
+      )
+
+  ].map(cmd => cmd.toJSON());
+
+  const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
+
+  try {
+    await rest.put(
+      Routes.applicationGuildCommands(
+        process.env.CLIENT_ID,
+        process.env.GUILD_ID
+      ),
+      { body: commands }
+    );
+
+    console.log("✅ Slash commands registrados automáticamente");
+  } catch (error) {
+    console.error("❌ Error registrando comandos:", error);
+  }
+});
+//termina comandos
+
 client.login(process.env.TOKEN)
 
 // StartPPMCounter
