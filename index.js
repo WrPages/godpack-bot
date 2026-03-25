@@ -641,23 +641,32 @@ if (userData.sec_id) {
   return interaction.editReply(`🔴 ${userData.name} is now OFFLINE in ${group}`)
 }
 
-  // 🔹 LIST
-  if (interaction.commandName === "list") {
-    if (Object.keys(users).length === 0) {
-      return interaction.reply("📭 No users registered")
-    }
+// 🔹 LIST
+if (interaction.commandName === "list") {
 
-    let msg = "📋 **Registered users:**\n\n"
-
-    for (const uid in users) {
-      msg += `👤 ${users[uid].name} → ID: ${users[uid].id}\n`
-    }
-
-    return interaction.reply(msg)
+  const group = getUserGroup(interaction)
+  if (!group) {
+    return interaction.reply("❌ No reroll group detected")
   }
 
-  // 🔹 ONLINE LIST
- if (interaction.commandName === "online_list") {
+  const config = GROUP_CONFIG[group]
+  const users = await getUsers(config.USERS_GIST_ID)
+
+  if (Object.keys(users).length === 0) {
+    return interaction.reply("📭 No users registered")
+  }
+
+  let msg = `📋 **Registered users in ${group}:**\n\n`
+
+  for (const uid in users) {
+    msg += `👤 ${users[uid].name} → Main ID: ${users[uid].main_id}\n`
+  }
+
+  return interaction.reply(msg)
+}
+
+// 🔹 ONLINE LIST
+if (interaction.commandName === "online_list") {
 
   try {
 
@@ -673,13 +682,65 @@ if (userData.sec_id) {
     const config = GROUP_CONFIG[group]
 
     // 🔥 Obtener IDs online del GIST del grupo
-    const res = await fetch(`https://api.github.com/gists/${config.IDS_GIST_ID}?t=${Date.now()}`, {
-      headers: {
-        Authorization: `Bearer ${GITHUB_TOKEN}`,
-        Accept: "application/vnd.github+json",
-        "Cache-Control": "no-cache"
+    const res = await fetch(
+      `https://api.github.com/gists/${config.IDS_GIST_ID}?t=${Date.now()}`,
+      {
+        headers: {
+          Authorization: `Bearer ${GITHUB_TOKEN}`,
+          Accept: "application/vnd.github+json",
+          "Cache-Control": "no-cache"
+        }
       }
-    })
+    )
+
+    if (!res.ok) {
+      return interaction.editReply("❌ Error fetching online list")
+    }
+
+    const gistData = await res.json()
+    const file = Object.values(gistData.files)[0]
+
+    let ids = []
+
+    try {
+      ids = JSON.parse(file.content)
+    } catch {
+      ids = []
+    }
+
+    if (!ids || ids.length === 0) {
+      return interaction.editReply("📭 No users online in this group")
+    }
+
+    // 🔥 Obtener usuarios registrados del grupo
+    const users = await getUsers(config.USERS_GIST_ID)
+
+    let msg = `🟢 **Online users in ${group}:**\n\n`
+
+    for (const id of ids) {
+
+      let name = "Unknown"
+
+      for (const uid in users) {
+        if (
+          users[uid].main_id === id ||
+          users[uid].sec_id === id
+        ) {
+          name = users[uid].name
+          break
+        }
+      }
+
+      msg += `🟢 ${name} → ${id}\n`
+    }
+
+    await interaction.editReply(msg)
+
+  } catch (error) {
+    console.error("Online list error:", error)
+    await interaction.editReply("❌ Something went wrong")
+  }
+}
 
 //anuncio rol
 client.on("guildMemberUpdate", async (oldMember, newMember) => {
