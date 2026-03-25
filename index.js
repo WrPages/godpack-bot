@@ -755,48 +755,61 @@ if (interaction.commandName === "list") {
 }
 
 // 🔹 ONLINE LIST
+// 🔹 ONLINE LIST - Elite_Four
 if (interaction.commandName === "online_list") {
   try {
     await interaction.deferReply();
 
-    // 🔎 Detectar grupo del usuario
     const group = getUserGroup(interaction);
-    if (!group) {
-      return interaction.editReply("❌ You don't belong to any reroll group");
-    }
+    if (!group) return interaction.editReply("❌ You don't belong to any reroll group");
 
+    // 🔹 Configuración del grupo
     const config = GROUP_CONFIG[group];
 
-    // 🔥 Obtener IDs online desde el gist
-    const onlineIdsRaw = await getOnlineIDs(config.IDS_GIST_ID);
-    // 🔹 Filtrar solo IDs válidos de 16 dígitos y limpiar espacios
-    const onlineIds = onlineIdsRaw
+    // 🔹 Obtener IDs online desde el gist elite_ids.txt
+    const resOnline = await fetch(
+      `https://api.github.com/gists/${config.IDS_GIST_ID}?t=${Date.now()}`,
+      {
+        headers: {
+          Authorization: `Bearer ${GITHUB_TOKEN}`,
+          Accept: "application/vnd.github+json",
+          "Cache-Control": "no-cache"
+        }
+      }
+    );
+
+    if (!resOnline.ok) return interaction.editReply("❌ Error fetching online IDs");
+
+    const gistOnline = await resOnline.json();
+    const contentOnline = gistOnline.files["elite_ids.txt"]?.content || "";
+
+    const onlineIds = contentOnline
+      .split(/\r?\n/)
       .map(x => x.trim())
       .filter(x => /^\d{16}$/.test(x));
 
-    if (onlineIds.length === 0) {
-      return interaction.editReply(`⚫ No users online in ${group}`);
+    if (onlineIds.length === 0) return interaction.editReply("⚫ No users online");
+
+    // 🔹 Obtener usuarios registrados del gist elite_users.json
+    const registeredUsers = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME);
+
+    if (!registeredUsers || Object.keys(registeredUsers).length === 0) {
+      return interaction.editReply("📭 No users registered");
     }
 
-    // 🔹 Obtener usuarios registrados del grupo correcto
-    const registeredUsers = await getUsers(
-      config.USERS_GIST_ID,
-      config.USERS_FILENAME
-    );
-
-    // 🔹 Construir mensaje
+    // 🔹 Comparar IDs online con usuarios registrados
     let msg = `🟢 **Online users in ${group}:**\n\n`;
-
     let foundAny = false;
+
     for (const id of onlineIds) {
       let name = "Unknown";
 
       for (const uid in registeredUsers) {
         const user = registeredUsers[uid];
-        if (
-          (user.main_id && user.main_id.trim() === id) ||
-          (user.sec_id && user.sec_id.trim() === id)
-        ) {
+        const mainId = (user.main_id || "").trim();
+        const secId = (user.sec_id || "").trim();
+
+        if (mainId === id || secId === id) {
           name = user.name;
           foundAny = true;
           break;
@@ -809,9 +822,10 @@ if (interaction.commandName === "online_list") {
     if (!foundAny) msg += "⚫ No registered users online\n";
 
     return interaction.editReply(msg);
+
   } catch (error) {
     console.error("Online list error:", error);
-    return interaction.editReply("❌ Something went wrong");
+    return interaction.editReply("❌ Something went wrong while fetching online users");
   }
 }
 
