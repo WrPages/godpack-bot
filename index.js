@@ -307,8 +307,8 @@ const HEARTBEAT_CHANNEL_ID = "1483616146996465735"
 const TOTAL_CHANNEL_ID = "1484416376436424794"
 
 // ===== CONTADOR DE PPM =====
-const HISTORY_FILE = "./ppm_history.json";
-const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+//const HISTORY_FILE = "./ppm_history.json";
+//const TWELVE_HOURS = 12 * 60 * 60 * 1000;
 
 function loadHistory() {
   if (!fs.existsSync(HISTORY_FILE)) return [];
