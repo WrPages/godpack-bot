@@ -4,6 +4,7 @@ const fetch = require('node-fetch')
 const client = new Client({ 
   intents: [
     GatewayIntentBits.Guilds,
+GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent
   ] 
@@ -351,32 +352,31 @@ if (interaction.commandName === "gp") {
   return interaction.reply(`🔥 VIP ID añadido: ${id}`)
 }
 
-  client.on("guildMemberUpdate", async (oldMember, newMember) => {
+client.on("guildMemberUpdate", async (oldMember, newMember) => {
 
-  try {
+  const watchedRoles = ["Trainer", "Gym_Leader", "Elite_Four"]
 
-    const rolesToWatch = ["Trainer", "Gym_Leader", "Elite_Four"]
+  // Detectar roles añadidos
+  const addedRoles = newMember.roles.cache.filter(role =>
+    watchedRoles.includes(role.name) &&
+    !oldMember.roles.cache.has(role.id)
+  )
 
-    // Detectar rol nuevo añadido
-    const addedRole = newMember.roles.cache.find(role =>
-      rolesToWatch.includes(role.name) &&
-      !oldMember.roles.cache.has(role.id)
-    )
+  if (addedRoles.size === 0) return
 
-    if (!addedRole) return
+  const channel = newMember.guild.channels.cache.get("ID_DEL_CANAL")
 
-    // Canal donde quieres que mande el mensaje
-    const channel = newMember.guild.channels.cache.get("1484015417411244082")
-
-    if (!channel) return
-
-    await channel.send(
-      `🎉 ${newMember} has been promoted to **${addedRole.name}**!`
-    )
-
-  } catch (err) {
-    console.error("Role update error:", err)
+  if (!channel) {
+    console.log("Canal no encontrado")
+    return
   }
+
+  for (const role of addedRoles.values()) {
+    await channel.send(
+      `🎉 ${newMember} has been promoted to **${role.name}**!`
+    )
+  }
+
 })
 
   // 🔹 REGISTER
