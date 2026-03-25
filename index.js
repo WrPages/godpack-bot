@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js')
+ const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js')
 const fetch = require('node-fetch')
 
 const client = new Client({ 
@@ -543,7 +543,7 @@ client.on("guildMemberUpdate", async (oldMember, newMember) => {
 
   if (addedRoles.size === 0) return
 
-  const channel = newMember.guild.channels.cache.get("1483860387882602597")
+  const channel = newMember.guild.channels.cache.get("1484015417411244082")
 
   if (!channel) {
     console.log("Canal no encontrado")
