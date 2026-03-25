@@ -353,31 +353,31 @@ if (interaction.commandName === "gp") {
 
   client.on("guildMemberUpdate", async (oldMember, newMember) => {
 
-  const watchedRoles = ["Trainer", "Gym_Leader", "Elite_Four"]
+  try {
 
-  // Detectar roles añadidos
-  const addedRoles = newMember.roles.cache.filter(role =>
-    watchedRoles.includes(role.name) &&
-    !oldMember.roles.cache.has(role.id)
-  )
+    const rolesToWatch = ["Trainer", "Gym_Leader", "Elite_Four"]
 
-  if (addedRoles.size === 0) return
-
-  const channel = newMember.guild.channels.cache.get("1484015417411244082")
-
-  if (!channel) {
-    console.log("Canal no encontrado")
-    return
-  }
-
-  for (const role of addedRoles.values()) {
-    await channel.send(
-      `🎉 ${newMember} has been promoted to **${role.name}**!`
+    // Detectar rol nuevo añadido
+    const addedRole = newMember.roles.cache.find(role =>
+      rolesToWatch.includes(role.name) &&
+      !oldMember.roles.cache.has(role.id)
     )
+
+    if (!addedRole) return
+
+    // Canal donde quieres que mande el mensaje
+    const channel = newMember.guild.channels.cache.get("ID_DEL_CANAL_AQUI")
+
+    if (!channel) return
+
+    await channel.send(
+      `🎉 ${newMember} has been promoted to **${addedRole.name}**!`
+    )
+
+  } catch (err) {
+    console.error("Role update error:", err)
   }
-
 })
-
 
   // 🔹 REGISTER
 if (interaction.commandName === "register") {
