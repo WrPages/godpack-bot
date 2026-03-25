@@ -661,30 +661,81 @@ if (interaction.commandName === "change") {
 
 
 //online sec
-if (interaction.commandName === "online_sec") {
+// 🔹 ONLINE LIST
+if (interaction.commandName === "online_list") {
+  try {
+    await interaction.deferReply();
 
-  const group = getUserGroup(interaction)
-  if (!group) {
-    return interaction.reply("❌ You don't belong to any reroll group")
+    // 🔎 Detectar grupo del usuario
+    const group = getUserGroup(interaction);
+    if (!group) {
+      return interaction.editReply("❌ You don't belong to any reroll group");
+    }
+
+    const config = GROUP_CONFIG[group];
+
+    // 🔥 Obtener IDs online desde el gist
+    const res = await fetch(
+      `https://api.github.com/gists/${config.IDS_GIST_ID}?t=${Date.now()}`,
+      {
+        headers: {
+          Authorization: `Bearer ${GITHUB_TOKEN}`,
+          Accept: "application/vnd.github+json",
+          "Cache-Control": "no-cache"
+        }
+      }
+    );
+
+    if (!res.ok) {
+      return interaction.editReply("❌ Error fetching online list");
+    }
+
+    const gistData = await res.json();
+    const content = gistData.files["ids.txt"]?.content || "";
+
+    // 🔹 Filtrar solo IDs válidos de 16 dígitos
+    const onlineIds = content
+      .split(/\r?\n/)
+      .map(x => x.trim())
+      .filter(x => /^\d{16}$/.test(x));
+
+    if (onlineIds.length === 0) {
+      return interaction.editReply(`⚫ No users online in ${group}`);
+    }
+
+    // 🔹 Obtener usuarios registrados del grupo correcto
+    const registeredUsers = await getUsers(
+      config.USERS_GIST_ID,
+      config.USERS_FILENAME
+    );
+
+    // 🔹 Construir mensaje
+    let msg = `🟢 **Online users in ${group}:**\n\n`;
+
+    let foundAny = false;
+    for (const id of onlineIds) {
+      let name = "Unknown";
+
+      for (const uid in registeredUsers) {
+        const user = registeredUsers[uid];
+        if (user.main_id?.trim() === id || user.sec_id?.trim() === id) {
+          name = user.name;
+          foundAny = true;
+          break;
+        }
+      }
+
+      msg += `🟢 ${name} → ${id}\n`;
+    }
+
+    if (!foundAny) msg += "⚫ No registered users online\n";
+
+    return interaction.editReply(msg);
+
+  } catch (error) {
+    console.error("Online list error:", error);
+    return interaction.editReply("❌ Something went wrong");
   }
-
-  const config = GROUP_CONFIG[group]
-
-  let users = await getUsers(
-    config.USERS_GIST_ID,
-    config.USERS_FILENAME
-  )
-
-  const userData = users[interaction.user.id]
-
-  // 🔥 AQUÍ EL CAMBIO
-  if (!userData || !userData.sec_id) {
-    return interaction.reply("❌ You must register your secondary ID first")
-  }
-
-  await fetch(`${API_URL}?action=online&id=${userData.sec_id}&group=${group}`)
-
-  return interaction.reply("🟢 Secondary account set online")
 }
 
 
