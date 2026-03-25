@@ -364,7 +364,7 @@ client.on("guildMemberUpdate", async (oldMember, newMember) => {
 
   if (addedRoles.size === 0) return
 
-  const channel = newMember.guild.channels.cache.get("1484015417411244082")
+  const channel = newMember.guild.channels.cache.get("1483860387882602597")
 
   if (!channel) {
     console.log("Canal no encontrado")
