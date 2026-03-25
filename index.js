@@ -463,6 +463,7 @@ client.on("interactionCreate", async (interaction) => {
 
   const userId = interaction.user.id
   let users = await getUsers()
+  
 // 🔹 VIP ids
 if (interaction.commandName === "gp") {
   const id = interaction.options.getString("id")
@@ -565,7 +566,6 @@ if (interaction.commandName === "change") {
 
     await interaction.deferReply({ ephemeral: true })
 
-    // 🔎 Detectar grupo por rol
     const group = getUserGroup(interaction)
 
     if (!group) {
@@ -580,29 +580,41 @@ if (interaction.commandName === "change") {
       return interaction.editReply("❌ ID must be exactly 16 digits (numbers only)")
     }
 
-    // 📂 Cargar users del grupo correcto
-    let users = await getUsers(config.USERS_GIST_ID)
+    // 🔥 Cargar correctamente el archivo del grupo
+    let users = await getUsers(
+      config.USERS_GIST_ID,
+      config.USERS_FILENAME
+    )
 
     const userData = users[interaction.user.id]
 
-    // 🔴 Si tenía ID anterior → ponerlo offline en SU grupo
-    if (userData?.id) {
+    if (!userData) {
+      return interaction.editReply("❌ You must register first")
+    }
+
+    // 🔴 Poner OFFLINE el main_id anterior
+    if (userData.main_id) {
       try {
-        await fetch(`${API_URL}?action=offline&id=${userData.id}&group=${group}`)
+        await fetch(`${API_URL}?action=offline&id=${userData.main_id}&group=${group}`)
       } catch (e) {
         console.error("Error putting old ID offline:", e)
       }
     }
 
-    // 🔄 Actualizar ID en el users.json del grupo
+    // 🔄 Actualizar manteniendo sec_id
     users[interaction.user.id] = {
-      id: newId,
+      main_id: newId,
+      sec_id: userData.sec_id || null,
       name: interaction.member.displayName
     }
 
-    await saveUsers(users, config.USERS_GIST_ID)
+    await saveUsers(
+      users,
+      config.USERS_GIST_ID,
+      config.USERS_FILENAME
+    )
 
-    return interaction.editReply(`🔄 ID updated in ${group}`)
+    return interaction.editReply(`🔄 Main ID updated in ${group}`)
 
   } catch (error) {
 
@@ -678,7 +690,10 @@ if (interaction.commandName === "online_sec") {
   const config = GROUP_CONFIG[group]
 
   // 📂 Cargar users del grupo correcto
-  let users = await getUsers(config.USERS_GIST_ID)
+let users = await getUsers(
+  config.USERS_GIST_ID,
+  config.USERS_FILENAME
+)
 
   const userData = users[interaction.user.id]
 
@@ -707,7 +722,10 @@ if (interaction.commandName === "list") {
   }
 
   const config = GROUP_CONFIG[group]
-  const registeredUsers = await getUsers(config.USERS_GIST_ID)
+const registeredUsers = await getUsers(
+  config.USERS_GIST_ID,
+  config.USERS_FILENAME
+)
 
   if (Object.keys(registeredUsers).length === 0) {
     return interaction.reply("📭 No users registered")
@@ -766,7 +784,10 @@ if (interaction.commandName === "online_list") {
       return interaction.editReply(`⚫ No users online in ${group}`)
     }
 
-    const registeredUsers = await getUsers(config.USERS_GIST_ID)
+const registeredUsers = await getUsers(
+  config.USERS_GIST_ID,
+  config.USERS_FILENAME
+)
 
     let msg = `🟢 **Online users in ${group}:**\n\n`
 
