@@ -354,7 +354,6 @@ if (interaction.commandName === "gp") {
 
 
 
-  // 🔹 REGISTER
 if (interaction.commandName === "register") {
 
   const group = getUserGroup(interaction)
@@ -373,14 +372,50 @@ if (interaction.commandName === "register") {
   let users = await getUsers(config.USERS_GIST_ID)
 
   users[interaction.user.id] = {
-    id: id,
+    main_id: id,
+    sec_id: null,
     name: interaction.member.displayName
   }
 
   await saveUsers(users, config.USERS_GIST_ID)
 
-  return interaction.reply(`✅ Registered in ${group}`)
+  return interaction.reply(`✅ Main ID registered in ${group}`)
 }
+
+
+//adsec
+if (interaction.commandName === "add_sec") {
+
+  const group = getUserGroup(interaction)
+  if (!group) {
+    return interaction.reply("❌ No reroll group detected")
+  }
+
+  const config = GROUP_CONFIG[group]
+
+  const secId = interaction.options.getString("id")
+
+  if (!/^\d{16}$/.test(secId)) {
+    return interaction.reply("❌ ID must be 16 digits")
+  }
+
+  let users = await getUsers(config.USERS_GIST_ID)
+
+  const userData = users[interaction.user.id]
+
+  if (!userData) {
+    return interaction.reply("❌ You must register main ID first")
+  }
+
+  userData.sec_id = secId
+
+  await saveUsers(users, config.USERS_GIST_ID)
+
+  return interaction.reply("✅ Secondary ID added")
+}
+
+
+//change
 
 if (interaction.commandName === "change") {
 
@@ -457,10 +492,34 @@ if (interaction.commandName === "online") {
     return interaction.reply("❌ You must register first")
   }
 
-  await fetch(`${API_URL}?action=online&id=${userData.id}&group=${group}`)
+await fetch(`${API_URL}?action=online&id=${userData.main_id}&group=${group}`)
 
   return interaction.reply(`🟢 Online in ${group}`)
 }
+//online sec
+if (interaction.commandName === "online_sec") {
+
+  const group = getUserGroup(interaction)
+  if (!group) {
+    return interaction.reply("❌ No reroll group detected")
+  }
+
+  const config = GROUP_CONFIG[group]
+
+  let users = await getUsers(config.USERS_GIST_ID)
+
+  const userData = users[interaction.user.id]
+
+  if (!userData || !userData.sec_id) {
+    return interaction.reply("❌ No secondary ID registered")
+  }
+
+  await fetch(`${API_URL}?action=online&id=${userData.sec_id}&group=${group}`)
+
+  return interaction.reply(`🟢 Secondary account online in ${group}`)
+}
+
+
 
   // 🔹 OFFLINE
   if (interaction.commandName === "offline") {
@@ -486,7 +545,13 @@ if (interaction.commandName === "online") {
   }
 
   // 🌐 Llamar API con grupo
-  await fetch(`${API_URL}?action=offline&id=${userData.id}&group=${group}`)
+if (userData.main_id) {
+  await fetch(`${API_URL}?action=offline&id=${userData.main_id}&group=${group}`)
+}
+
+if (userData.sec_id) {
+  await fetch(`${API_URL}?action=offline&id=${userData.sec_id}&group=${group}`)
+}
 
   return interaction.editReply(`🔴 ${userData.name} is now OFFLINE in ${group}`)
 }
