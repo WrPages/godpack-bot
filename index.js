@@ -650,20 +650,22 @@ if (interaction.commandName === "list") {
   }
 
   const config = GROUP_CONFIG[group]
-  const users = await getUsers(config.USERS_GIST_ID)
+  const registeredUsers = await getUsers(config.USERS_GIST_ID)
 
-  if (Object.keys(users).length === 0) {
+  if (Object.keys(registeredUsers).length === 0) {
     return interaction.reply("📭 No users registered")
   }
 
   let msg = `📋 **Registered users in ${group}:**\n\n`
 
-  for (const uid in users) {
-    msg += `👤 ${users[uid].name} → Main ID: ${users[uid].main_id}\n`
+  for (const uid in registeredUsers) {
+    const user = registeredUsers[uid]
+    msg += `👤 ${user.name} → Main ID: ${user.main_id}\n`
   }
 
   return interaction.reply(msg)
 }
+
 
 // 🔹 ONLINE LIST
 if (interaction.commandName === "online_list") {
@@ -672,7 +674,6 @@ if (interaction.commandName === "online_list") {
 
     await interaction.deferReply()
 
-    // 🔎 Detectar grupo por rol
     const group = getUserGroup(interaction)
 
     if (!group) {
@@ -681,7 +682,6 @@ if (interaction.commandName === "online_list") {
 
     const config = GROUP_CONFIG[group]
 
-    // 🔥 Obtener IDs online del GIST del grupo
     const res = await fetch(
       `https://api.github.com/gists/${config.IDS_GIST_ID}?t=${Date.now()}`,
       {
@@ -698,22 +698,18 @@ if (interaction.commandName === "online_list") {
     }
 
     const gistData = await res.json()
-    const file = Object.values(gistData.files)[0]
+    const content = gistData.files["ids.txt"]?.content || ""
 
-    let ids = []
+    const ids = content
+      .split("\n")
+      .map(x => x.trim())
+      .filter(x => x !== "" && x !== "\u200B")
 
-    try {
-      ids = JSON.parse(file.content)
-    } catch {
-      ids = []
+    if (ids.length === 0) {
+      return interaction.editReply(`⚫ No users online in ${group}`)
     }
 
-    if (!ids || ids.length === 0) {
-      return interaction.editReply("📭 No users online in this group")
-    }
-
-    // 🔥 Obtener usuarios registrados del grupo
-    const users = await getUsers(config.USERS_GIST_ID)
+    const registeredUsers = await getUsers(config.USERS_GIST_ID)
 
     let msg = `🟢 **Online users in ${group}:**\n\n`
 
@@ -721,12 +717,14 @@ if (interaction.commandName === "online_list") {
 
       let name = "Unknown"
 
-      for (const uid in users) {
+      for (const uid in registeredUsers) {
+        const user = registeredUsers[uid]
+
         if (
-          users[uid].main_id === id ||
-          users[uid].sec_id === id
+          user.main_id === id ||
+          user.sec_id === id
         ) {
-          name = users[uid].name
+          name = user.name
           break
         }
       }
@@ -734,11 +732,11 @@ if (interaction.commandName === "online_list") {
       msg += `🟢 ${name} → ${id}\n`
     }
 
-    await interaction.editReply(msg)
+    return interaction.editReply(msg)
 
   } catch (error) {
     console.error("Online list error:", error)
-    await interaction.editReply("❌ Something went wrong")
+    return interaction.editReply("❌ Something went wrong")
   }
 }
 
