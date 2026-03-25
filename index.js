@@ -768,27 +768,9 @@ if (interaction.commandName === "online_list") {
     const config = GROUP_CONFIG[group];
 
     // 🔥 Obtener IDs online desde el gist
-    const res = await fetch(
-      `https://api.github.com/gists/${config.IDS_GIST_ID}?t=${Date.now()}`,
-      {
-        headers: {
-          Authorization: `Bearer ${GITHUB_TOKEN}`,
-          Accept: "application/vnd.github+json",
-          "Cache-Control": "no-cache"
-        }
-      }
-    );
-
-    if (!res.ok) {
-      return interaction.editReply("❌ Error fetching online list");
-    }
-
-    const gistData = await res.json();
-    const content = gistData.files["ids.txt"]?.content || "";
-
-    // 🔹 Filtrar solo IDs válidos de 16 dígitos
-    const onlineIds = content
-      .split(/\r?\n/)
+    const onlineIdsRaw = await getOnlineIDs(config.IDS_GIST_ID);
+    // 🔹 Filtrar solo IDs válidos de 16 dígitos y limpiar espacios
+    const onlineIds = onlineIdsRaw
       .map(x => x.trim())
       .filter(x => /^\d{16}$/.test(x));
 
@@ -811,7 +793,10 @@ if (interaction.commandName === "online_list") {
 
       for (const uid in registeredUsers) {
         const user = registeredUsers[uid];
-        if (user.main_id?.trim() === id || user.sec_id?.trim() === id) {
+        if (
+          (user.main_id && user.main_id.trim() === id) ||
+          (user.sec_id && user.sec_id.trim() === id)
+        ) {
           name = user.name;
           foundAny = true;
           break;
@@ -824,7 +809,6 @@ if (interaction.commandName === "online_list") {
     if (!foundAny) msg += "⚫ No registered users online\n";
 
     return interaction.editReply(msg);
-
   } catch (error) {
     console.error("Online list error:", error);
     return interaction.editReply("❌ Something went wrong");
