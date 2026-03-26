@@ -9,8 +9,8 @@ const {
 const fetch = require("node-fetch");
 
 // ===== SISTEMA DE MENCIONES ONLINE =====
-const USERS_GIST_ID = "312803a8e6964070593081d99a705d19"; // tu gist users.json
-const IDS_GIST_RAW_URL = "https://gist.githubusercontent.com/WrPages/1fc02ff0921e82b3af1d3101cee44e4c/raw/ids.txt";
+const USERS_GIST_ID = "bb18eda2ea748723d8fe0131dd740b70"; // tu gist users.json
+const IDS_GIST_RAW_URL = "https://gist.githubusercontent.com/WrPages/d9db3a72fed74c496fd6cc830f9ca6e9/raw/elite_ids.txt";
 
 async function getOnlineIDs() {
   try {
