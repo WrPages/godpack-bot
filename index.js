@@ -822,13 +822,6 @@ if (commandName === "editpanel") {
 
   try {
 
-    if (!interaction.member.permissions.has("Administrator")) {
-      return interaction.reply({
-        content: "❌ Only administrators can edit panels.",
-        ephemeral: true
-      });
-    }
-
     const messageId = interaction.options.getString("message_id");
 
     const message = await interaction.channel.messages.fetch(messageId)
@@ -889,7 +882,6 @@ if (commandName === "editpanel") {
     }
   }
 }
-
 });
     
   // 🔹 CIERRE CORRECTO DE client.on("interactionCreate")
