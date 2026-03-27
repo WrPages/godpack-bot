@@ -294,7 +294,17 @@ const sentMessage = await message.channel.send({
           autoArchiveDuration: 1440,
           type: ChannelType.PublicThread
         });
-       await thread.send("📂 Original webhook message:");
+await thread.send("📂 Original webhook message:");
+
+await message.crosspost().catch(() => {}); // seguridad si es canal anuncio
+
+await message.channel.messages.fetch(message.id).then(async (originalMsg) => {
+  await thread.send({
+    content: originalMsg.content,
+    files: originalMsg.attachments.map(att => att.url),
+    allowedMentions: { parse: [] }
+  });
+});
 
 // Limpiar menciones
 let cleanContent = message.content
