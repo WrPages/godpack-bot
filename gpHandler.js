@@ -306,33 +306,34 @@ let cleanContent = message.content
 
 // 🔥 Obtener TODOS los attachments del webhook
 // 🔥 Recolectar attachments reales
-let originalFiles = message.attachments.map(att => ({
-  attachment: att.url, // IMPORTANTE usar url, no proxyURL
-  name: att.name || "image.png"
-}));
+// 🔥 Construir lista de URLs de imágenes
+let imageLinks = [];
 
-// 🔥 También revisar imágenes que vengan como embeds
+// attachments reales
+message.attachments.forEach(att => {
+  imageLinks.push(att.url);
+});
+
+// imágenes dentro de embeds
 for (const embed of message.embeds) {
-  if (embed.image?.url) {
-    originalFiles.push({
-      attachment: embed.image.url,
-      name: "embed-image.png"
-    });
-  }
+  if (embed.image?.url) imageLinks.push(embed.image.url);
+  if (embed.thumbnail?.url) imageLinks.push(embed.thumbnail.url);
+}
 
-  if (embed.thumbnail?.url) {
-    originalFiles.push({
-      attachment: embed.thumbnail.url,
-      name: "embed-thumb.png"
-    });
-  }
+// Unir texto + imágenes
+let finalContent = cleanContent;
+
+if (imageLinks.length > 0) {
+  finalContent += "\n\n" + imageLinks.join("\n");
 }
 
 await thread.send({
-  content: cleanContent,
-  files: originalFiles,
+  content: finalContent,
   allowedMentions: { parse: [] }
 });
+
+
+
       } catch (err) {
         console.error("THREAD ERROR:", err);
       }
