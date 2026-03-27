@@ -817,55 +817,75 @@ if (interaction.commandName === "online_list") {
   }
 }
 
-//edit gp message
 if (commandName === "editpanel") {
 
-  const messageId = interaction.options.getString("message_id");
-
   try {
-    // Obtener el mensaje del canal actual
-    const message = await interaction.channel.messages.fetch(messageId);
 
-    // Verificar que sea un embed
-    if (!message.embeds.length) {
+    if (!interaction.member.permissions.has("Administrator")) {
       return interaction.reply({
-        content: "❌ That message has no embed to edit.",
+        content: "❌ Only administrators can edit panels.",
         ephemeral: true
       });
     }
 
-    const embed = message.embeds[0];
+    const messageId = interaction.options.getString("message_id");
 
-    // Crear botones nuevos
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("gp_join")
-        .setLabel("Join")
-        .setStyle(ButtonStyle.Success),
+    const message = await interaction.channel.messages.fetch(messageId)
+      .catch(() => null);
 
-      new ButtonBuilder()
-        .setCustomId("gp_leave")
-        .setLabel("Leave")
-        .setStyle(ButtonStyle.Danger)
+    if (!message) {
+      return interaction.reply({
+        content: "❌ Message not found.",
+        ephemeral: true
+      });
+    }
+
+    if (!message.embeds.length) {
+      return interaction.reply({
+        content: "❌ That message has no embed.",
+        ephemeral: true
+      });
+    }
+
+    const modal = new ModalBuilder()
+      .setCustomId(`editPanelModal_${messageId}`)
+      .setTitle("Edit GP Panel");
+
+    const rarityInput = new TextInputBuilder()
+      .setCustomId("rarity")
+      .setLabel("Rarity (1-5)")
+      .setStyle(TextInputStyle.Short)
+      .setRequired(true);
+
+    const packInput = new TextInputBuilder()
+      .setCustomId("pack")
+      .setLabel("Pack Points")
+      .setStyle(TextInputStyle.Short)
+      .setRequired(true);
+
+    const userInput = new TextInputBuilder()
+      .setCustomId("username")
+      .setLabel("Username")
+      .setStyle(TextInputStyle.Short)
+      .setRequired(true);
+
+    modal.addComponents(
+      new ActionRowBuilder().addComponents(rarityInput),
+      new ActionRowBuilder().addComponents(packInput),
+      new ActionRowBuilder().addComponents(userInput)
     );
 
-    // Editar el mensaje
-    await message.edit({
-      embeds: [embed],
-      components: [row]
-    });
+    await interaction.showModal(modal);
 
-    await interaction.reply({
-      content: "✅ Panel updated successfully.",
-      ephemeral: true
-    });
+  } catch (err) {
+    console.error("EDIT PANEL ERROR:", err);
 
-  } catch (error) {
-    console.error(error);
-    interaction.reply({
-      content: "❌ Could not find that message.",
-      ephemeral: true
-    });
+    if (!interaction.replied) {
+      await interaction.reply({
+        content: "❌ Something went wrong.",
+        ephemeral: true
+      });
+    }
   }
 }
 
