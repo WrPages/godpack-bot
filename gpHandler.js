@@ -307,28 +307,46 @@ let cleanContent = message.content
 // 🔥 Obtener TODOS los attachments del webhook
 // 🔥 Recolectar attachments reales
 // 🔥 Construir lista de URLs de imágenes
-let imageLinks = [];
+// 🔥 Descargar y reenviar imágenes correctamente
+let filesToSend = [];
 
-// attachments reales
-message.attachments.forEach(att => {
-  imageLinks.push(att.url);
-});
+// attachments normales
+for (const att of message.attachments.values()) {
+  try {
+    const res = await fetch(att.url);
+    const buffer = await res.buffer();
 
-// imágenes dentro de embeds
-for (const embed of message.embeds) {
-  if (embed.image?.url) imageLinks.push(embed.image.url);
-  if (embed.thumbnail?.url) imageLinks.push(embed.thumbnail.url);
+    filesToSend.push({
+      attachment: buffer,
+      name: att.name || "image.png"
+    });
+
+  } catch (err) {
+    console.error("Error descargando attachment:", err);
+  }
 }
 
-// Unir texto + imágenes
-let finalContent = cleanContent;
+// imágenes dentro de embeds
+for (const emb of message.embeds) {
+  if (emb.image?.url) {
+    try {
+      const res = await fetch(emb.image.url);
+      const buffer = await res.buffer();
 
-if (imageLinks.length > 0) {
-  finalContent += "\n\n" + imageLinks.join("\n");
+      filesToSend.push({
+        attachment: buffer,
+        name: "embed-image.png"
+      });
+
+    } catch (err) {
+      console.error("Error descargando embed image:", err);
+    }
+  }
 }
 
 await thread.send({
-  content: finalContent,
+  content: cleanContent,
+  files: filesToSend,
   allowedMentions: { parse: [] }
 });
 
