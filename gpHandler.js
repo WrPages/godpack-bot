@@ -294,18 +294,26 @@ const sentMessage = await message.channel.send({
           autoArchiveDuration: 1440,
           type: ChannelType.PublicThread
         });
-        await thread.send("📂 Original webhook message:");
-// Quitar cualquier tipo de mención del contenido
+       await thread.send("📂 Original webhook message:");
+
+// Limpiar menciones
 let cleanContent = message.content
-  .replace(/<@!?(\d+)>/g, "User")      // usuarios
-  .replace(/<@&(\d+)>/g, "Role")       // roles
-  .replace(/<#(\d+)>/g, "Channel")     // canales
+  .replace(/<@!?(\d+)>/g, "User")
+  .replace(/<@&(\d+)>/g, "Role")
+  .replace(/<#(\d+)>/g, "Channel")
   .replace(/@everyone/g, "everyone")
   .replace(/@here/g, "here");
 
+// 🔥 Obtener TODOS los attachments del webhook
+const originalFiles = message.attachments.map(att => ({
+  attachment: att.proxyURL || att.url,
+  name: att.name || "image.png"
+}));
+
 await thread.send({
   content: cleanContent,
-  allowedMentions: { parse: ["users"] }
+  files: originalFiles, // 👈 ahora envía las imágenes también
+  allowedMentions: { parse: [] }
 });
       } catch (err) {
         console.error("THREAD ERROR:", err);
