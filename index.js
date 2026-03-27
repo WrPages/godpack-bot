@@ -937,7 +937,7 @@ if (commandName === "editpanel") {
         });
       }
     }
-  }
+  
 
 });
     
