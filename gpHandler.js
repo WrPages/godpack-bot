@@ -305,14 +305,32 @@ let cleanContent = message.content
   .replace(/@here/g, "here");
 
 // 🔥 Obtener TODOS los attachments del webhook
-const originalFiles = message.attachments.map(att => ({
-  attachment: att.proxyURL || att.url,
+// 🔥 Recolectar attachments reales
+let originalFiles = message.attachments.map(att => ({
+  attachment: att.url, // IMPORTANTE usar url, no proxyURL
   name: att.name || "image.png"
 }));
 
+// 🔥 También revisar imágenes que vengan como embeds
+for (const embed of message.embeds) {
+  if (embed.image?.url) {
+    originalFiles.push({
+      attachment: embed.image.url,
+      name: "embed-image.png"
+    });
+  }
+
+  if (embed.thumbnail?.url) {
+    originalFiles.push({
+      attachment: embed.thumbnail.url,
+      name: "embed-thumb.png"
+    });
+  }
+}
+
 await thread.send({
   content: cleanContent,
-  files: originalFiles, // 👈 ahora envía las imágenes también
+  files: originalFiles,
   allowedMentions: { parse: [] }
 });
       } catch (err) {
