@@ -1,5 +1,5 @@
  const { Client, GatewayIntentBits, EmbedBuilder, ModalBuilder,
-  TextInputBuilder,TextInputStyle,ActionRowBuilde } = require('discord.js')
+  TextInputBuilder,TextInputStyle,ActionRowBuilder} = require('discord.js')
 const fetch = require('node-fetch')
 
 const client = new Client({ 
