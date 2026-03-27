@@ -284,56 +284,31 @@ const sentMessage = await message.channel.send({
   files: imageFile ? [imageFile] : []
 });
 
-      await cleanWebhookMessage(message.channel);
+await cleanWebhookMessage(message.channel);
 
-      packVotes.set(sentMessage.id, { alive: new Set(), dead: new Set(), confirmed: false });
+packVotes.set(sentMessage.id, { alive: new Set(), dead: new Set(), confirmed: false });
 
-      try {
-        const thread = await sentMessage.startThread({
-          name: `GP • ${rarity}/5`,
-          autoArchiveDuration: 1440,
-          type: ChannelType.PublicThread
-        });
-await thread.send("📂 Original webhook message:");
+try {
+  const thread = await sentMessage.startThread({
+    name: `GP • ${rarity}/5`,
+    autoArchiveDuration: 1440,
+    type: ChannelType.PublicThread
+  });
 
-await message.crosspost().catch(() => {}); // seguridad si es canal anuncio
+  await thread.send("📂 Original webhook message:");
 
-await message.channel.messages.fetch(message.id).then(async (originalMsg) => {
+  // 🔥 Reenviar el mensaje original TAL CUAL
   await thread.send({
-    content: originalMsg.content,
-    files: originalMsg.attachments.map(att => att.url),
+    content: message.content,
+    files: message.attachments.map(att => att.url),
     allowedMentions: { parse: [] }
   });
-});
 
-// Limpiar menciones
-let cleanContent = message.content
-  .replace(/<@!?(\d+)>/g, "User")
-  .replace(/<@&(\d+)>/g, "Role")
-  .replace(/<#(\d+)>/g, "Channel")
-  .replace(/@everyone/g, "everyone")
-  .replace(/@here/g, "here");
+  // 🔥 Ahora sí borrar el original
+  await message.delete().catch(() => {});
 
-// 🔥 Obtener TODOS los attachments del webhook
-// 🔥 Recolectar attachments reales
-// 🔥 Construir lista de URLs de imágenes
-// 🔥 Descargar y reenviar imágenes correctamente
-let filesToSend = [];
-
-// attachments normales
-for (const att of message.attachments.values()) {
-  try {
-    const res = await fetch(att.url);
-    const buffer = await res.buffer();
-
-    filesToSend.push({
-      attachment: buffer,
-      name: att.name || "image.png"
-    });
-
-  } catch (err) {
-    console.error("Error descargando attachment:", err);
-  }
+} catch (err) {
+  console.error("THREAD ERROR:", err);
 }
 
 // imágenes dentro de embeds
