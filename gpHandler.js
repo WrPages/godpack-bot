@@ -203,125 +203,121 @@ module.exports = async (client) => {
     updateStats(client).catch(() => {});
   }, 60 * 60 * 1000);
 
-  client.on("messageCreate", async (message) => {
-    if (message.channel.id !== ALLOWED_CHANNEL_ID) return;
-    if (!message.webhookId) return;
-    if (!message.content.includes("God Pack found")) return;
+client.on("messageCreate", async (message) => {
+  if (message.channel.id !== ALLOWED_CHANNEL_ID) return;
+  if (!message.webhookId) return;
+  if (!message.content.includes("God Pack found")) return;
 
+  try {
+    const attachment = message.attachments.first();
+    let imageFile = null;
+
+    if (attachment) {
+      imageFile = {
+        attachment: attachment.url,
+        name: attachment.name || "card.png"
+      };
+    }
+
+    const rarityMatch = message.content.match(/\[(\d)\/5\]/);
+    if (!rarityMatch) return;
+    const rarity = parseInt(rarityMatch[1]);
+
+    const packMatch = message.content.match(/\[(\d)P\]/i);
+    const packNumber = packMatch ? parseInt(packMatch[1]) : 1;
+
+    const lines = message.content.split("\n");
+    const usernameLine = lines.find(line => line.includes("(") && line.includes(")"));
+    let username = "Unknown";
+
+    if (usernameLine) {
+      const match = usernameLine.match(/^(.+?)\s*\(/);
+      if (match) username = match[1].trim();
+    }
+
+    let color = 0x999999;
+    if (rarity === 5) color = 0xFFD700;
+    if (rarity === 4) color = 0x00ffcc;
+    if (rarity === 3) color = 0x0099ff;
+
+    const embed = new EmbedBuilder()
+      .setColor(color)
+      .setDescription(`## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`);
+
+    if (imageFile) embed.setImage("attachment://card.png");
+
+    const buttons = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("gp_alive")
+        .setLabel("🟢 Alive (0)")
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId("gp_dead")
+        .setLabel("🔴 Dead (0)")
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    // ===== MENCIONES ONLINE =====
+    const onlineIDs = await getOnlineIDs();
+    const users = await getUsers();
+
+    let mentionList = [];
+
+    for (const discordId in users) {
+      const gameId = users[discordId].id;
+      if (onlineIDs.includes(gameId)) {
+        mentionList.push(`<@${discordId}>`);
+      }
+    }
+
+    const onlineMention = mentionList.join(" ");
+
+    if (onlineMention) {
+      await message.channel.send({
+        content: onlineMention,
+        allowedMentions: { parse: ["users"] }
+      });
+    }
+
+    // ===== ENVIAR PANEL =====
+    const sentMessage = await message.channel.send({
+      embeds: [embed],
+      components: [buttons],
+      files: imageFile ? [imageFile] : []
+    });
+
+    packVotes.set(sentMessage.id, {
+      alive: new Set(),
+      dead: new Set(),
+      confirmed: false
+    });
+
+    // ===== CREAR HILO =====
     try {
-      const attachment = message.attachments.first();
-      let imageFile = null;
-      if (attachment) {
-        imageFile = {
-          attachment: attachment.proxyURL || attachment.url,
-          name: "card.png"
-        };
-      }
+      const thread = await sentMessage.startThread({
+        name: `GP • ${rarity}/5`,
+        autoArchiveDuration: 1440,
+        type: ChannelType.PublicThread
+      });
 
-      const rarityMatch = message.content.match(/\[(\d)\/5\]/);
-      if (!rarityMatch) return;
-      const rarity = parseInt(rarityMatch[1]);
-      const packMatch = message.content.match(/\[(\d)P\]/i);
-      const packNumber = packMatch ? parseInt(packMatch[1]) : 1;
+      await thread.send("📂 Original webhook message:");
 
-      const lines = message.content.split("\n");
-      const usernameLine = lines.find(line => line.includes("(") && line.includes(")"));
-      let username = "Unknown";
-      if (usernameLine) {
-        const match = usernameLine.match(/^(.+?)\s*\(/);
-        if (match) username = match[1].trim();
-      }
+      await thread.send({
+        content: message.content,
+        files: message.attachments.map(att => att.url),
+        allowedMentions: { parse: [] }
+      });
 
-      let color = 0x999999;
-      if (rarity === 5) color = 0xFFD700;
-      if (rarity === 4) color = 0x00ffcc;
-      if (rarity === 3) color = 0x0099ff;
-
-      const embed = new EmbedBuilder()
-        .setColor(color)
-        .setDescription(`## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`);
-
-      if (imageFile) embed.setImage("attachment://card.png");
-
-      const buttons = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("gp_alive")
-          .setLabel("🟢 Alive (0)")
-          .setStyle(ButtonStyle.Success),
-        new ButtonBuilder()
-          .setCustomId("gp_dead")
-          .setLabel("🔴 Dead (0)")
-          .setStyle(ButtonStyle.Danger)
-      );
-
-     // ===== CONSTRUIR MENCIONES ONLINE =====
-const onlineIDs = await getOnlineIDs();
-const users = await getUsers();
-
-let mentionList = [];
-
-for (const discordId in users) {
-  const gameId = users[discordId].id;
-  if (onlineIDs.includes(gameId)) {
-mentionList.push(`<@${discordId}>`);
-  }
-}
-
-const onlineMention = mentionList.join(" ");
-
-// 🔔 1️⃣ Enviar SOLO la mención (sin hilo)
-if (onlineMention) {
-  await message.channel.send({
-    content: onlineMention,
-    allowedMentions: { parse: ["users"] }
-  });
-}
-
-//🧵 2️⃣ Enviar el panel SIN mención (aquí se creará el hilo)
-const sentMessage = await message.channel.send({
-  embeds: [embed],
-  components: [buttons],
-  files: imageFile ? [imageFile] : []
-});
-
-await cleanWebhookMessage(message.channel);
-
-packVotes.set(sentMessage.id, { alive: new Set(), dead: new Set(), confirmed: false });
-
-try {
-  const thread = await sentMessage.startThread({
-    name: `GP • ${rarity}/5`,
-    autoArchiveDuration: 1440,
-    type: ChannelType.PublicThread
-  });
-
-  await thread.send("📂 Original webhook message:");
-
-  // 🔥 Reenviar el mensaje original TAL CUAL
-  await thread.send({
-    content: message.content,
-    files: message.attachments.map(att => att.url),
-    allowedMentions: { parse: [] }
-  });
-
-  // 🔥 Ahora sí borrar el original
-  await message.delete().catch(() => {});
-
-} catch (err) {
-  console.error("THREAD ERROR:", err);
-}
-
-
-
-
-      } catch (err) {
-        console.error("THREAD ERROR:", err);
-      }
+      await message.delete().catch(() => {});
 
     } catch (err) {
-      console.error("GP Handler Error:", err);
+      console.error("THREAD ERROR:", err);
     }
-  });
+
+  } catch (err) {
+    console.error("GP Handler Error:", err);
+  }
+});
 
   client.on("interactionCreate", async (interaction) => {
     if (!interaction.isButton()) return;
