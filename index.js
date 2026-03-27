@@ -820,13 +820,21 @@ if (interaction.commandName === "online_list") {
 
 if (commandName === "editpanel") {
   try {
-    // Paso 1: Pedir ID del mensaje
+    // Verificar si el usuario tiene el rol Champion
+    const member = interaction.member; // miembro que ejecuta el comando
+    if (!member.roles.cache.some(role => role.name === "Champion")) {
+      return interaction.reply({
+        content: "❌ You need the **Champion** role to use this command.",
+        ephemeral: true
+      });
+    }
+
+    // ----- Resto del comando aquí -----
     await interaction.reply({
       content: "📝 Please send the **Message ID** of the panel you want to edit:",
       ephemeral: true
     });
 
-    // Espera respuesta del usuario
     const filter = m => m.author.id === interaction.user.id;
     const collectedId = await interaction.channel.awaitMessages({
       filter,
@@ -836,23 +844,15 @@ if (commandName === "editpanel") {
     });
     const messageId = collectedId.first().content.trim();
 
-    // Obtener el mensaje
     const message = await interaction.channel.messages.fetch(messageId).catch(() => null);
     if (!message) {
-      return interaction.followUp({
-        content: "❌ Message not found.",
-        ephemeral: true
-      });
+      return interaction.followUp({ content: "❌ Message not found.", ephemeral: true });
     }
 
     if (!message.embeds.length) {
-      return interaction.followUp({
-        content: "❌ That message has no embed.",
-        ephemeral: true
-      });
+      return interaction.followUp({ content: "❌ That message has no embed.", ephemeral: true });
     }
 
-    // Paso 2: Pedir nueva rareza
     await interaction.followUp({
       content: "🔢 Now, please send the new **Rarity (1-5)**:",
       ephemeral: true
@@ -875,13 +875,11 @@ if (commandName === "editpanel") {
 
     const oldEmbed = message.embeds[0];
 
-    // Determinar color según rareza
     let color = 0x999999;
     if (rarityInput === 5) color = 0xFFD700;
     if (rarityInput === 4) color = 0x00ffcc;
     if (rarityInput === 3) color = 0x0099ff;
 
-    // Extraer pack y username del embed existente
     const descMatch = oldEmbed.description?.match(/• (\d+)P\s+\|\s+\*\*(.+)\*\*/i);
     const pack = descMatch ? parseInt(descMatch[1]) : 1;
     const username = descMatch ? descMatch[2] : "Unknown";
