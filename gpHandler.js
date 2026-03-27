@@ -10,7 +10,7 @@ const fetch = require("node-fetch");
 
 // ===== SISTEMA DE MENCIONES ONLINE =====
 const USERS_GIST_ID = "bb18eda2ea748723d8fe0131dd740b70"; // tu gist users.json
-const IDS_GIST_RAW_URL = "d9db3a72fed74c496fd6cc830f9ca6e9";
+const IDS_GIST_RAW_URL = "https://gist.githubusercontent.com/WrPages/d9db3a72fed74c496fd6cc830f9ca6e9/raw/elite_ids.txt";
 
 async function getOnlineIDs() {
   try {
@@ -24,13 +24,20 @@ async function getOnlineIDs() {
 
 async function getUsers() {
   try {
-    const res = await fetch(`https://api.github.com/gists/${USERS_GIST_ID}?t=${Date.now()}`, {
-      headers: { Authorization: `token ${GITHUB_TOKEN}` }
-    });
+    const res = await fetch(
+      `https://api.github.com/gists/${USERS_GIST_ID}?t=${Date.now()}`,
+      {
+        headers: { Authorization: `token ${GITHUB_TOKEN}` }
+      }
+    );
+
     const data = await res.json();
-    if (!data.files || !data.files["users.json"]) return {};
-    return JSON.parse(data.files["users.json"].content || "{}");
-  } catch {
+
+    if (!data.files || !data.files["elite_users.json"]) return {};
+
+    return JSON.parse(data.files["elite_users.json"].content || "{}");
+  } catch (err) {
+    console.error("GET USERS ERROR:", err);
     return {};
   }
 }
@@ -258,26 +265,35 @@ client.on("messageCreate", async (message) => {
     );
 
     // ===== MENCIONES ONLINE =====
-    const onlineIDs = await getOnlineIDs();
-    const users = await getUsers();
+const onlineIDs = await getOnlineIDs();
+const users = await getUsers();
 
-    let mentionList = [];
+let mentionList = [];
 
-    for (const discordId in users) {
-      const gameId = users[discordId].id;
-      if (onlineIDs.includes(gameId)) {
-        mentionList.push(`<@${discordId}>`);
-      }
-    }
+for (const discordId in users) {
+  const userData = users[discordId];
 
-    const onlineMention = mentionList.join(" ");
+  const mainId = userData.main_id?.trim();
+  const secId = userData.sec_id?.trim();
 
-    if (onlineMention) {
-      await message.channel.send({
-        content: onlineMention,
-        allowedMentions: { parse: ["users"] }
-      });
-    }
+  const onlineClean = onlineIDs.map(id => id.trim());
+
+  if (
+    onlineClean.includes(mainId) ||
+    (secId && onlineClean.includes(secId))
+  ) {
+    mentionList.push(`<@${discordId}>`);
+  }
+}
+
+const onlineMention = mentionList.join(" ");
+
+if (onlineMention) {
+  await message.channel.send({
+    content: onlineMention,
+    allowedMentions: { parse: ["users"] }
+  });
+}
 
     // ===== ENVIAR PANEL =====
     const sentMessage = await message.channel.send({
