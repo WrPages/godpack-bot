@@ -276,7 +276,17 @@ client.once("ready", async () => {
         option.setName("id")
           .setDescription("16 digit VIP ID")
           .setRequired(true)
-      )
+      ),
+      new SlashCommandBuilder()
+  .setName("editpanel")
+  .setDescription("Edit a GP panel by message ID")
+  .addStringOption(option =>
+    option.setName("message_id")
+      .setDescription("The ID of the panel message")
+      .setRequired(true)
+  )
+      
+      
 
   ].map(cmd => cmd.toJSON());
 
@@ -805,6 +815,59 @@ if (interaction.commandName === "online_list") {
     return interaction.editReply("❌ Something went wrong while fetching online users");
   }
 }
+
+//edit gp message
+if (commandName === "editpanel") {
+
+  const messageId = interaction.options.getString("message_id");
+
+  try {
+    // Obtener el mensaje del canal actual
+    const message = await interaction.channel.messages.fetch(messageId);
+
+    // Verificar que sea un embed
+    if (!message.embeds.length) {
+      return interaction.reply({
+        content: "❌ That message has no embed to edit.",
+        ephemeral: true
+      });
+    }
+
+    const embed = message.embeds[0];
+
+    // Crear botones nuevos
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("gp_join")
+        .setLabel("Join")
+        .setStyle(ButtonStyle.Success),
+
+      new ButtonBuilder()
+        .setCustomId("gp_leave")
+        .setLabel("Leave")
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    // Editar el mensaje
+    await message.edit({
+      embeds: [embed],
+      components: [row]
+    });
+
+    await interaction.reply({
+      content: "✅ Panel updated successfully.",
+      ephemeral: true
+    });
+
+  } catch (error) {
+    console.error(error);
+    interaction.reply({
+      content: "❌ Could not find that message.",
+      ephemeral: true
+    });
+  }
+}
+
 
 // 🔹 FIN DE TODOS LOS COMANDOS DEL INTERACTIONCREATE
 }); // 🔹 CIERRE CORRECTO DE client.on("interactionCreate")
