@@ -819,14 +819,19 @@ if (interaction.commandName === "online_list") {
 }
 
 if (commandName === "editpanel") {
-
   try {
-
+    // Obtener opciones del comando
     const messageId = interaction.options.getString("message_id");
+    const rarity = interaction.options.getInteger("rarity"); // 1 a 5
 
-    const message = await interaction.channel.messages.fetch(messageId)
-      .catch(() => null);
+    if (isNaN(rarity) || rarity < 1 || rarity > 5) {
+      return interaction.reply({
+        content: "❌ Rarity must be between 1 and 5.",
+        ephemeral: true
+      });
+    }
 
+    const message = await interaction.channel.messages.fetch(messageId).catch(() => null);
     if (!message) {
       return interaction.reply({
         content: "❌ Message not found.",
@@ -841,39 +846,35 @@ if (commandName === "editpanel") {
       });
     }
 
-    const modal = new ModalBuilder()
-      .setCustomId(`editPanelModal_${messageId}`)
-      .setTitle("Edit GP Panel");
+    const oldEmbed = message.embeds[0];
 
-    const rarityInput = new TextInputBuilder()
-      .setCustomId("rarity")
-      .setLabel("Rarity (1-5)")
-      .setStyle(TextInputStyle.Short)
-      .setRequired(true);
+    // Determinar color según rarity
+    let color = 0x999999;
+    if (rarity === 5) color = 0xFFD700;
+    if (rarity === 4) color = 0x00ffcc;
+    if (rarity === 3) color = 0x0099ff;
 
-    const packInput = new TextInputBuilder()
-      .setCustomId("pack")
-      .setLabel("Pack Points")
-      .setStyle(TextInputStyle.Short)
-      .setRequired(true);
+    // Extraer pack y username del embed existente
+    const descMatch = oldEmbed.description?.match(/• (\d+)P\s+\|\s+\*\*(.+)\*\*/i);
+    const pack = descMatch ? parseInt(descMatch[1]) : 1;
+    const username = descMatch ? descMatch[2] : "Unknown";
 
-    const userInput = new TextInputBuilder()
-      .setCustomId("username")
-      .setLabel("Username")
-      .setStyle(TextInputStyle.Short)
-      .setRequired(true);
+    // Crear nuevo embed con solo rarity actualizado
+    const newEmbed = new EmbedBuilder()
+      .setColor(color)
+      .setDescription(`## ✨ ${rarity}/5 • ${pack}P  |  **${username}**`);
 
-    modal.addComponents(
-      new ActionRowBuilder().addComponents(rarityInput),
-      new ActionRowBuilder().addComponents(packInput),
-      new ActionRowBuilder().addComponents(userInput)
-    );
+    if (oldEmbed.image?.url) newEmbed.setImage(oldEmbed.image.url);
 
-    await interaction.showModal(modal);
+    await message.edit({ embeds: [newEmbed] });
+
+    await interaction.reply({
+      content: "✅ Panel updated successfully.",
+      ephemeral: true
+    });
 
   } catch (err) {
     console.error("EDIT PANEL ERROR:", err);
-
     if (!interaction.replied) {
       await interaction.reply({
         content: "❌ Something went wrong.",
