@@ -820,56 +820,82 @@ if (interaction.commandName === "online_list") {
 
 if (commandName === "editpanel") {
   try {
-    // Obtener opciones del comando
-    const messageId = interaction.options.getString("message_id");
-    const rarity = interaction.options.getInteger("rarity"); // 1 a 5
+    // Paso 1: Pedir ID del mensaje
+    await interaction.reply({
+      content: "📝 Please send the **Message ID** of the panel you want to edit:",
+      ephemeral: true
+    });
 
-    if (isNaN(rarity) || rarity < 1 || rarity > 5) {
-      return interaction.reply({
-        content: "❌ Rarity must be between 1 and 5.",
-        ephemeral: true
-      });
-    }
+    // Espera respuesta del usuario
+    const filter = m => m.author.id === interaction.user.id;
+    const collectedId = await interaction.channel.awaitMessages({
+      filter,
+      max: 1,
+      time: 60000,
+      errors: ["time"]
+    });
+    const messageId = collectedId.first().content.trim();
 
+    // Obtener el mensaje
     const message = await interaction.channel.messages.fetch(messageId).catch(() => null);
     if (!message) {
-      return interaction.reply({
+      return interaction.followUp({
         content: "❌ Message not found.",
         ephemeral: true
       });
     }
 
     if (!message.embeds.length) {
-      return interaction.reply({
+      return interaction.followUp({
         content: "❌ That message has no embed.",
+        ephemeral: true
+      });
+    }
+
+    // Paso 2: Pedir nueva rareza
+    await interaction.followUp({
+      content: "🔢 Now, please send the new **Rarity (1-5)**:",
+      ephemeral: true
+    });
+
+    const collectedRarity = await interaction.channel.awaitMessages({
+      filter,
+      max: 1,
+      time: 60000,
+      errors: ["time"]
+    });
+
+    const rarityInput = parseInt(collectedRarity.first().content.trim());
+    if (isNaN(rarityInput) || rarityInput < 1 || rarityInput > 5) {
+      return interaction.followUp({
+        content: "❌ Invalid rarity. Must be a number between 1 and 5.",
         ephemeral: true
       });
     }
 
     const oldEmbed = message.embeds[0];
 
-    // Determinar color según rarity
+    // Determinar color según rareza
     let color = 0x999999;
-    if (rarity === 5) color = 0xFFD700;
-    if (rarity === 4) color = 0x00ffcc;
-    if (rarity === 3) color = 0x0099ff;
+    if (rarityInput === 5) color = 0xFFD700;
+    if (rarityInput === 4) color = 0x00ffcc;
+    if (rarityInput === 3) color = 0x0099ff;
 
     // Extraer pack y username del embed existente
     const descMatch = oldEmbed.description?.match(/• (\d+)P\s+\|\s+\*\*(.+)\*\*/i);
     const pack = descMatch ? parseInt(descMatch[1]) : 1;
     const username = descMatch ? descMatch[2] : "Unknown";
 
-    // Crear nuevo embed con solo rarity actualizado
     const newEmbed = new EmbedBuilder()
       .setColor(color)
-      .setDescription(`## ✨ ${rarity}/5 • ${pack}P  |  **${username}**`);
+      .setDescription(`## ✨ ${rarityInput}/5 • ${pack}P  |  **${username}**`);
 
     if (oldEmbed.image?.url) newEmbed.setImage(oldEmbed.image.url);
 
     await message.edit({ embeds: [newEmbed] });
 
-    await interaction.reply({
-      content: "✅ Panel updated successfully.",
+    await interaction.followUp({
+      content: `✅ Panel updated successfully to **${rarityInput}/5**!`,
       ephemeral: true
     });
 
