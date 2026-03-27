@@ -311,29 +311,6 @@ try {
   console.error("THREAD ERROR:", err);
 }
 
-// imágenes dentro de embeds
-for (const emb of message.embeds) {
-  if (emb.image?.url) {
-    try {
-      const res = await fetch(emb.image.url);
-      const buffer = await res.buffer();
-
-      filesToSend.push({
-        attachment: buffer,
-        name: "embed-image.png"
-      });
-
-    } catch (err) {
-      console.error("Error descargando embed image:", err);
-    }
-  }
-}
-
-await thread.send({
-  content: cleanContent,
-  files: filesToSend,
-  allowedMentions: { parse: [] }
-});
 
 
 
