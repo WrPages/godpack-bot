@@ -886,13 +886,62 @@ if (commandName === "editpanel") {
         content: "❌ Something went wrong.",
         ephemeral: true
       });
+    
+      // ===== MODAL SUBMIT =====
+  if (interaction.isModalSubmit()) {
+
+    if (interaction.customId.startsWith("editPanelModal_")) {
+
+      const messageId = interaction.customId.split("_")[1];
+
+      const rarity = parseInt(interaction.fields.getTextInputValue("rarity"));
+      const pack = parseInt(interaction.fields.getTextInputValue("pack"));
+      const username = interaction.fields.getTextInputValue("username");
+
+      if (isNaN(rarity) || rarity < 1 || rarity > 5) {
+        return interaction.reply({
+          content: "❌ Rarity must be between 1 and 5.",
+          ephemeral: true
+        });
+      }
+
+      let color = 0x999999;
+      if (rarity === 5) color = 0xFFD700;
+      if (rarity === 4) color = 0x00ffcc;
+      if (rarity === 3) color = 0x0099ff;
+
+      try {
+
+        const message = await interaction.channel.messages.fetch(messageId);
+
+        const oldEmbed = message.embeds[0];
+
+        const newEmbed = new EmbedBuilder()
+          .setColor(color)
+          .setDescription(`## ✨ ${rarity}/5 • ${pack}P  |  **${username}**`)
+          .setImage(oldEmbed.image?.url || null);
+
+        await message.edit({ embeds: [newEmbed] });
+
+        await interaction.reply({
+          content: "✅ Panel updated successfully.",
+          ephemeral: true
+        });
+
+      } catch (err) {
+        console.error("MODAL ERROR:", err);
+
+        await interaction.reply({
+          content: "❌ Failed to update panel.",
+          ephemeral: true
+        });
+      }
     }
   }
-}
 
-
-// 🔹 FIN DE TODOS LOS COMANDOS DEL INTERACTIONCREATE
-}); // 🔹 CIERRE CORRECTO DE client.on("interactionCreate")
+});
+    
+  // 🔹 CIERRE CORRECTO DE client.on("interactionCreate")
 
     
 
