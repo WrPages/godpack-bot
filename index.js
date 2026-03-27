@@ -451,7 +451,7 @@ updateTotalPPM();
 
 
 client.on("interactionCreate", async (interaction) => {
-  if (!interaction.isChatInputCommand()) return
+ // if (!interaction.isChatInputCommand()) return
   const { commandName } = interaction;
 
   const userId = interaction.user.id
