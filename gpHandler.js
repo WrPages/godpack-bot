@@ -325,7 +325,6 @@ client.once("ready", async () => {
 
 
 client.on("interactionCreate", async (interaction) => {
-
   // ===== BOTONES =====
   if (interaction.isButton()) {
     const data = packVotes.get(interaction.message.id);
@@ -339,12 +338,12 @@ client.on("interactionCreate", async (interaction) => {
       data.alive.add(userId);
       data.dead.delete(userId);
 
-      // Si alcanza 2 votos Alive y no se ha confirmado
+      // Confirmar GP si 2 o más Alive
       if (data.alive.size >= 2 && !data.confirmed) {
         data.confirmed = true;
         statsData.todayCount++;
-        await saveData(); // guarda en Gist
-        await updateStats(client);
+        await saveData();
+        await updateStats(interaction.client);
       }
     }
 
@@ -355,8 +354,8 @@ client.on("interactionCreate", async (interaction) => {
       data.alive.delete(userId);
     }
 
-    // Actualizar labels
-    const newComponents = interaction.message.components.map(row => {
+    // Actualizar etiquetas de botones
+    const updatedComponents = interaction.message.components.map(row => {
       const newRow = ActionRowBuilder.from(row);
       newRow.components.forEach(btn => {
         if (btn.customId === "gp_alive") btn.setLabel(`🟢 Alive (${data.alive.size})`);
@@ -365,13 +364,12 @@ client.on("interactionCreate", async (interaction) => {
       return newRow;
     });
 
-    await interaction.update({ components: newComponents });
-    return;
+    return interaction.update({ components: updatedComponents });
   }
 
   // ===== BOTÓN EDIT PANEL =====
   if (interaction.isButton() && interaction.customId.startsWith("edit_panel_")) {
-    // Solo rol Champion puede usar
+    // Solo rol Champion
     if (!interaction.member.roles.cache.some(r => r.name === "Champion")) {
       return interaction.reply({ content: "❌ Only Champion can edit this panel.", ephemeral: true });
     }
@@ -435,11 +433,8 @@ client.on("interactionCreate", async (interaction) => {
     data.packNumber = packNumber;
     data.username = username;
 
-    let color = 0x808080;
-    if (rarity === 3) color = 0x3498db;
-    if (rarity === 4) color = 0x9b59b6;
-    if (rarity === 5) color = 0xFFD700;
-
+    // Actualizar embed
+    const color = [0x808080, 0x3498db, 0x9b59b6, 0xFFD700][rarity - 1] || 0x808080;
     const embed = EmbedBuilder.from(message.embeds[0])
       .setColor(color)
       .setDescription(`## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`);
@@ -449,21 +444,9 @@ client.on("interactionCreate", async (interaction) => {
 
     return interaction.reply({ content: "✅ Panel actualizado.", ephemeral: true });
   }
-
 });
-  
 
 
-  // Crear/actualizar panel de estadísticas y mensaje de prueba
-  (async () => {
-    try {
-      console.log("Enviando/actualizando panel de estadísticas...");
-      await updateStats(client);
-      console.log("Panel de estadísticas OK");
-    } catch (err) {
-      console.error("Error inicializando bot:", err);
-    }
-  })();
 
   setInterval(() => {
     updateStats(client).catch(() => {});
