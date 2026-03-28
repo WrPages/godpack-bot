@@ -1,4 +1,4 @@
-const {
+ const {
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
@@ -372,7 +372,7 @@ const newButtons = ActionRowBuilder.from(buttons).addComponents(editButton);
 await sentMessage.edit({
   components: [newButtons]
 });
-    }
+    
 
     // ===== CREAR HILO =====
     try {
