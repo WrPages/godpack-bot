@@ -218,11 +218,14 @@ client.on("messageCreate", async (message) => {
   try {
     // ===== IMAGEN =====
     const attachment = message.attachments.first();
-    let imageUrl = null;
+   let imageFile = null;
 
-    if (attachment) {
-      imageUrl = attachment.url;
-    }
+if (attachment) {
+  imageFile = {
+    attachment: attachment.url,
+    name: "card.png"
+  };
+}
 
     // ===== DATOS =====
     const rarityMatch = message.content.match(/\[(\d)\/5\]/);
