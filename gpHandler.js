@@ -423,42 +423,6 @@ client.on("interactionCreate", async (interaction) => {
     return interaction.reply({ content: "✅ Panel actualizado.", ephemeral: true });
   }
 });
-
-
-
-
-  // ===== CREAR/ACTUALIZAR PANEL DE ESTADÍSTICAS =====
-  (async () => {
-    try {
-      console.log("Enviando/actualizando panel de estadísticas...");
-      await updateStats(client);
-      console.log("Panel de estadísticas OK");
-    } catch (err) {
-      console.error("Error inicializando bot:", err);
-    }
-  })();
-});
-
-
-
-
-  // ===== CREAR/ACTUALIZAR PANEL DE ESTADÍSTICAS =====
-  (async () => {
-    try {
-      console.log("Enviando/actualizando panel de estadísticas...");
-      await updateStats(client);
-      console.log("Panel de estadísticas OK");
-    } catch (err) {
-      console.error("Error inicializando bot:", err);
-    }
-  })();
-
-
-
-
-  
-  
-  
   
 
 
