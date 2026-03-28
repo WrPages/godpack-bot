@@ -339,18 +339,12 @@ const buttons = new ActionRowBuilder().addComponents(
   new ButtonBuilder()
     .setCustomId("gp_dead")
     .setLabel("🔴 Dead (0)")
-    .setStyle(ButtonStyle.Danger)
-);
-
-// ===== AGREGAR BOTÓN EDIT SOLO SI EL USUARIO ES CHAMPION =====
-if (message.member?.roles.cache.some(r => r.name === "Champion")) {
-  const editButton = new ButtonBuilder()
+    .setStyle(ButtonStyle.Danger),
+  new ButtonBuilder()
     .setCustomId(`edit_panel_${sentMessage?.id || "temp"}`)
     .setStyle(ButtonStyle.Secondary)
-    .setEmoji("✏️"); // solo icono
-
-  buttons.addComponents(editButton); // Se pone al lado de Dead
-}
+    .setEmoji("✏️") // solo icono, cuadro pequeño
+);
 
 // ===== ENVIAR =====
 const sentMessage = await message.channel.send({
@@ -360,15 +354,15 @@ const sentMessage = await message.channel.send({
   allowedMentions: { parse: ["users"] }
 });
 
-    // ===== GUARDAR DATOS =====
-    packVotes.set(sentMessage.id, {
-      alive: new Set(),
-      dead: new Set(),
-      confirmed: false,
-      rarity,
-      packNumber,
-      username
-    });
+// Guardar data del pack
+packVotes.set(sentMessage.id, {
+  alive: new Set(),
+  dead: new Set(),
+  confirmed: false,
+  rarity,
+  packNumber,
+  username
+});
 
     // ===== AGREGAR BOTÓN EDITAR SOLO CHAMPION =====
     if (message.member?.roles.cache.some(r => r.name === "Champion")) {
