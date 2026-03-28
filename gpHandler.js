@@ -331,6 +331,7 @@ client.on("messageCreate", async (message) => {
     if (imageFile) embed.setImage("attachment://card.png");
 
 // ===== BOTONES =====
+// ===== ENVIAR MENSAJE SIN BOTÓN EDIT PRIMERO =====
 const buttons = new ActionRowBuilder().addComponents(
   new ButtonBuilder()
     .setCustomId("gp_alive")
@@ -339,14 +340,9 @@ const buttons = new ActionRowBuilder().addComponents(
   new ButtonBuilder()
     .setCustomId("gp_dead")
     .setLabel("🔴 Dead (0)")
-    .setStyle(ButtonStyle.Danger),
-  new ButtonBuilder()
-    .setCustomId(`edit_panel_${sentMessage?.id || "temp"}`)
-    .setStyle(ButtonStyle.Secondary)
-    .setEmoji("✏️") // solo icono, cuadro pequeño
+    .setStyle(ButtonStyle.Danger)
 );
 
-// ===== ENVIAR =====
 const sentMessage = await message.channel.send({
   embeds: [embed],
   components: [buttons],
@@ -364,18 +360,18 @@ packVotes.set(sentMessage.id, {
   username
 });
 
-    // ===== AGREGAR BOTÓN EDITAR SOLO CHAMPION =====
-    if (message.member?.roles.cache.some(r => r.name === "Champion")) {
-      const editButtonRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId(`edit_panel_${sentMessage.id}`)
-          .setLabel("✏️ Editar")
-          .setStyle(ButtonStyle.Primary)
-      );
+// ===== AHORA AGREGAR BOTÓN EDIT CON EL ID REAL =====
+const editButton = new ButtonBuilder()
+  .setCustomId(`edit_panel_${sentMessage.id}`)
+  .setStyle(ButtonStyle.Secondary)
+  .setEmoji("✏️"); // solo icono, cuadro pequeño
 
-      await sentMessage.edit({
-        components: [...sentMessage.components, editButtonRow]
-      });
+// Tomamos la fila de botones existente y agregamos Edit
+const newButtons = ActionRowBuilder.from(buttons).addComponents(editButton);
+
+await sentMessage.edit({
+  components: [newButtons]
+});
     }
 
     // ===== CREAR HILO =====
