@@ -217,34 +217,46 @@ async function createTestMessage(client) {
 module.exports = async (client) => {
     await loadData();
   
-    // ===== REGISTRAR /editpanel =====
-  const commands = [
-    new SlashCommandBuilder()
-      .setName("editpanel")
-      .setDescription("Editar un panel de GP")
-      .addMessageOption(option =>
-        option
-          .setName("mensaje")
-          .setDescription("Selecciona el mensaje del panel")
-          .setRequired(true)
-      )
-      .toJSON()
-  ];
 
-  const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
+  // ✅ REGISTRAR COMANDO AQUÍ
+  client.once("ready", async () => {
 
-  try {
-    console.log("Registrando comando /editpanel...");
+    const { REST, Routes, SlashCommandBuilder } = require("discord.js");
 
-    await rest.put(
-Routes.applicationGuildCommands(client.user.id, "1483615153743462571")
-      { body: commands }
-    );
+    const commands = [
+      new SlashCommandBuilder()
+        .setName("editpanel")
+        .setDescription("Editar un panel de GP")
+        .addMessageOption(option =>
+          option
+            .setName("mensaje")
+            .setDescription("Selecciona el mensaje del panel")
+            .setRequired(true)
+        )
+        .toJSON()
+    ];
 
-    console.log("Comando /editpanel registrado correctamente");
-  } catch (error) {
-    console.error("Error registrando comando:", error);
-  }
+    const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
+
+    try {
+      console.log("Registrando /editpanel...");
+
+      await rest.put(
+        Routes.applicationGuildCommands(
+          client.user.id,
+          "1483615153743462571" // TU SERVER ID
+        ),
+        { body: commands }
+      );
+
+      console.log("✅ /editpanel registrado");
+    } catch (error) {
+      console.error("❌ Error registrando comando:", error);
+    }
+  });
+
+
+
   
   
   
