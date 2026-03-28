@@ -262,6 +262,67 @@ client.once("clientReady", async () => {
   } catch (error) {
     console.error("❌ Error registrando comando:", error);
   }
+  
+// --- INICIALIZACIÓN DE MENSAJES ANTIGUOS PARA REACTIVAR BOTONES ---
+(async () => {
+  console.log("Inicializando paneles antiguos...");
+
+  for (const channelId of ALLOWED_CHANNELS) {
+    const channel = await client.channels.fetch(channelId).catch(() => null);
+    if (!channel) continue;
+
+    // Buscar últimos 50 mensajes (ajusta el limit si quieres)
+    const messages = await channel.messages.fetch({ limit: 50 });
+
+    for (const msg of messages.values()) {
+      if (!msg.webhookId) continue;
+      if (!msg.embeds?.length) continue;
+
+      const embed = msg.embeds[0];
+      if (!embed.description?.startsWith("## ✨")) continue;
+
+      // Extraer datos del embed
+      const match = embed.description.match(/✨ (\d)\/5 • (\d+)P  \|  \*\*(.+?)\*\*/);
+      if (!match) continue;
+
+      const rarity = parseInt(match[1]);
+      const packNumber = parseInt(match[2]);
+      const username = match[3];
+
+      // Inicializar packVotes
+      packVotes.set(msg.id, {
+        alive: new Set(),
+        dead: new Set(),
+        confirmed: false,
+        rarity,
+        packNumber,
+        username
+      });
+
+      // Revisar si ya tiene botón Edit
+      const hasEditButton = msg.components.some(row =>
+        row.components.some(b => b.customId?.startsWith("edit_panel_"))
+      );
+      if (!hasEditButton) {
+        const editButton = new ButtonBuilder()
+          .setCustomId(`edit_panel_${msg.id}`)
+          .setStyle(ButtonStyle.Secondary)
+          .setEmoji("✏️");
+
+        const newComponents = msg.components.length
+          ? msg.components.map(row => ActionRowBuilder.from(row))
+          : [new ActionRowBuilder()];
+
+        // Agregar Edit al final de la última fila
+        newComponents[newComponents.length - 1].addComponents(editButton);
+
+        await msg.edit({ components: newComponents }).catch(() => {});
+      }
+    }
+  }
+
+  console.log("✅ Paneles antiguos inicializados.");
+})();
 });
 
 
