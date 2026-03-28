@@ -229,7 +229,6 @@ async function createTestMessage(client) {
 module.exports = async (client) => {
     await loadData();
   
-
 client.once("clientReady", async () => {
   // ===== REGISTRAR COMANDOS =====
   const commands = [
@@ -249,15 +248,10 @@ client.once("clientReady", async () => {
 
   try {
     console.log("Registrando /editpanel...");
-
     await rest.put(
-      Routes.applicationGuildCommands(
-        client.user.id,
-        "1483615153743462571" // TU SERVER ID
-      ),
+      Routes.applicationGuildCommands(client.user.id, "1483615153743462571"), // TU SERVER ID
       { body: commands }
     );
-
     console.log("✅ /editpanel registrado");
   } catch (error) {
     console.error("❌ Error registrando comando:", error);
@@ -274,46 +268,48 @@ client.once("clientReady", async () => {
         for (const [, message] of messages) {
           if (!message.webhookId) continue;
           if (!message.content.includes("God Pack found")) continue;
-
-          // Evitar duplicados
           if (packVotes.has(message.id)) continue;
 
-          // Reconstruir packVotes
+          // Intentar extraer datos esenciales del mensaje
+          const rarityMatch = message.content.match(/\[(\d)\/5\]/);
+          const packMatch = message.content.match(/\[(\d)P\]/i);
+          const usernameLine = message.content.split("\n").find(line => line.includes("(") && line.includes(")"));
+
+          const rarity = rarityMatch ? parseInt(rarityMatch[1]) : 1;
+          const packNumber = packMatch ? parseInt(packMatch[1]) : 1;
+          let username = "Unknown";
+          if (usernameLine) {
+            const match = usernameLine.match(/^(.+?)\s*\(/);
+            if (match) username = match[1].trim();
+          }
+
+          // Reconstruir packVotes completo
           packVotes.set(message.id, {
             alive: new Set(),
             dead: new Set(),
             confirmed: false,
-            rarity: null,
-            packNumber: null,
-            username: null
+            rarity,
+            packNumber,
+            username
           });
 
-          // Revisar si falta el botón Edit y agregarlo
-          let hasEditButton = false;
-          const newComponents = message.components.map(row => {
-            const newRow = ActionRowBuilder.from(row);
-            for (const btn of newRow.components) {
-              if (btn.customId && btn.customId.startsWith("edit_panel_")) {
-                hasEditButton = true;
-              }
-            }
-            return newRow;
-          });
-
-          if (!hasEditButton) {
-            const editButton = new ButtonBuilder()
-              .setCustomId(`edit_panel_${message.id}`)
-              .setStyle(ButtonStyle.Secondary)
-              .setEmoji("✏️");
-
-            // Agregar a la primera fila o crear nueva fila
-            if (newComponents.length > 0) {
-              newComponents[0].addComponents(editButton);
-            } else {
-              newComponents.push(new ActionRowBuilder().addComponents(editButton));
-            }
-
-            await message.edit({ components: newComponents }).catch(() => {});
+          // Asegurarse de que los botones se mantengan en el mensaje
+          if (message.components.length === 0) {
+            const buttons = new ActionRowBuilder().addComponents(
+              new ButtonBuilder()
+                .setCustomId("gp_alive")
+                .setLabel(`🟢 Alive (0)`)
+                .setStyle(ButtonStyle.Success),
+              new ButtonBuilder()
+                .setCustomId("gp_dead")
+                .setLabel(`🔴 Dead (0)`)
+                .setStyle(ButtonStyle.Danger),
+              new ButtonBuilder()
+                .setCustomId(`edit_panel_${message.id}`)
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji("✏️")
+            );
+            await message.edit({ components: [buttons] }).catch(() => {});
           }
         }
       }
