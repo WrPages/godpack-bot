@@ -316,7 +316,7 @@ const sentMessage = await message.channel.send({
     // ===== HILO =====
     try {
       const thread = await sentMessage.startThread({
-        name: `GP • ${rarity}/5`,
+name: `[${rarity}/5][${packNumber}P] ${username}`,
         autoArchiveDuration: 1440,
         type: ChannelType.PublicThread
       });
