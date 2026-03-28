@@ -264,10 +264,11 @@ if (attachment) {
     }
 
     // ===== COLOR =====
-    let color = 0x999999;
-    if (rarity === 5) color = 0xFFD700;
-    if (rarity === 4) color = 0x00ffcc;
-    if (rarity === 3) color = 0x0099ff;
+ let color = 0x808080; // gris por defecto (<3)
+
+if (rarity === 3) color = 0x3498db; // azul
+if (rarity === 4) color = 0x9b59b6; // morado
+if (rarity === 5) color = 0xFFD700; // dorado
 
     // ===== MENCIONES =====
     const onlineIDs = await getOnlineIDs();
