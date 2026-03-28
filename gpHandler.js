@@ -3,7 +3,13 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ChannelType,REST, Routes, SlashCommandBuilder
+  ChannelType,
+  REST,
+  Routes,
+  SlashCommandBuilder,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle
 } = require("discord.js");
 
 const fetch = require("node-fetch");
@@ -219,41 +225,38 @@ module.exports = async (client) => {
   
 
   // ✅ REGISTRAR COMANDO AQUÍ
-  client.once("ready", async () => {
+ client.once("ready", async () => {
+  const commands = [
+    new SlashCommandBuilder()
+      .setName("editpanel")
+      .setDescription("Editar un panel de GP")
+      .addMessageOption(option =>
+        option
+          .setName("mensaje")
+          .setDescription("Selecciona el mensaje del panel")
+          .setRequired(true)
+      )
+      .toJSON()
+  ];
 
-    const { REST, Routes, SlashCommandBuilder } = require("discord.js");
+  const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
 
-    const commands = [
-      new SlashCommandBuilder()
-        .setName("editpanel")
-        .setDescription("Editar un panel de GP")
-        .addMessageOption(option =>
-          option
-            .setName("mensaje")
-            .setDescription("Selecciona el mensaje del panel")
-            .setRequired(true)
-        )
-        .toJSON()
-    ];
+  try {
+    console.log("Registrando /editpanel...");
 
-    const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
+    await rest.put(
+      Routes.applicationGuildCommands(
+        client.application.id, // 🔥 FIX AQUÍ
+        "1483615153743462571"
+      ),
+      { body: commands }
+    );
 
-    try {
-      console.log("Registrando /editpanel...");
-
-      await rest.put(
-        Routes.applicationGuildCommands(
-          client.user.id,
-          "1483615153743462571" // TU SERVER ID
-        ),
-        { body: commands }
-      );
-
-      console.log("✅ /editpanel registrado");
-    } catch (error) {
-      console.error("❌ Error registrando comando:", error);
-    }
-  });
+    console.log("✅ /editpanel registrado");
+  } catch (error) {
+    console.error("❌ Error registrando comando:", error);
+  }
+});
 
 
 
