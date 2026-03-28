@@ -231,8 +231,9 @@ module.exports = async (client) => {
   
 
 
+client.once("ready", async () => {
+  console.log(`Bot listo como ${client.user.tag}`);
 
-client.once("clientReady", async () => {
   // ===== REGISTRAR COMANDOS =====
   const commands = [
     new SlashCommandBuilder()
@@ -248,84 +249,183 @@ client.once("clientReady", async () => {
   ];
 
   const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
-
   try {
     console.log("Registrando /editpanel...");
     await rest.put(
-      Routes.applicationGuildCommands(
-        client.user.id,
-        "1483615153743462571" // TU SERVER ID
-      ),
+      Routes.applicationGuildCommands(client.user.id, "1483615153743462571"),
       { body: commands }
     );
     console.log("✅ /editpanel registrado");
-  } catch (error) {
-    console.error("❌ Error registrando comando:", error);
+  } catch (err) {
+    console.error("❌ Error registrando comando:", err);
   }
 
   // ===== INICIALIZAR PANEL DE MENSAJES ANTIGUOS =====
-  (async () => {
-    try {
-      for (const channelId of ALLOWED_CHANNELS) {
-        const channel = await client.channels.fetch(channelId).catch(() => null);
-        if (!channel) continue;
+  for (const channelId of ALLOWED_CHANNELS) {
+    const channel = await client.channels.fetch(channelId).catch(() => null);
+    if (!channel) continue;
 
-        const messages = await channel.messages.fetch({ limit: 50 }).catch(() => new Map());
-        for (const [, message] of messages) {
-          if (!message.webhookId) continue;
-          if (!message.content.includes("God Pack found")) continue;
+    const messages = await channel.messages.fetch({ limit: 50 }).catch(() => new Map());
+    for (const [, message] of messages) {
+      if (!message.webhookId) continue;
+      if (!message.content.includes("God Pack found")) continue;
 
-          // Evitar duplicados
-          if (packVotes.has(message.id)) continue;
+      if (!packVotes.has(message.id)) {
+        const rarityMatch = message.content.match(/\[(\d)\/5\]/);
+        const packMatch = message.content.match(/\[(\d)P\]/i);
+        const usernameLine = message.content.split("\n").find(l => l.includes("(") && l.includes(")"));
 
-          // ===== EXTRAER DATOS =====
-          const rarityMatch = message.content.match(/\[(\d)\/5\]/);
-          const packMatch = message.content.match(/\[(\d)P\]/i);
-          const usernameLine = message.content.split("\n").find(line => line.includes("(") && line.includes(")"));
+        const rarity = rarityMatch ? parseInt(rarityMatch[1]) : 1;
+        const packNumber = packMatch ? parseInt(packMatch[1]) : 1;
+        let username = "Unknown";
+        if (usernameLine) {
+          const match = usernameLine.match(/^(.+?)\s*\(/);
+          if (match) username = match[1].trim();
+        }
 
-          const rarity = rarityMatch ? parseInt(rarityMatch[1]) : 1;
-          const packNumber = packMatch ? parseInt(packMatch[1]) : 1;
-          let username = "Unknown";
-          if (usernameLine) {
-            const match = usernameLine.match(/^(.+?)\s*\(/);
-            if (match) username = match[1].trim();
-          }
+        packVotes.set(message.id, {
+          alive: new Set(),
+          dead: new Set(),
+          confirmed: false,
+          rarity,
+          packNumber,
+          username
+        });
 
-          // Reconstruir packVotes
-          packVotes.set(message.id, {
-            alive: new Set(),
-            dead: new Set(),
-            confirmed: false,
-            rarity,
-            packNumber,
-            username
-          });
-
-          // ===== RECONSTRUIR BOTONES SI FALTAN =====
-          if (message.components.length === 0) {
-            const buttons = new ActionRowBuilder().addComponents(
-              new ButtonBuilder()
-                .setCustomId("gp_alive")
-                .setLabel(`🟢 Alive (0)`)
-                .setStyle(ButtonStyle.Success),
-              new ButtonBuilder()
-                .setCustomId("gp_dead")
-                .setLabel(`🔴 Dead (0)`)
-                .setStyle(ButtonStyle.Danger),
-              new ButtonBuilder()
-                .setCustomId(`edit_panel_${message.id}`)
-                .setStyle(ButtonStyle.Secondary)
-                .setEmoji("✏️")
-            );
-            await message.edit({ components: [buttons] }).catch(() => {});
-          }
+        // Reconstruir botones si faltan
+        if (!message.components || message.components.length === 0) {
+          const buttons = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId("gp_alive")
+              .setLabel(`🟢 Alive (0)`)
+              .setStyle(ButtonStyle.Success),
+            new ButtonBuilder()
+              .setCustomId("gp_dead")
+              .setLabel(`🔴 Dead (0)`)
+              .setStyle(ButtonStyle.Danger),
+            new ButtonBuilder()
+              .setCustomId(`edit_panel_${message.id}`)
+              .setStyle(ButtonStyle.Secondary)
+              .setEmoji("✏️")
+          );
+          await message.edit({ components: [buttons] }).catch(() => {});
         }
       }
-      console.log("✅ Paneles antiguos inicializados.");
-    } catch (err) {
-      console.error("Error inicializando paneles antiguos:", err);
     }
-  })();
+  }
+  console.log("✅ Paneles antiguos inicializados.");
+
+  // ===== PANEL DE ESTADÍSTICAS =====
+  await updateStats(client).catch(console.error);
+
+  // Actualizar stats cada hora
+  setInterval(() => updateStats(client).catch(console.error), 60 * 60 * 1000);
+});
+
+client.on("interactionCreate", async (interaction) => {
+  // ===== BOTONES =====
+  if (interaction.isButton()) {
+    const data = packVotes.get(interaction.message.id);
+    if (!data) return interaction.reply({ content: "❌ Datos no encontrados.", ephemeral: true });
+
+    const userId = interaction.user.id;
+
+    if (interaction.customId === "gp_alive") {
+      if (data.alive.has(userId)) return interaction.reply({ content: "Ya votaste Alive.", ephemeral: true });
+      data.alive.add(userId);
+      data.dead.delete(userId);
+    } else if (interaction.customId === "gp_dead") {
+      if (data.dead.has(userId)) return interaction.reply({ content: "Ya votaste Dead.", ephemeral: true });
+      data.dead.add(userId);
+      data.alive.delete(userId);
+    }
+
+    // Actualizar labels de botones
+    const newComponents = interaction.message.components.map(row => {
+      const newRow = ActionRowBuilder.from(row);
+      newRow.components.forEach(btn => {
+        if (btn.customId === "gp_alive") btn.setLabel(`🟢 Alive (${data.alive.size})`);
+        if (btn.customId === "gp_dead") btn.setLabel(`🔴 Dead (${data.dead.size})`);
+      });
+      return newRow;
+    });
+
+    await interaction.update({ components: newComponents });
+    return;
+  }
+
+  // ===== BOTÓN EDIT PANEL =====
+  if (interaction.isButton() && interaction.customId.startsWith("edit_panel_")) {
+    const messageId = interaction.customId.replace("edit_panel_", "");
+    const message = await interaction.channel.messages.fetch(messageId).catch(() => null);
+    if (!message) return interaction.reply({ content: "❌ Mensaje no encontrado.", ephemeral: true });
+
+    const data = packVotes.get(message.id);
+    if (!data) return interaction.reply({ content: "❌ Datos no encontrados.", ephemeral: true });
+
+    const modal = new ModalBuilder()
+      .setCustomId(`edit_panel_${message.id}`)
+      .setTitle("Editar GP Panel");
+
+    const rarityInput = new TextInputBuilder()
+      .setCustomId("rarity")
+      .setLabel("Rareza (1-5)")
+      .setStyle(TextInputStyle.Short)
+      .setValue(String(data.rarity));
+
+    const packInput = new TextInputBuilder()
+      .setCustomId("pack")
+      .setLabel("Packs")
+      .setStyle(TextInputStyle.Short)
+      .setValue(String(data.packNumber));
+
+    const userInput = new TextInputBuilder()
+      .setCustomId("username")
+      .setLabel("Usuario")
+      .setStyle(TextInputStyle.Short)
+      .setValue(data.username);
+
+    modal.addComponents(
+      new ActionRowBuilder().addComponents(rarityInput),
+      new ActionRowBuilder().addComponents(packInput),
+      new ActionRowBuilder().addComponents(userInput)
+    );
+
+    return interaction.showModal(modal);
+  }
+
+  // ===== MODAL SUBMIT =====
+  if (interaction.isModalSubmit() && interaction.customId.startsWith("edit_panel_")) {
+    const messageId = interaction.customId.replace("edit_panel_", "");
+    const message = await interaction.channel.messages.fetch(messageId).catch(() => null);
+    if (!message) return interaction.reply({ content: "❌ Mensaje no encontrado.", ephemeral: true });
+
+    const data = packVotes.get(message.id);
+    if (!data) return interaction.reply({ content: "❌ Datos no encontrados.", ephemeral: true });
+
+    const rarity = parseInt(interaction.fields.getTextInputValue("rarity"));
+    const packNumber = parseInt(interaction.fields.getTextInputValue("pack"));
+    const username = interaction.fields.getTextInputValue("username");
+
+    if (isNaN(rarity) || rarity < 1 || rarity > 5)
+      return interaction.reply({ content: "❌ Rareza inválida.", ephemeral: true });
+
+    data.rarity = rarity;
+    data.packNumber = packNumber;
+    data.username = username;
+
+    const embed = EmbedBuilder.from(message.embeds[0])
+      .setColor([0x808080, 0x3498db, 0x9b59b6, 0xFFD700][rarity - 1] || 0x808080)
+      .setDescription(`## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`);
+
+    await message.edit({ embeds: [embed] });
+
+    return interaction.reply({ content: "✅ Panel actualizado.", ephemeral: true });
+  }
+});
+
+
+
 
   // ===== CREAR/ACTUALIZAR PANEL DE ESTADÍSTICAS =====
   (async () => {
