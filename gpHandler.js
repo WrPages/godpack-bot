@@ -432,7 +432,7 @@ client.on("interactionCreate", async (interaction) => {
 
     // Solo rol Champion puede usar
     if (!interaction.member.roles.cache.some(r => r.name === "Champion")) {
-      return interaction.reply({ content: "❌ Solo Champion puede editar este panel.", ephemeral: true });
+      return interaction.reply({ content: "❌ Only Champion can edit this panel.", ephemeral: true });
     }
 
  
