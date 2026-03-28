@@ -229,6 +229,9 @@ async function createTestMessage(client) {
 module.exports = async (client) => {
     await loadData();
   
+
+
+
 client.once("clientReady", async () => {
   // ===== REGISTRAR COMANDOS =====
   const commands = [
@@ -249,7 +252,10 @@ client.once("clientReady", async () => {
   try {
     console.log("Registrando /editpanel...");
     await rest.put(
-      Routes.applicationGuildCommands(client.user.id, "1483615153743462571"), // TU SERVER ID
+      Routes.applicationGuildCommands(
+        client.user.id,
+        "1483615153743462571" // TU SERVER ID
+      ),
       { body: commands }
     );
     console.log("✅ /editpanel registrado");
@@ -268,9 +274,11 @@ client.once("clientReady", async () => {
         for (const [, message] of messages) {
           if (!message.webhookId) continue;
           if (!message.content.includes("God Pack found")) continue;
+
+          // Evitar duplicados
           if (packVotes.has(message.id)) continue;
 
-          // Intentar extraer datos esenciales del mensaje
+          // ===== EXTRAER DATOS =====
           const rarityMatch = message.content.match(/\[(\d)\/5\]/);
           const packMatch = message.content.match(/\[(\d)P\]/i);
           const usernameLine = message.content.split("\n").find(line => line.includes("(") && line.includes(")"));
@@ -283,7 +291,7 @@ client.once("clientReady", async () => {
             if (match) username = match[1].trim();
           }
 
-          // Reconstruir packVotes completo
+          // Reconstruir packVotes
           packVotes.set(message.id, {
             alive: new Set(),
             dead: new Set(),
@@ -293,7 +301,7 @@ client.once("clientReady", async () => {
             username
           });
 
-          // Asegurarse de que los botones se mantengan en el mensaje
+          // ===== RECONSTRUIR BOTONES SI FALTAN =====
           if (message.components.length === 0) {
             const buttons = new ActionRowBuilder().addComponents(
               new ButtonBuilder()
@@ -318,6 +326,21 @@ client.once("clientReady", async () => {
       console.error("Error inicializando paneles antiguos:", err);
     }
   })();
+
+  // ===== CREAR/ACTUALIZAR PANEL DE ESTADÍSTICAS =====
+  (async () => {
+    try {
+      console.log("Enviando/actualizando panel de estadísticas...");
+      await updateStats(client);
+      console.log("Panel de estadísticas OK");
+    } catch (err) {
+      console.error("Error inicializando bot:", err);
+    }
+  })();
+});
+
+
+
 
   // ===== CREAR/ACTUALIZAR PANEL DE ESTADÍSTICAS =====
   (async () => {
