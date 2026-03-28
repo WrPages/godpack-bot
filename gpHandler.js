@@ -322,68 +322,9 @@ client.once("ready", async () => {
   setInterval(() => updateStats(client).catch(console.error), 60 * 60 * 1000);
 });
 
+
+
 client.on("interactionCreate", async (interaction) => {
-
-
-for (const channelId of ALLOWED_CHANNELS) {
-  const channel = await client.channels.fetch(channelId).catch(() => null);
-  if (!channel) continue;
-
-  const messages = await channel.messages.fetch({ limit: 50 }).catch(() => new Map());
-
-  for (const [, message] of messages) {
-    if (!message.webhookId) continue;
-    if (!message.content.includes("God Pack found")) continue;
-
-    // Extraer info del mensaje
-    const rarityMatch = message.content.match(/\[(\d)\/5\]/);
-    const packMatch = message.content.match(/\[(\d)P\]/i);
-    let username = "Unknown";
-    const usernameLine = message.content.split("\n").find(l => l.includes("(") && l.includes(")"));
-    if (usernameLine) {
-      const match = usernameLine.match(/^(.+?)\s*\(/);
-      if (match) username = match[1].trim();
-    }
-
-    const rarity = rarityMatch ? parseInt(rarityMatch[1]) : 1;
-    const packNumber = packMatch ? parseInt(packMatch[1]) : 1;
-
-    packVotes.set(message.id, {
-      alive: new Set(),
-      dead: new Set(),
-      confirmed: false,
-      rarity,
-      packNumber,
-      username
-    });
-
-    // Reconstruir botones si faltan
-    if (!message.components || message.components.length === 0) {
-      const buttons = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("gp_alive")
-          .setLabel("🟢 Alive (0)")
-          .setStyle(ButtonStyle.Success),
-        new ButtonBuilder()
-          .setCustomId("gp_dead")
-          .setLabel("🔴 Dead (0)")
-          .setStyle(ButtonStyle.Danger),
-        new ButtonBuilder()
-          .setCustomId(`edit_panel_${message.id}`)
-          .setStyle(ButtonStyle.Secondary)
-          .setEmoji("✏️")
-      );
-
-      await message.edit({ components: [buttons] }).catch(() => {});
-    }
-  }
-}
-console.log("✅ Paneles antiguos inicializados.");
-
-
-
-
-
 
   // ===== BOTONES =====
   if (interaction.isButton()) {
