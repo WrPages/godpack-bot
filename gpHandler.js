@@ -50,8 +50,9 @@ async function getUsers() {
 
 
 const ALLOWED_CHANNELS = [
-  "1484015417411244082", // canal 1
-  "1483910560117555221"// canal 2
+  "1486277594629275770", // canal 1
+  "1484015417411244082",
+  "1487362022864588902"// canal 2
    // canal 3
 ];
 
