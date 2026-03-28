@@ -90,7 +90,26 @@ async function loadData() {
     console.error("LOAD GIST ERROR:", err);
   }
 }
+//cambia alive o desd hilos
+async function updateThreadName(message, status, rarity, packNumber, username) {
+  try {
+    if (!message.hasThread) return;
 
+    const thread = await message.thread.fetch();
+
+    let emoji = "⚪";
+    if (status === "alive") emoji = "🟢";
+    if (status === "dead") emoji = "🔴";
+
+    const name = `${emoji} [${rarity}/5][${packNumber}P] ${username}`.slice(0, 90);
+
+    await thread.setName(name);
+  } catch (err) {
+    console.error("THREAD NAME ERROR:", err);
+  }
+}
+
+// termina
 async function updateStats(client) {
   const channel = await client.channels.fetch(STATS_CHANNEL_ID);
   if (!channel) return;
@@ -307,11 +326,14 @@ const sentMessage = await message.channel.send({
   allowedMentions: { parse: ["users"] }
 });
 
-    packVotes.set(sentMessage.id, {
-      alive: new Set(),
-      dead: new Set(),
-      confirmed: false
-    });
+   packVotes.set(sentMessage.id, {
+  alive: new Set(),
+  dead: new Set(),
+  confirmed: false,
+  rarity,
+  packNumber,
+  username
+});
 
     // ===== HILO =====
     try {
@@ -385,6 +407,16 @@ await thread.send("📂 Original webhook message:");
           .setLabel(`🟢 Alive (${data.alive.size})`)
           .setStyle(ButtonStyle.Success)
       );
+      
+      await updateThreadName(
+  interaction.message,
+  "alive",
+  data.rarity,
+  data.packNumber,
+  data.username
+);
+      
+      
       return interaction.message.edit({ components: [row] });
     }
 
@@ -397,6 +429,16 @@ await thread.send("📂 Original webhook message:");
           .setLabel(`🔴 Dead (${data.dead.size})`)
           .setStyle(ButtonStyle.Danger)
       );
+      
+      
+      await updateThreadName(
+  interaction.message,
+  "dead",
+  data.rarity,
+  data.packNumber,
+  data.username
+);
+      
       return interaction.message.edit({ components: [row] });
     }
 
