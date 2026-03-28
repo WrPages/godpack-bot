@@ -363,16 +363,20 @@ if (rarity === 5) color = 0xFFD700; // dorado
 }
 
     // ===== BOTONES =====
-    const buttons = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("gp_alive")
-        .setLabel("🟢 Alive (0)")
-        .setStyle(ButtonStyle.Success),
-      new ButtonBuilder()
-        .setCustomId("gp_dead")
-        .setLabel("🔴 Dead (0)")
-        .setStyle(ButtonStyle.Danger)
-    );
+ const buttons = new ActionRowBuilder().addComponents(
+  new ButtonBuilder()
+    .setCustomId("gp_alive")
+    .setLabel("🟢 Alive (0)")
+    .setStyle(ButtonStyle.Success),
+  new ButtonBuilder()
+    .setCustomId("gp_dead")
+    .setLabel("🔴 Dead (0)")
+    .setStyle(ButtonStyle.Danger),
+  new ButtonBuilder()
+    .setCustomId(`edit_panel_${sentMessage?.id || "temp"}`) // id dinámico
+    .setLabel("✏️ Editar")
+    .setStyle(ButtonStyle.Primary)
+);
 
     // ===== ENVIAR =====
 const sentMessage = await message.channel.send({
@@ -426,7 +430,24 @@ await thread.send("📂 Original webhook message:");
 
 
 
-  client.on("interactionCreate", async (interaction) => {
+  client.on("interactionCreate", async (
+
+if (interaction.isButton() && interaction.customId.startsWith("edit_panel_")) {
+
+  // Solo rol Champion puede usar
+  if (!interaction.member.roles.cache.some(r => r.name === "Champion")) {
+    return interaction.reply({ content: "❌ Solo Champion puede editar este panel.", ephemeral: true });
+  }
+
+  const messageId = interaction.customId.replace("edit_panel_", "");
+  const message = await interaction.channel.messages.fetch(messageId).catch(() => null);
+  if (!message) return interaction.reply({ content: "❌ Mensaje no encontrado.", ephemeral: true });
+
+  const data = packVotes.get(message.id);
+  if (!data) return interaction.reply({ content: "❌ Datos no encontrados.", ephemeral: true });
+
+  // Abrir modal como antes...
+}
 
  // ===== COMANDO /editpanel =====
 if (interaction.isChatInputCommand()) {
@@ -562,6 +583,18 @@ if (interaction.isChatInputCommand()) {
       data.alive.delete(userId);
       if (data.dead.size === beforeSize) return;
     }
+    // Después de actualizar data.alive y data.dead
+if (data.alive.size > 0 || data.dead.size > 0) {
+  // eliminar botón de Editar
+  const newComponents = interaction.message.components.map(row => {
+    // filtra cualquier botón de edit_panel_
+    const newRow = ActionRowBuilder.from(row);
+    newRow.components = newRow.components.filter(b => !b.customId.startsWith("edit_panel_"));
+    return newRow;
+  });
+
+  await interaction.message.edit({ components: newComponents }).catch(() => {});
+}
 
     // tu lógica sigue igual...
   }
