@@ -277,15 +277,8 @@ client.once("ready", async () => {
         option.setName("id")
           .setDescription("16 digit VIP ID")
           .setRequired(true)
-      ),
-      new SlashCommandBuilder()
-  .setName("editpanel")
-  .setDescription("Edit a GP panel by message ID")
-  .addStringOption(option =>
-    option.setName("message_id")
-      .setDescription("The ID of the panel message")
-      .setRequired(true)
-  )
+      )
+  
       
       
 
