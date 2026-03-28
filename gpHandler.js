@@ -222,7 +222,7 @@ client.on("messageCreate", async (message) => {
     if (attachment) {
       imageFile = {
         attachment: attachment.url,
-        name: attachment.name || "card.png"
+        name: "card.png" // importante para el embed
       };
     }
 
@@ -242,17 +242,54 @@ client.on("messageCreate", async (message) => {
       if (match) username = match[1].trim();
     }
 
+    // ===== COLOR =====
     let color = 0x999999;
     if (rarity === 5) color = 0xFFD700;
     if (rarity === 4) color = 0x00ffcc;
     if (rarity === 3) color = 0x0099ff;
 
+    // ===== MENCIONES ONLINE =====
+    const onlineIDs = await getOnlineIDs();
+    const users = await getUsers();
+
+    let mentionList = [];
+
+    for (const discordId in users) {
+      const userData = users[discordId];
+
+      const mainId = userData.main_id?.trim();
+      const secId = userData.sec_id?.trim();
+
+      const onlineClean = onlineIDs.map(id => id.trim());
+
+      if (
+        onlineClean.includes(mainId) ||
+        (secId && onlineClean.includes(secId))
+      ) {
+        mentionList.push(`<@${discordId}>`);
+      }
+    }
+
+    const onlineMention = mentionList.join(" ");
+
+    // ===== DESCRIPCIÓN DEL EMBED (TODO JUNTO) =====
+    let description = `## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`;
+
+    if (onlineMention) {
+      description = `${onlineMention}\n\n${description}`;
+    }
+
     const embed = new EmbedBuilder()
       .setColor(color)
-      .setDescription(`## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`);
+      .setDescription(description)
+      .setFooter({ text: "GP System" })
+      .setTimestamp();
 
-    if (imageFile) embed.setImage("attachment://card.png");
+    if (imageFile) {
+      embed.setImage("attachment://card.png");
+    }
 
+    // ===== BOTONES =====
     const buttons = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("gp_alive")
@@ -263,6 +300,46 @@ client.on("messageCreate", async (message) => {
         .setLabel("🔴 Dead (0)")
         .setStyle(ButtonStyle.Danger)
     );
+
+    // ===== ENVIAR PANEL (UN SOLO MENSAJE) =====
+    const sentMessage = await message.channel.send({
+      embeds: [embed],
+      components: [buttons],
+      files: imageFile ? [imageFile] : [],
+      allowedMentions: { parse: ["users"] } // importante para que pingee
+    });
+
+    packVotes.set(sentMessage.id, {
+      alive: new Set(),
+      dead: new Set(),
+      confirmed: false
+    });
+
+    // ===== CREAR HILO =====
+    try {
+      const thread = await sentMessage.startThread({
+        name: `GP • ${rarity}/5`,
+        autoArchiveDuration: 1440,
+        type: ChannelType.PublicThread
+      });
+
+      await thread.send("📂 Original webhook message:");
+
+      await thread.send({
+        content: message.content,
+        files: message.attachments.map(att => att.url),
+        allowedMentions: { parse: [] }
+      });
+
+      await message.delete().catch(() => {});
+    } catch (err) {
+      console.error("THREAD ERROR:", err);
+    }
+
+  } catch (err) {
+    console.error("GP Handler Error:", err);
+  }
+});
 
     // ===== MENCIONES ONLINE =====
 const onlineIDs = await getOnlineIDs();
