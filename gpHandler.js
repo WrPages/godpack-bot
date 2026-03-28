@@ -352,7 +352,7 @@ client.once("clientReady", async () => {
       console.error("Error inicializando bot:", err);
     }
   })();
-});
+};
 
 
 
