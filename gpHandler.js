@@ -97,17 +97,17 @@ async function updateThreadName(message, status, rarity, packNumber, username) {
 
     const thread = await message.thread.fetch();
 
-  let emoji = "⚪";
+    let emoji = "⚪";
 
-if (status === "alive") {
-  emoji = "<:DittoX:1487318533544087693>";
-}
+    if (status === "alive") {
+      emoji = "✅";
+    }
 
-if (status === "dead") {
-  emoji = "<:DittoCheck:1487315010991685643>";
-}
+    if (status === "dead") {
+      emoji = "❌";
+    }
 
-const name = `${emoji} [${rarity}/5][${packNumber}P] ${username}`.slice(0, 90);
+    const name = `${emoji} [${rarity}/5][${packNumber}P] ${username}`.slice(0, 90);
 
     await thread.setName(name);
   } catch (err) {
