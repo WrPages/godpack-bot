@@ -471,93 +471,59 @@ client.on("interactionCreate", async (interaction) => {
 
 
 client.on("messageCreate", async (message) => {
-if (!ALLOWED_CHANNELS.includes(message.channel.id)) return;
-  if (!message.webhookId) return;
+  if (!ALLOWED_CHANNELS.includes(message.channel.id)) return;
   if (!message.content.includes("God Pack found")) return;
 
   try {
     // ===== IMAGEN =====
     const attachment = message.attachments.first();
-    let imageFile = null;
-    if (attachment) {
-      imageFile = {
-        attachment: attachment.url,
-        name: "card.png"
-      };
-    }
+    const imageFile = attachment
+      ? { attachment: attachment.url, name: "card.png" }
+      : null;
 
     // ===== DATOS =====
     const rarityMatch = message.content.match(/\[(\d)\/5\]/);
-    if (!rarityMatch) return;
-    const rarity = parseInt(rarityMatch[1]);
-
     const packMatch = message.content.match(/\[(\d)P\]/i);
-    const packNumber = packMatch ? parseInt(packMatch[1]) : 1;
+    const usernameLine = message.content.split("\n").find(l => l.includes("(") && l.includes(")"));
 
-    let username = "Unknown";
-    const usernameLine = message.content.split("\n").find(line => line.includes("(") && line.includes(")"));
-    if (usernameLine) {
-      const match = usernameLine.match(/^(.+?)\s*\(/);
-      if (match) username = match[1].trim();
-    }
+    const rarity = rarityMatch ? parseInt(rarityMatch[1]) : 1;
+    const packNumber = packMatch ? parseInt(packMatch[1]) : 1;
+    const username = usernameLine ? usernameLine.match(/^(.+?)\s*\(/)[1].trim() : "Unknown";
 
     // ===== COLOR =====
-    let color = 0x808080;
-    if (rarity === 3) color = 0x3498db;
-    if (rarity === 4) color = 0x9b59b6;
-    if (rarity === 5) color = 0xFFD700;
+    const color = [0x808080, 0x3498db, 0x9b59b6, 0xFFD700][rarity - 1] || 0x808080;
 
     // ===== EMBED =====
-    let description = `## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`;
     const embed = new EmbedBuilder()
       .setColor(color)
-      .setDescription(description)
+      .setDescription(`## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`)
       .setTimestamp();
     if (imageFile) embed.setImage("attachment://card.png");
 
-// ===== BOTONES =====
-// ===== ENVIAR MENSAJE SIN BOTÓN EDIT PRIMERO =====
-const buttons = new ActionRowBuilder().addComponents(
-  new ButtonBuilder()
-    .setCustomId("gp_alive")
-    .setLabel("🟢 Alive (0)")
-    .setStyle(ButtonStyle.Success),
-  new ButtonBuilder()
-    .setCustomId("gp_dead")
-    .setLabel("🔴 Dead (0)")
-    .setStyle(ButtonStyle.Danger)
-);
+    // ===== BOTONES =====
+    const buttons = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId("gp_alive").setLabel("🟢 Alive (0)").setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId("gp_dead").setLabel("🔴 Dead (0)").setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId(`edit_panel_${message.id}`).setStyle(ButtonStyle.Secondary).setEmoji("✏️")
+    );
 
-const sentMessage = await message.channel.send({
-  embeds: [embed],
-  components: [buttons],
-  files: imageFile ? [imageFile] : [],
-  allowedMentions: { parse: ["users"] }
-});
+    // ===== ENVIAR MENSAJE =====
+    const sentMessage = await message.channel.send({
+      embeds: [embed],
+      components: [buttons],
+      files: imageFile ? [imageFile] : [],
+      allowedMentions: { parse: ["users"] }
+    });
 
-// Guardar data del pack
-packVotes.set(sentMessage.id, {
-  alive: new Set(),
-  dead: new Set(),
-  confirmed: false,
-  rarity,
-  packNumber,
-  username
-});
-
-// ===== AHORA AGREGAR BOTÓN EDIT CON EL ID REAL =====
-const editButton = new ButtonBuilder()
-  .setCustomId(`edit_panel_${sentMessage.id}`)
-  .setStyle(ButtonStyle.Secondary)
-  .setEmoji("✏️"); // solo icono, cuadro pequeño
-
-// Tomamos la fila de botones existente y agregamos Edit
-const newButtons = ActionRowBuilder.from(buttons).addComponents(editButton);
-
-await sentMessage.edit({
-  components: [newButtons]
-});
-    
+    // ===== REGISTRAR EN packVotes =====
+    packVotes.set(sentMessage.id, {
+      alive: new Set(),
+      dead: new Set(),
+      confirmed: false,
+      rarity,
+      packNumber,
+      username
+    });
 
     // ===== CREAR HILO =====
     try {
@@ -567,11 +533,12 @@ await sentMessage.edit({
         type: ChannelType.PublicThread
       });
 
-      // Menciones online
+      // ===== Menciones ONLINE =====
       const onlineIDs = await getOnlineIDs();
       const users = await getUsers();
       const onlineClean = onlineIDs.map(id => id.trim());
       const mentionList = [];
+
       for (const discordId in users) {
         const userData = users[discordId];
         const mainId = userData.main_id?.trim();
@@ -580,10 +547,10 @@ await sentMessage.edit({
           mentionList.push(`<@${discordId}>`);
         }
       }
-      const onlineMention = mentionList.join(" ");
-      if (onlineMention) {
+
+      if (mentionList.length > 0) {
         await thread.send({
-          content: onlineMention,
+          content: mentionList.join(" "),
           allowedMentions: { parse: ["users"] }
         });
       }
