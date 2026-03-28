@@ -216,15 +216,12 @@ client.on("messageCreate", async (message) => {
   if (!message.content.includes("God Pack found")) return;
 
   try {
-    const attachment = message.attachments.first();
-    let imageFile = null;
+   const attachment = message.attachments.first();
+let imageUrl = null;
 
-    if (attachment) {
-      imageFile = {
-        attachment: attachment.url,
-        name: "card.png" // importante para el embed
-      };
-    }
+if (attachment) {
+  imageUrl = attachment.url;
+}
 
     const rarityMatch = message.content.match(/\[(\d)\/5\]/);
     if (!rarityMatch) return;
@@ -285,9 +282,9 @@ client.on("messageCreate", async (message) => {
       .setFooter({ text: "GP System" })
       .setTimestamp();
 
-    if (imageFile) {
-      embed.setImage("attachment://card.png");
-    }
+   if (imageUrl) {
+  embed.setImage(imageUrl);
+}
 
     // ===== BOTONES =====
     const buttons = new ActionRowBuilder().addComponents(
@@ -302,12 +299,11 @@ client.on("messageCreate", async (message) => {
     );
 
     // ===== ENVIAR PANEL (UN SOLO MENSAJE) =====
-    const sentMessage = await message.channel.send({
-      embeds: [embed],
-      components: [buttons],
-      files: imageFile ? [imageFile] : [],
-      allowedMentions: { parse: ["users"] } // importante para que pingee
-    });
+const sentMessage = await message.channel.send({
+  embeds: [embed],
+  components: [buttons],
+  allowedMentions: { parse: ["users"] }
+});
 
     packVotes.set(sentMessage.id, {
       alive: new Set(),
