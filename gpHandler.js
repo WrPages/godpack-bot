@@ -215,6 +215,8 @@ async function createTestMessage(client) {
 }
 
 module.exports = async (client) => {
+    await loadData();
+  
     // ===== REGISTRAR /editpanel =====
   const commands = [
     new SlashCommandBuilder()
@@ -247,7 +249,7 @@ Routes.applicationGuildCommands(client.user.id, "1483615153743462571")
   
   
   
-  await loadData();
+
 
   // Crear/actualizar panel de estadísticas y mensaje de prueba
   (async () => {
