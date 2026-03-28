@@ -283,8 +283,38 @@ client.once("clientReady", async () => {
             alive: new Set(),
             dead: new Set(),
             confirmed: false,
-            // Si quieres puedes intentar extraer rarity, packNumber y username aquí
+            rarity: null,
+            packNumber: null,
+            username: null
           });
+
+          // Revisar si falta el botón Edit y agregarlo
+          let hasEditButton = false;
+          const newComponents = message.components.map(row => {
+            const newRow = ActionRowBuilder.from(row);
+            for (const btn of newRow.components) {
+              if (btn.customId && btn.customId.startsWith("edit_panel_")) {
+                hasEditButton = true;
+              }
+            }
+            return newRow;
+          });
+
+          if (!hasEditButton) {
+            const editButton = new ButtonBuilder()
+              .setCustomId(`edit_panel_${message.id}`)
+              .setStyle(ButtonStyle.Secondary)
+              .setEmoji("✏️");
+
+            // Agregar a la primera fila o crear nueva fila
+            if (newComponents.length > 0) {
+              newComponents[0].addComponents(editButton);
+            } else {
+              newComponents.push(new ActionRowBuilder().addComponents(editButton));
+            }
+
+            await message.edit({ components: newComponents }).catch(() => {});
+          }
         }
       }
       console.log("✅ Paneles antiguos inicializados.");
