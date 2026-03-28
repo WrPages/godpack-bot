@@ -285,9 +285,9 @@ if (attachment) {
       .setDescription(description)
       .setTimestamp();
 
-    if (imageUrl) {
-      embed.setImage(imageUrl);
-    }
+   if (imageFile) {
+  embed.setImage("attachment://card.png");
+}
 
     // ===== BOTONES =====
     const buttons = new ActionRowBuilder().addComponents(
@@ -302,11 +302,12 @@ if (attachment) {
     );
 
     // ===== ENVIAR =====
-    const sentMessage = await message.channel.send({
-      embeds: [embed],
-      components: [buttons],
-      allowedMentions: { parse: ["users"] }
-    });
+const sentMessage = await message.channel.send({
+  embeds: [embed],
+  components: [buttons],
+  files: imageFile ? [imageFile] : [],
+  allowedMentions: { parse: ["users"] }
+});
 
     packVotes.set(sentMessage.id, {
       alive: new Set(),
