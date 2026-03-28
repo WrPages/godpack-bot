@@ -430,14 +430,17 @@ await thread.send("📂 Original webhook message:");
 
 
 
-  client.on("interactionCreate", async (
+client.on("interactionCreate", async (interaction) => {
 
-if (interaction.isButton() && interaction.customId.startsWith("edit_panel_")) {
+  // ===== BOTÓN EDIT PANEL =====
+  if (interaction.isButton() && interaction.customId.startsWith("edit_panel_")) {
 
-  // Solo rol Champion puede usar
-  if (!interaction.member.roles.cache.some(r => r.name === "Champion")) {
-    return interaction.reply({ content: "❌ Solo Champion puede editar este panel.", ephemeral: true });
-  }
+    // Solo rol Champion puede usar
+    if (!interaction.member.roles.cache.some(r => r.name === "Champion")) {
+      return interaction.reply({ content: "❌ Solo Champion puede editar este panel.", ephemeral: true });
+    }
+
+ 
 
   const messageId = interaction.customId.replace("edit_panel_", "");
   const message = await interaction.channel.messages.fetch(messageId).catch(() => null);
