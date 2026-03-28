@@ -196,8 +196,8 @@ async function createTestMessage(client) {
   if (!channel) return;
 
   // Eliminar mensajes antiguos (limit 10 para no sobrecargar)
-  const oldMessages = await channel.messages.fetch({ limit: 10 });
-  await channel.bulkDelete(oldMessages, true).catch(() => {});
+ // const oldMessages = await channel.messages.fetch({ limit: 10 });
+  //await channel.bulkDelete(oldMessages, true).catch(() => {});
 
   // Crear mensaje de prueba para asegurar que los botones funcionen
   const testEmbed = new EmbedBuilder()
@@ -272,9 +272,6 @@ client.once("clientReady", async () => {
       console.log("Enviando/actualizando panel de estadísticas...");
       await updateStats(client);
       console.log("Panel de estadísticas OK");
-      console.log("Creando mensaje de prueba...");
-      await createTestMessage(client);
-      console.log("Mensaje de prueba creado correctamente");
     } catch (err) {
       console.error("Error inicializando bot:", err);
     }
