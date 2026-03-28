@@ -210,7 +210,7 @@ module.exports = async (client) => {
     updateStats(client).catch(() => {});
   }, 60 * 60 * 1000);
 
-cclient.on("messageCreate", async (message) => {
+client.on("messageCreate", async (message) => {
   if (message.channel.id !== ALLOWED_CHANNEL_ID) return;
   if (!message.webhookId) return;
   if (!message.content.includes("God Pack found")) return;
@@ -224,7 +224,7 @@ cclient.on("messageCreate", async (message) => {
       imageUrl = attachment.url;
     }
 
-    // ===== DATOS DEL MENSAJE =====
+    // ===== DATOS =====
     const rarityMatch = message.content.match(/\[(\d)\/5\]/);
     if (!rarityMatch) return;
     const rarity = parseInt(rarityMatch[1]);
@@ -233,9 +233,9 @@ cclient.on("messageCreate", async (message) => {
     const packNumber = packMatch ? parseInt(packMatch[1]) : 1;
 
     const lines = message.content.split("\n");
-    const usernameLine = lines.find(line => line.includes("(") && line.includes(")"));
     let username = "Unknown";
 
+    const usernameLine = lines.find(line => line.includes("(") && line.includes(")"));
     if (usernameLine) {
       const match = usernameLine.match(/^(.+?)\s*\(/);
       if (match) username = match[1].trim();
@@ -247,10 +247,11 @@ cclient.on("messageCreate", async (message) => {
     if (rarity === 4) color = 0x00ffcc;
     if (rarity === 3) color = 0x0099ff;
 
-    // ===== MENCIONES ONLINE =====
+    // ===== MENCIONES =====
     const onlineIDs = await getOnlineIDs();
     const users = await getUsers();
 
+    const onlineClean = onlineIDs.map(id => id.trim());
     let mentionList = [];
 
     for (const discordId in users) {
@@ -258,8 +259,6 @@ cclient.on("messageCreate", async (message) => {
 
       const mainId = userData.main_id?.trim();
       const secId = userData.sec_id?.trim();
-
-      const onlineClean = onlineIDs.map(id => id.trim());
 
       if (
         onlineClean.includes(mainId) ||
@@ -271,7 +270,7 @@ cclient.on("messageCreate", async (message) => {
 
     const onlineMention = mentionList.join(" ");
 
-    // ===== EMBED (TODO JUNTO) =====
+    // ===== EMBED =====
     let description = `## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`;
 
     if (onlineMention) {
@@ -299,7 +298,7 @@ cclient.on("messageCreate", async (message) => {
         .setStyle(ButtonStyle.Danger)
     );
 
-    // ===== ENVIAR MENSAJE =====
+    // ===== ENVIAR =====
     const sentMessage = await message.channel.send({
       embeds: [embed],
       components: [buttons],
@@ -312,7 +311,7 @@ cclient.on("messageCreate", async (message) => {
       confirmed: false
     });
 
-    // ===== CREAR HILO =====
+    // ===== HILO =====
     try {
       const thread = await sentMessage.startThread({
         name: `GP • ${rarity}/5`,
