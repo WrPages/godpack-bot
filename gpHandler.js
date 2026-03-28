@@ -444,56 +444,45 @@ client.on("interactionCreate", async (interaction) => {
   // Abrir modal como antes...
 }
 
- // ===== COMANDO /editpanel =====
-if (interaction.isChatInputCommand()) {
-  if (interaction.commandName === "editpanel") {
-
-    const messageId = interaction.options.getString("mensaje_id");
-
-    const message = await interaction.channel.messages
-      .fetch(messageId)
-      .catch(() => null);
-
-    if (!message) {
-      return interaction.reply({ content: "❌ Mensaje no encontrado.", ephemeral: true });
-    }
+// ===== BOTÓN EDIT =====
+if (interaction.isButton() && interaction.customId.startsWith("edit_panel_")) {
+    const messageId = interaction.customId.replace("edit_panel_", "");
+    const message = await interaction.channel.messages.fetch(messageId).catch(() => null);
+    if (!message) return interaction.reply({ content: "❌ Mensaje no encontrado.", ephemeral: true });
 
     const data = packVotes.get(message.id);
+    if (!data) return interaction.reply({ content: "❌ Datos no encontrados.", ephemeral: true });
 
-    if (!data) {
-      return interaction.reply({ content: "❌ Ese panel no es válido.", ephemeral: true });
-    }
-
+    // Crear modal
     const modal = new ModalBuilder()
-      .setCustomId(`edit_panel_${message.id}`)
-      .setTitle("Editar GP Panel");
+        .setCustomId(`edit_panel_${message.id}`)
+        .setTitle("Editar GP Panel");
 
     const rarityInput = new TextInputBuilder()
-      .setCustomId("rarity")
-      .setLabel("Rareza (1-5)")
-      .setStyle(TextInputStyle.Short)
-      .setValue(String(data.rarity));
+        .setCustomId("rarity")
+        .setLabel("Rareza (1-5)")
+        .setStyle(TextInputStyle.Short)
+        .setValue(String(data.rarity));
 
     const packInput = new TextInputBuilder()
-      .setCustomId("pack")
-      .setLabel("Packs")
-      .setStyle(TextInputStyle.Short)
-      .setValue(String(data.packNumber));
+        .setCustomId("pack")
+        .setLabel("Packs")
+        .setStyle(TextInputStyle.Short)
+        .setValue(String(data.packNumber));
 
     const userInput = new TextInputBuilder()
-      .setCustomId("username")
-      .setLabel("Usuario")
-      .setStyle(TextInputStyle.Short)
-      .setValue(data.username);
+        .setCustomId("username")
+        .setLabel("Usuario")
+        .setStyle(TextInputStyle.Short)
+        .setValue(data.username);
 
     modal.addComponents(
-      new ActionRowBuilder().addComponents(rarityInput),
-      new ActionRowBuilder().addComponents(packInput),
-      new ActionRowBuilder().addComponents(userInput)
+        new ActionRowBuilder().addComponents(rarityInput),
+        new ActionRowBuilder().addComponents(packInput),
+        new ActionRowBuilder().addComponents(userInput)
     );
 
     return interaction.showModal(modal);
-  }
 }
 
   // ===== MODAL SUBMIT =====
