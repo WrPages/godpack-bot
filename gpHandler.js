@@ -210,19 +210,21 @@ module.exports = async (client) => {
     updateStats(client).catch(() => {});
   }, 60 * 60 * 1000);
 
-client.on("messageCreate", async (message) => {
+cclient.on("messageCreate", async (message) => {
   if (message.channel.id !== ALLOWED_CHANNEL_ID) return;
   if (!message.webhookId) return;
   if (!message.content.includes("God Pack found")) return;
 
   try {
-   const attachment = message.attachments.first();
-let imageUrl = null;
+    // ===== IMAGEN =====
+    const attachment = message.attachments.first();
+    let imageUrl = null;
 
-if (attachment) {
-  imageUrl = attachment.url;
-}
+    if (attachment) {
+      imageUrl = attachment.url;
+    }
 
+    // ===== DATOS DEL MENSAJE =====
     const rarityMatch = message.content.match(/\[(\d)\/5\]/);
     if (!rarityMatch) return;
     const rarity = parseInt(rarityMatch[1]);
@@ -269,7 +271,7 @@ if (attachment) {
 
     const onlineMention = mentionList.join(" ");
 
-    // ===== DESCRIPCIÓN DEL EMBED (TODO JUNTO) =====
+    // ===== EMBED (TODO JUNTO) =====
     let description = `## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`;
 
     if (onlineMention) {
@@ -279,12 +281,62 @@ if (attachment) {
     const embed = new EmbedBuilder()
       .setColor(color)
       .setDescription(description)
-      .setFooter({ text: "GP System" })
       .setTimestamp();
 
-   if (imageUrl) {
-  embed.setImage(imageUrl);
-}
+    if (imageUrl) {
+      embed.setImage(imageUrl);
+    }
+
+    // ===== BOTONES =====
+    const buttons = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("gp_alive")
+        .setLabel("🟢 Alive (0)")
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId("gp_dead")
+        .setLabel("🔴 Dead (0)")
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    // ===== ENVIAR MENSAJE =====
+    const sentMessage = await message.channel.send({
+      embeds: [embed],
+      components: [buttons],
+      allowedMentions: { parse: ["users"] }
+    });
+
+    packVotes.set(sentMessage.id, {
+      alive: new Set(),
+      dead: new Set(),
+      confirmed: false
+    });
+
+    // ===== CREAR HILO =====
+    try {
+      const thread = await sentMessage.startThread({
+        name: `GP • ${rarity}/5`,
+        autoArchiveDuration: 1440,
+        type: ChannelType.PublicThread
+      });
+
+      await thread.send("📂 Original webhook message:");
+
+      await thread.send({
+        content: message.content,
+        files: message.attachments.map(att => att.url),
+        allowedMentions: { parse: [] }
+      });
+
+      await message.delete().catch(() => {});
+    } catch (err) {
+      console.error("THREAD ERROR:", err);
+    }
+
+  } catch (err) {
+    console.error("GP Handler Error:", err);
+  }
+});
 
     // ===== BOTONES =====
     const buttons = new ActionRowBuilder().addComponents(
