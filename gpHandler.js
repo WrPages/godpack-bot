@@ -388,76 +388,7 @@ const sentMessage = await message.channel.send({
   }
 });
 
-    // ===== MENCIONES ONLINE =====
-const onlineIDs = await getOnlineIDs();
-const users = await getUsers();
 
-let mentionList = [];
-
-for (const discordId in users) {
-  const userData = users[discordId];
-
-  const mainId = userData.main_id?.trim();
-  const secId = userData.sec_id?.trim();
-
-  const onlineClean = onlineIDs.map(id => id.trim());
-
-  if (
-    onlineClean.includes(mainId) ||
-    (secId && onlineClean.includes(secId))
-  ) {
-    mentionList.push(`<@${discordId}>`);
-  }
-}
-
-const onlineMention = mentionList.join(" ");
-
-if (onlineMention) {
-  await message.channel.send({
-    content: onlineMention,
-    allowedMentions: { parse: ["users"] }
-  });
-}
-
-    // ===== ENVIAR PANEL =====
-    const sentMessage = await message.channel.send({
-      embeds: [embed],
-      components: [buttons],
-      files: imageFile ? [imageFile] : []
-    });
-
-    packVotes.set(sentMessage.id, {
-      alive: new Set(),
-      dead: new Set(),
-      confirmed: false
-    });
-
-    // ===== CREAR HILO =====
-    try {
-      const thread = await sentMessage.startThread({
-        name: `GP • ${rarity}/5`,
-        autoArchiveDuration: 1440,
-        type: ChannelType.PublicThread
-      });
-
-      await thread.send("📂 Original webhook message:");
-
-      await thread.send({
-        content: message.content,
-        files: message.attachments.map(att => att.url),
-        allowedMentions: { parse: [] }
-      });
-
-      await message.delete().catch(() => {});
-
-    } catch (err) {
-      console.error("THREAD ERROR:", err);
-    }
-
-  } catch (err) {
-    console.error("GP Handler Error:", err);
-  }
-});
 
   client.on("interactionCreate", async (interaction) => {
     if (!interaction.isButton()) return;
