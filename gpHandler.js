@@ -49,7 +49,12 @@ async function getUsers() {
 }
 
 
-const ALLOWED_CHANNEL_ID = "1484015417411244082"; // Canal para packs y prueba
+const ALLOWED_CHANNELS = [
+  "1484015417411244082", // canal 1
+  "1483910560117555221"// canal 2
+   // canal 3
+];
+
 const STATS_CHANNEL_ID = "1484416376436424794"; // Mismo canal para estadísticas
 
 const GIST_ID = process.env.GIST_ID;
@@ -283,7 +288,7 @@ client.once("clientReady", async () => {
 
 
 client.on("messageCreate", async (message) => {
-  if (message.channel.id !== ALLOWED_CHANNEL_ID) return;
+if (!ALLOWED_CHANNELS.includes(message.channel.id)) return;
   if (!message.webhookId) return;
   if (!message.content.includes("God Pack found")) return;
 
