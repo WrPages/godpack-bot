@@ -284,6 +284,7 @@ client.once("clientReady", async () => {
     updateStats(client).catch(() => {});
   }, 60 * 60 * 1000);
 
+
 client.on("messageCreate", async (message) => {
   if (message.channel.id !== ALLOWED_CHANNEL_ID) return;
   if (!message.webhookId) return;
@@ -292,14 +293,13 @@ client.on("messageCreate", async (message) => {
   try {
     // ===== IMAGEN =====
     const attachment = message.attachments.first();
-   let imageFile = null;
-
-if (attachment) {
-  imageFile = {
-    attachment: attachment.url,
-    name: "card.png"
-  };
-}
+    let imageFile = null;
+    if (attachment) {
+      imageFile = {
+        attachment: attachment.url,
+        name: "card.png"
+      };
+    }
 
     // ===== DATOS =====
     const rarityMatch = message.content.match(/\[(\d)\/5\]/);
@@ -309,109 +309,101 @@ if (attachment) {
     const packMatch = message.content.match(/\[(\d)P\]/i);
     const packNumber = packMatch ? parseInt(packMatch[1]) : 1;
 
-    const lines = message.content.split("\n");
     let username = "Unknown";
-
-    const usernameLine = lines.find(line => line.includes("(") && line.includes(")"));
+    const usernameLine = message.content.split("\n").find(line => line.includes("(") && line.includes(")"));
     if (usernameLine) {
       const match = usernameLine.match(/^(.+?)\s*\(/);
       if (match) username = match[1].trim();
     }
 
     // ===== COLOR =====
- let color = 0x808080; // gris por defecto (<3)
-
-if (rarity === 3) color = 0x3498db; // azul
-if (rarity === 4) color = 0x9b59b6; // morado
-if (rarity === 5) color = 0xFFD700; // dorado
-
-    // ===== MENCIONES =====
-    const onlineIDs = await getOnlineIDs();
-    const users = await getUsers();
-
-    const onlineClean = onlineIDs.map(id => id.trim());
-    let mentionList = [];
-
-    for (const discordId in users) {
-      const userData = users[discordId];
-
-      const mainId = userData.main_id?.trim();
-      const secId = userData.sec_id?.trim();
-
-      if (
-        onlineClean.includes(mainId) ||
-        (secId && onlineClean.includes(secId))
-      ) {
-        mentionList.push(`<@${discordId}>`);
-      }
-    }
-
-    const onlineMention = mentionList.join(" ");
+    let color = 0x808080;
+    if (rarity === 3) color = 0x3498db;
+    if (rarity === 4) color = 0x9b59b6;
+    if (rarity === 5) color = 0xFFD700;
 
     // ===== EMBED =====
     let description = `## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`;
-
- 
-
     const embed = new EmbedBuilder()
       .setColor(color)
       .setDescription(description)
       .setTimestamp();
+    if (imageFile) embed.setImage("attachment://card.png");
 
-   if (imageFile) {
-  embed.setImage("attachment://card.png");
-}
+    // ===== BOTONES ALIVE/DEAD =====
+    const actionRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("gp_alive")
+        .setLabel("🟢 Alive (0)")
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId("gp_dead")
+        .setLabel("🔴 Dead (0)")
+        .setStyle(ButtonStyle.Danger)
+    );
 
-    // ===== BOTONES =====
- const buttons = new ActionRowBuilder().addComponents(
-  new ButtonBuilder()
-    .setCustomId("gp_alive")
-    .setLabel("🟢 Alive (0)")
-    .setStyle(ButtonStyle.Success),
-  new ButtonBuilder()
-    .setCustomId("gp_dead")
-    .setLabel("🔴 Dead (0)")
-    .setStyle(ButtonStyle.Danger),
-  new ButtonBuilder()
-    .setCustomId(`edit_panel_${sentMessage?.id || "temp"}`) // id dinámico
-    .setLabel("✏️ Editar")
-    .setStyle(ButtonStyle.Primary)
-);
+    // ===== ENVIAR MENSAJE =====
+    const sentMessage = await message.channel.send({
+      embeds: [embed],
+      components: [actionRow],
+      files: imageFile ? [imageFile] : [],
+      allowedMentions: { parse: ["users"] }
+    });
 
-    // ===== ENVIAR =====
-const sentMessage = await message.channel.send({
-  embeds: [embed],
-  components: [buttons],
-  files: imageFile ? [imageFile] : [],
-  allowedMentions: { parse: ["users"] }
-});
+    // ===== GUARDAR DATOS =====
+    packVotes.set(sentMessage.id, {
+      alive: new Set(),
+      dead: new Set(),
+      confirmed: false,
+      rarity,
+      packNumber,
+      username
+    });
 
-   packVotes.set(sentMessage.id, {
-  alive: new Set(),
-  dead: new Set(),
-  confirmed: false,
-  rarity,
-  packNumber,
-  username
-});
+    // ===== AGREGAR BOTÓN EDITAR SOLO CHAMPION =====
+    if (message.member?.roles.cache.some(r => r.name === "Champion")) {
+      const editButtonRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`edit_panel_${sentMessage.id}`)
+          .setLabel("✏️ Editar")
+          .setStyle(ButtonStyle.Primary)
+      );
 
-    // ===== HILO =====
+      await sentMessage.edit({
+        components: [...sentMessage.components, editButtonRow]
+      });
+    }
+
+    // ===== CREAR HILO =====
     try {
       const thread = await sentMessage.startThread({
-name: `[${rarity}/5][${packNumber}P] ${username}`,
+        name: `[${rarity}/5][${packNumber}P] ${username}`,
         autoArchiveDuration: 1440,
         type: ChannelType.PublicThread
       });
 
-if (onlineMention) {
-  await thread.send({
-    content: onlineMention,
-    allowedMentions: { parse: ["users"] }
-  });
-}
+      // Menciones online
+      const onlineIDs = await getOnlineIDs();
+      const users = await getUsers();
+      const onlineClean = onlineIDs.map(id => id.trim());
+      const mentionList = [];
+      for (const discordId in users) {
+        const userData = users[discordId];
+        const mainId = userData.main_id?.trim();
+        const secId = userData.sec_id?.trim();
+        if (onlineClean.includes(mainId) || (secId && onlineClean.includes(secId))) {
+          mentionList.push(`<@${discordId}>`);
+        }
+      }
+      const onlineMention = mentionList.join(" ");
+      if (onlineMention) {
+        await thread.send({
+          content: onlineMention,
+          allowedMentions: { parse: ["users"] }
+        });
+      }
 
-await thread.send("📂 Original webhook message:");
-
+      await thread.send("📂 Original webhook message:");
       await thread.send({
         content: message.content,
         files: message.attachments.map(att => att.url),
