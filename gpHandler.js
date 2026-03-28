@@ -427,92 +427,73 @@ await sentMessage.edit({
 
 client.on("interactionCreate", async (interaction) => {
 
-  // ===== BOTÓN EDIT PANEL =====
+  // =========================
+  // 1️⃣ BOTÓN EDIT
+  // =========================
   if (interaction.isButton() && interaction.customId.startsWith("edit_panel_")) {
 
-    // Solo rol Champion puede usar
-    if (!interaction.member.roles.cache.some(r => r.name === "Champion")) {
-      return interaction.reply({ content: "❌ Only Champion can edit this panel.", ephemeral: true });
-    }
-
- 
-
-  const messageId = interaction.customId.replace("edit_panel_", "");
-  const message = await interaction.channel.messages.fetch(messageId).catch(() => null);
-  if (!message) return interaction.reply({ content: "❌ Mensaje no encontrado.", ephemeral: true });
-
-  const data = packVotes.get(message.id);
-  if (!data) return interaction.reply({ content: "❌ Datos no encontrados.", ephemeral: true });
-
-  // Abrir modal como antes...
-}
-
-// ===== BOTÓN EDIT =====
-if (interaction.isButton() && interaction.customId.startsWith("edit_panel_")) {
     const messageId = interaction.customId.replace("edit_panel_", "");
     const message = await interaction.channel.messages.fetch(messageId).catch(() => null);
-    if (!message) return interaction.reply({ content: "❌ Mensaje no encontrado.", ephemeral: true });
-
-    const data = packVotes.get(message.id);
-    if (!data) return interaction.reply({ content: "❌ Datos no encontrados.", ephemeral: true });
-
-    // Crear modal
-    const modal = new ModalBuilder()
-        .setCustomId(`edit_panel_${message.id}`)
-        .setTitle("Editar GP Panel");
-
-    const rarityInput = new TextInputBuilder()
-        .setCustomId("rarity")
-        .setLabel("Rareza (1-5)")
-        .setStyle(TextInputStyle.Short)
-        .setValue(String(data.rarity));
-
-    const packInput = new TextInputBuilder()
-        .setCustomId("pack")
-        .setLabel("Packs")
-        .setStyle(TextInputStyle.Short)
-        .setValue(String(data.packNumber));
-
-    const userInput = new TextInputBuilder()
-        .setCustomId("username")
-        .setLabel("Usuario")
-        .setStyle(TextInputStyle.Short)
-        .setValue(data.username);
-
-    modal.addComponents(
-        new ActionRowBuilder().addComponents(rarityInput),
-        new ActionRowBuilder().addComponents(packInput),
-        new ActionRowBuilder().addComponents(userInput)
-    );
-
-    return interaction.showModal(modal);
-}
-
-  // ===== MODAL SUBMIT =====
-  if (interaction.isModalSubmit()) {
-
-    if (!interaction.customId.startsWith("edit_panel_")) return;
-
-    const messageId = interaction.customId.replace("edit_panel_", "");
-
-    const message = await interaction.channel.messages.fetch(messageId).catch(() => null);
-
     if (!message) {
-      return interaction.reply({ content: "❌ No se encontró el mensaje.", ephemeral: true });
+      return interaction.reply({ content: "❌ Mensaje no encontrado.", ephemeral: true });
     }
 
     const data = packVotes.get(message.id);
-
     if (!data) {
       return interaction.reply({ content: "❌ Datos no encontrados.", ephemeral: true });
     }
+
+    const modal = new ModalBuilder()
+      .setCustomId(`edit_panel_${message.id}`)
+      .setTitle("Editar GP Panel");
+
+    const rarityInput = new TextInputBuilder()
+      .setCustomId("rarity")
+      .setLabel("Rareza (1-5)")
+      .setStyle(TextInputStyle.Short)
+      .setValue(String(data.rarity));
+
+    const packInput = new TextInputBuilder()
+      .setCustomId("pack")
+      .setLabel("Packs")
+      .setStyle(TextInputStyle.Short)
+      .setValue(String(data.packNumber));
+
+    const userInput = new TextInputBuilder()
+      .setCustomId("username")
+      .setLabel("Usuario")
+      .setStyle(TextInputStyle.Short)
+      .setValue(data.username);
+
+    modal.addComponents(
+      new ActionRowBuilder().addComponents(rarityInput),
+      new ActionRowBuilder().addComponents(packInput),
+      new ActionRowBuilder().addComponents(userInput)
+    );
+
+    return interaction.showModal(modal);
+  }
+
+  // =========================
+  // 2️⃣ MODAL SUBMIT
+  // =========================
+  if (interaction.isModalSubmit() && interaction.customId.startsWith("edit_panel_")) {
+
+    await interaction.deferReply({ ephemeral: true });
+
+    const messageId = interaction.customId.replace("edit_panel_", "");
+    const message = await interaction.channel.messages.fetch(messageId).catch(() => null);
+    if (!message) return interaction.editReply("❌ Mensaje no encontrado.");
+
+    const data = packVotes.get(message.id);
+    if (!data) return interaction.editReply("❌ Datos no encontrados.");
 
     const rarity = parseInt(interaction.fields.getTextInputValue("rarity"));
     const packNumber = parseInt(interaction.fields.getTextInputValue("pack"));
     const username = interaction.fields.getTextInputValue("username");
 
     if (isNaN(rarity) || rarity < 1 || rarity > 5) {
-      return interaction.reply({ content: "❌ Rareza inválida.", ephemeral: true });
+      return interaction.editReply("❌ Rareza inválida.");
     }
 
     let color = 0x808080;
@@ -520,9 +501,7 @@ if (interaction.isButton() && interaction.customId.startsWith("edit_panel_")) {
     if (rarity === 4) color = 0x9b59b6;
     if (rarity === 5) color = 0xFFD700;
 
-    const embed = EmbedBuilder.from(message.embeds[0]);
-
-    embed
+    const embed = EmbedBuilder.from(message.embeds[0])
       .setColor(color)
       .setDescription(`## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`);
 
@@ -532,56 +511,50 @@ if (interaction.isButton() && interaction.customId.startsWith("edit_panel_")) {
     data.packNumber = packNumber;
     data.username = username;
 
-    await updateThreadName(
-      message,
-      data.confirmed ? (data.alive.size >= 2 ? "alive" : "dead") : null,
-      rarity,
-      packNumber,
-      username
-    );
-
-    return interaction.reply({
-      content: "✅ Panel actualizado.",
-      ephemeral: true
-    });
+    await interaction.editReply("✅ Panel actualizado.");
+    return;
   }
 
-  // ===== BOTONES =====
+  // =========================
+  // 3️⃣ BOTONES ALIVE / DEAD
+  // =========================
   if (interaction.isButton()) {
+
+    if (interaction.customId !== "gp_alive" && interaction.customId !== "gp_dead") return;
 
     const data = packVotes.get(interaction.message.id);
     if (!data) return;
 
     await interaction.deferUpdate();
+
     if (data.confirmed) return;
 
     const userId = interaction.user.id;
 
     if (interaction.customId === "gp_alive") {
-      const beforeSize = data.alive.size;
       data.alive.add(userId);
       data.dead.delete(userId);
-      if (data.alive.size === beforeSize) return;
     }
 
     if (interaction.customId === "gp_dead") {
-      const beforeSize = data.dead.size;
       data.dead.add(userId);
       data.alive.delete(userId);
-      if (data.dead.size === beforeSize) return;
     }
-    // Después de actualizar data.alive y data.dead
-if (data.alive.size > 0 || data.dead.size > 0) {
-  // eliminar botón de Editar
-  const newComponents = interaction.message.components.map(row => {
-    // filtra cualquier botón de edit_panel_
-    const newRow = ActionRowBuilder.from(row);
-    newRow.components = newRow.components.filter(b => !b.customId.startsWith("edit_panel_"));
-    return newRow;
-  });
 
-  await interaction.message.edit({ components: newComponents }).catch(() => {});
-}
+    const newButtons = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("gp_alive")
+        .setLabel(`🟢 Alive (${data.alive.size})`)
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId("gp_dead")
+        .setLabel(`🔴 Dead (${data.dead.size})`)
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    await interaction.message.edit({ components: [newButtons] });
+  }
+
 
     // tu lógica sigue igual...
   }
