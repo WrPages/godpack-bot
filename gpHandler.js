@@ -224,7 +224,39 @@ module.exports = async (client) => {
     await loadData();
   
 
+client.once("clientReady", async () => {
 
+  const commands = [
+    new SlashCommandBuilder()
+      .setName("editpanel")
+      .setDescription("Editar un panel de GP")
+      .addStringOption(option =>
+        option
+          .setName("mensaje_id")
+          .setDescription("ID del mensaje del panel")
+          .setRequired(true)
+      )
+      .toJSON()
+  ];
+
+  const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
+
+  try {
+    console.log("Registrando /editpanel...");
+
+    await rest.put(
+      Routes.applicationGuildCommands(
+        client.user.id,
+        "1483615153743462571" // TU SERVER ID
+      ),
+      { body: commands }
+    );
+
+    console.log("✅ /editpanel registrado");
+  } catch (error) {
+    console.error("❌ Error registrando comando:", error);
+  }
+});
 
 
 
@@ -396,53 +428,57 @@ await thread.send("📂 Original webhook message:");
 
   client.on("interactionCreate", async (interaction) => {
 
-  // ===== COMANDO /editpanel =====
-  if (interaction.isChatInputCommand()) {
-    if (interaction.commandName === "editpanel") {
+ // ===== COMANDO /editpanel =====
+if (interaction.isChatInputCommand()) {
+  if (interaction.commandName === "editpanel") {
 
-      const message = interaction.options.getMessage("mensaje");
+    const messageId = interaction.options.getString("mensaje_id");
 
-      if (!message) {
-        return interaction.reply({ content: "❌ Mensaje inválido.", ephemeral: true });
-      }
+    const message = await interaction.channel.messages
+      .fetch(messageId)
+      .catch(() => null);
 
-      const data = packVotes.get(message.id);
-
-      if (!data) {
-        return interaction.reply({ content: "❌ Ese panel no es válido.", ephemeral: true });
-      }
-
-      const modal = new ModalBuilder()
-        .setCustomId(`edit_panel_${message.id}`)
-        .setTitle("Editar GP Panel");
-
-      const rarityInput = new TextInputBuilder()
-        .setCustomId("rarity")
-        .setLabel("Rareza (1-5)")
-        .setStyle(TextInputStyle.Short)
-        .setValue(String(data.rarity));
-
-      const packInput = new TextInputBuilder()
-        .setCustomId("pack")
-        .setLabel("Packs")
-        .setStyle(TextInputStyle.Short)
-        .setValue(String(data.packNumber));
-
-      const userInput = new TextInputBuilder()
-        .setCustomId("username")
-        .setLabel("Usuario")
-        .setStyle(TextInputStyle.Short)
-        .setValue(data.username);
-
-      modal.addComponents(
-        new ActionRowBuilder().addComponents(rarityInput),
-        new ActionRowBuilder().addComponents(packInput),
-        new ActionRowBuilder().addComponents(userInput)
-      );
-
-      return interaction.showModal(modal);
+    if (!message) {
+      return interaction.reply({ content: "❌ Mensaje no encontrado.", ephemeral: true });
     }
+
+    const data = packVotes.get(message.id);
+
+    if (!data) {
+      return interaction.reply({ content: "❌ Ese panel no es válido.", ephemeral: true });
+    }
+
+    const modal = new ModalBuilder()
+      .setCustomId(`edit_panel_${message.id}`)
+      .setTitle("Editar GP Panel");
+
+    const rarityInput = new TextInputBuilder()
+      .setCustomId("rarity")
+      .setLabel("Rareza (1-5)")
+      .setStyle(TextInputStyle.Short)
+      .setValue(String(data.rarity));
+
+    const packInput = new TextInputBuilder()
+      .setCustomId("pack")
+      .setLabel("Packs")
+      .setStyle(TextInputStyle.Short)
+      .setValue(String(data.packNumber));
+
+    const userInput = new TextInputBuilder()
+      .setCustomId("username")
+      .setLabel("Usuario")
+      .setStyle(TextInputStyle.Short)
+      .setValue(data.username);
+
+    modal.addComponents(
+      new ActionRowBuilder().addComponents(rarityInput),
+      new ActionRowBuilder().addComponents(packInput),
+      new ActionRowBuilder().addComponents(userInput)
+    );
+
+    return interaction.showModal(modal);
   }
+}
 
   // ===== MODAL SUBMIT =====
   if (interaction.isModalSubmit()) {
