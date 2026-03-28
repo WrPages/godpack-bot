@@ -557,6 +557,6 @@ client.on("interactionCreate", async (interaction) => {
 
 
     // tu lógica sigue igual...
-  }
+  
 });
 };
