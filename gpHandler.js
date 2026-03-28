@@ -100,11 +100,11 @@ async function updateThreadName(message, status, rarity, packNumber, username) {
   let emoji = "⚪";
 
 if (status === "alive") {
-  emoji = "<:alive:123456789012345678>";
+  emoji = "<:DittoX:1487318533544087693>";
 }
 
 if (status === "dead") {
-  emoji = "<:dead:987654321098765432>";
+  emoji = "<:DittoCheck:1487315010991685643>";
 }
 
 const name = `${emoji} [${rarity}/5][${packNumber}P] ${username}`.slice(0, 90);
