@@ -330,25 +330,35 @@ client.on("messageCreate", async (message) => {
       .setTimestamp();
     if (imageFile) embed.setImage("attachment://card.png");
 
-    // ===== BOTONES ALIVE/DEAD =====
-    const actionRow = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("gp_alive")
-        .setLabel("🟢 Alive (0)")
-        .setStyle(ButtonStyle.Success),
-      new ButtonBuilder()
-        .setCustomId("gp_dead")
-        .setLabel("🔴 Dead (0)")
-        .setStyle(ButtonStyle.Danger)
-    );
+// ===== BOTONES =====
+const actionRow = new ActionRowBuilder().addComponents(
+  new ButtonBuilder()
+    .setCustomId("gp_alive")
+    .setLabel("🟢 Alive (0)")
+    .setStyle(ButtonStyle.Success),
+  new ButtonBuilder()
+    .setCustomId("gp_dead")
+    .setLabel("🔴 Dead (0)")
+    .setStyle(ButtonStyle.Danger)
+);
 
-    // ===== ENVIAR MENSAJE =====
-    const sentMessage = await message.channel.send({
-      embeds: [embed],
-      components: [actionRow],
-      files: imageFile ? [imageFile] : [],
-      allowedMentions: { parse: ["users"] }
-    });
+// ===== AGREGAR BOTÓN EDITAR SOLO CHAMPION =====
+if (message.member?.roles.cache.some(r => r.name === "Champion")) {
+  const editButton = new ButtonBuilder()
+    .setCustomId(`edit_panel_${sentMessage?.id || "temp"}`)
+    .setLabel("✏️")  // solo un icono
+    .setStyle(ButtonStyle.Secondary); // gris pequeño
+  // lo agregamos al mismo ActionRow, a la derecha del Dead
+  actionRow.addComponents(editButton);
+}
+
+// ===== ENVIAR MENSAJE =====
+const sentMessage = await message.channel.send({
+  embeds: [embed],
+  components: [actionRow],  // <-- aquí va todo junto
+  files: imageFile ? [imageFile] : [],
+  allowedMentions: { parse: ["users"] }
+});
 
     // ===== GUARDAR DATOS =====
     packVotes.set(sentMessage.id, {
