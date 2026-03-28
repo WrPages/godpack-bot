@@ -323,6 +323,68 @@ client.once("ready", async () => {
 });
 
 client.on("interactionCreate", async (interaction) => {
+
+
+for (const channelId of ALLOWED_CHANNELS) {
+  const channel = await client.channels.fetch(channelId).catch(() => null);
+  if (!channel) continue;
+
+  const messages = await channel.messages.fetch({ limit: 50 }).catch(() => new Map());
+
+  for (const [, message] of messages) {
+    if (!message.webhookId) continue;
+    if (!message.content.includes("God Pack found")) continue;
+
+    // Extraer info del mensaje
+    const rarityMatch = message.content.match(/\[(\d)\/5\]/);
+    const packMatch = message.content.match(/\[(\d)P\]/i);
+    let username = "Unknown";
+    const usernameLine = message.content.split("\n").find(l => l.includes("(") && l.includes(")"));
+    if (usernameLine) {
+      const match = usernameLine.match(/^(.+?)\s*\(/);
+      if (match) username = match[1].trim();
+    }
+
+    const rarity = rarityMatch ? parseInt(rarityMatch[1]) : 1;
+    const packNumber = packMatch ? parseInt(packMatch[1]) : 1;
+
+    packVotes.set(message.id, {
+      alive: new Set(),
+      dead: new Set(),
+      confirmed: false,
+      rarity,
+      packNumber,
+      username
+    });
+
+    // Reconstruir botones si faltan
+    if (!message.components || message.components.length === 0) {
+      const buttons = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("gp_alive")
+          .setLabel("🟢 Alive (0)")
+          .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+          .setCustomId("gp_dead")
+          .setLabel("🔴 Dead (0)")
+          .setStyle(ButtonStyle.Danger),
+        new ButtonBuilder()
+          .setCustomId(`edit_panel_${message.id}`)
+          .setStyle(ButtonStyle.Secondary)
+          .setEmoji("✏️")
+      );
+
+      await message.edit({ components: [buttons] }).catch(() => {});
+    }
+  }
+}
+console.log("✅ Paneles antiguos inicializados.");
+
+
+
+
+
+
   // ===== BOTONES =====
   if (interaction.isButton()) {
     const data = packVotes.get(interaction.message.id);
@@ -330,17 +392,29 @@ client.on("interactionCreate", async (interaction) => {
 
     const userId = interaction.user.id;
 
+    // BOTÓN ALIVE
     if (interaction.customId === "gp_alive") {
       if (data.alive.has(userId)) return interaction.reply({ content: "Ya votaste Alive.", ephemeral: true });
       data.alive.add(userId);
       data.dead.delete(userId);
-    } else if (interaction.customId === "gp_dead") {
+
+      // Si alcanza 2 votos Alive y no se ha confirmado
+      if (data.alive.size >= 2 && !data.confirmed) {
+        data.confirmed = true;
+        statsData.todayCount++;
+        await saveData(); // guarda en Gist
+        await updateStats(client);
+      }
+    }
+
+    // BOTÓN DEAD
+    if (interaction.customId === "gp_dead") {
       if (data.dead.has(userId)) return interaction.reply({ content: "Ya votaste Dead.", ephemeral: true });
       data.dead.add(userId);
       data.alive.delete(userId);
     }
 
-    // Actualizar labels de botones
+    // Actualizar labels
     const newComponents = interaction.message.components.map(row => {
       const newRow = ActionRowBuilder.from(row);
       newRow.components.forEach(btn => {
@@ -356,6 +430,11 @@ client.on("interactionCreate", async (interaction) => {
 
   // ===== BOTÓN EDIT PANEL =====
   if (interaction.isButton() && interaction.customId.startsWith("edit_panel_")) {
+    // Solo rol Champion puede usar
+    if (!interaction.member.roles.cache.some(r => r.name === "Champion")) {
+      return interaction.reply({ content: "❌ Only Champion can edit this panel.", ephemeral: true });
+    }
+
     const messageId = interaction.customId.replace("edit_panel_", "");
     const message = await interaction.channel.messages.fetch(messageId).catch(() => null);
     if (!message) return interaction.reply({ content: "❌ Mensaje no encontrado.", ephemeral: true });
@@ -363,6 +442,7 @@ client.on("interactionCreate", async (interaction) => {
     const data = packVotes.get(message.id);
     if (!data) return interaction.reply({ content: "❌ Datos no encontrados.", ephemeral: true });
 
+    // Crear modal
     const modal = new ModalBuilder()
       .setCustomId(`edit_panel_${message.id}`)
       .setTitle("Editar GP Panel");
@@ -414,14 +494,21 @@ client.on("interactionCreate", async (interaction) => {
     data.packNumber = packNumber;
     data.username = username;
 
+    let color = 0x808080;
+    if (rarity === 3) color = 0x3498db;
+    if (rarity === 4) color = 0x9b59b6;
+    if (rarity === 5) color = 0xFFD700;
+
     const embed = EmbedBuilder.from(message.embeds[0])
-      .setColor([0x808080, 0x3498db, 0x9b59b6, 0xFFD700][rarity - 1] || 0x808080)
+      .setColor(color)
       .setDescription(`## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`);
 
     await message.edit({ embeds: [embed] });
+    await updateThreadName(message, data.confirmed ? "alive" : null, rarity, packNumber, username);
 
     return interaction.reply({ content: "✅ Panel actualizado.", ephemeral: true });
   }
+
 });
   
 
