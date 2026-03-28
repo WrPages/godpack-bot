@@ -3,7 +3,7 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ChannelType
+  ChannelType,REST, Routes, SlashCommandBuilder
 } = require("discord.js");
 
 const fetch = require("node-fetch");
@@ -215,6 +215,38 @@ async function createTestMessage(client) {
 }
 
 module.exports = async (client) => {
+    // ===== REGISTRAR /editpanel =====
+  const commands = [
+    new SlashCommandBuilder()
+      .setName("editpanel")
+      .setDescription("Editar un panel de GP")
+      .addMessageOption(option =>
+        option
+          .setName("mensaje")
+          .setDescription("Selecciona el mensaje del panel")
+          .setRequired(true)
+      )
+      .toJSON()
+  ];
+
+  const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
+
+  try {
+    console.log("Registrando comando /editpanel...");
+
+    await rest.put(
+Routes.applicationGuildCommands(client.user.id, "1483615153743462571")
+      { body: commands }
+    );
+
+    console.log("Comando /editpanel registrado correctamente");
+  } catch (error) {
+    console.error("Error registrando comando:", error);
+  }
+  
+  
+  
+  
   await loadData();
 
   // Crear/actualizar panel de estadísticas y mensaje de prueba
