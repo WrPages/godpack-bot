@@ -276,9 +276,7 @@ if (attachment) {
     // ===== EMBED =====
     let description = `## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`;
 
-    if (onlineMention) {
-      description = `${onlineMention}\n\n${description}`;
-    }
+ 
 
     const embed = new EmbedBuilder()
       .setColor(color)
@@ -323,7 +321,14 @@ const sentMessage = await message.channel.send({
         type: ChannelType.PublicThread
       });
 
-      await thread.send("📂 Original webhook message:");
+if (onlineMention) {
+  await thread.send({
+    content: onlineMention,
+    allowedMentions: { parse: ["users"] }
+  });
+}
+
+await thread.send("📂 Original webhook message:");
 
       await thread.send({
         content: message.content,
