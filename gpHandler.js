@@ -666,7 +666,7 @@ if (interaction.isButton()) {
   // 🚫 BLOQUEAR SI YA VOTÓ (ANTES de defer)
   if (aliveUsers.includes(userId) || deadUsers.includes(userId)) {
     return interaction.reply({
-      content: "⚠️ Ya votaste en este GP.",
+      content: "⚠️ You have already voted in this GP.",
       ephemeral: true
     });
   }
@@ -703,6 +703,21 @@ if (interaction.isButton()) {
     deadCount++;
     deadUsers.push(userId);
   }
+
+// ===== ENVIAR LOG AL HILO =====
+try {
+  if (message.hasThread) {
+    const thread = await message.thread.fetch();
+
+await thread.send({
+  content: `🗳️ <@${userId}> votó **${interaction.customId === "gp_alive" ? "Alive" : "Dead"}**`,
+  allowedMentions: { parse: [] }
+});
+  }
+} catch (err) {
+  console.error("THREAD LOG ERROR:", err);
+}
+
 
   // ===== GUARDAR FOOTER =====
   const newFooter = `VOTES:alive=${aliveUsers.join(",")}|dead=${deadUsers.join(",")}`;
