@@ -505,10 +505,7 @@ client.on("interactionCreate", async (interaction) => {
       .setColor(color)
       .setDescription(`## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`)
         .setImage(null); // 🔥 ELIMINA LA IMAGEN
-await message.edit({
-  embeds: [embed],
-  attachments: []
-});
+
 
 
 
