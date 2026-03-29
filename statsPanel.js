@@ -16,7 +16,7 @@ const axios = require("axios");
  ****************************************************/
 
 // === DISCORD ===
-const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
+const TOKEN = process.env.TOKEN;
 const HEARTBEAT_CHANNEL_ID = "HEARTBEAT_CHANNEL_ID";
 const STATS_CHANNEL_ID = "STATS_CHANNEL_ID";
 
@@ -250,4 +250,4 @@ async function updatePanel() {
   console.log("✅ Panel actualizado correctamente");
 }
 
-client.login(DISCORD_TOKEN);
+client.login(TOKEN);
