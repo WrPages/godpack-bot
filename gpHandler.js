@@ -627,16 +627,16 @@ if (interaction.isModalSubmit() && interaction.customId.startsWith("edit_panel_"
   if (rarity === 4) color = 0x9b59b6;
   if (rarity === 5) color = 0xFFD700;
 
-  const oldEmbed = message.embeds[0];
+const oldEmbed = message.embeds[0];
 
-  const newEmbed = EmbedBuilder.from(oldEmbed)
-    .setColor(color)
-    .setDescription(`## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`)
-    .setImage(null); // 🔥 extra seguridad
+const newEmbed = EmbedBuilder.from(oldEmbed)
+  .setColor(color)
+  .setDescription(`## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`)
+  .setImage(null); // ✅ solo quita imagen del embed
 
 await message.edit({
-  embeds: [newEmbed],
-  files: [] // 🔥 elimina attachments
+  embeds: [newEmbed]
+  // 🚫 NO poner files: []
 });
 
   await interaction.editReply("✅ Panel actualizado correctamente.");
