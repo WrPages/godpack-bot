@@ -18,6 +18,11 @@ const fetch = require("node-fetch");
 const USERS_GIST_ID = "bb18eda2ea748723d8fe0131dd740b70"; // tu gist users.json
 const IDS_GIST_RAW_URL = "https://gist.githubusercontent.com/WrPages/d9db3a72fed74c496fd6cc830f9ca6e9/raw/elite_ids.txt";
 
+
+
+
+
+
 async function getOnlineIDs() {
   try {
     const res = await fetch(IDS_GIST_RAW_URL + "?t=" + Date.now());
@@ -59,8 +64,29 @@ const ALLOWED_CHANNELS = [
 const STATS_CHANNEL_ID = "1484416376436424794"; // Mismo canal para estadísticas
 
 const GIST_ID = process.env.GIST_ID;
+const LIVE_GIST_ID = process.env.LIVE_GIST_ID;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const FILE_NAME = "gp_record.txt";
+
+// ===== LIVE GP STATS =====
+const LIVE_STATS_FILE = "gp_live_stats.json";
+
+let liveStats = {
+  totalGP: 0,
+  totalAlive: 0,
+  currentDay: null,
+  daily: { gp: 0, alive: 0 },
+  history: []
+};
+
+function getUTC6DateString() {
+  const now = new Date();
+  const utc6 = new Date(now.getTime() - (6 * 60 * 60 * 1000));
+  return utc6.toISOString().split("T")[0];
+}
+
+
+
 
 let packVotes = new Map();
 
@@ -128,6 +154,73 @@ async function updateThreadName(message, status, rarity, packNumber, username, f
 }
 
 // termina
+
+// ===== CARGAR LIVE STATS =====
+async function loadLiveStats() {
+  try {
+    const res = await fetch(`https://api.github.com/gists/${LIVE_GIST_ID}`);
+    const data = await res.json();
+
+    if (!data.files[LIVE_STATS_FILE]) return;
+
+    liveStats = JSON.parse(data.files[LIVE_STATS_FILE].content);
+  } catch (err) {
+    console.error("LOAD LIVE STATS ERROR:", err);
+  }
+}
+
+// ===== GUARDAR LIVE STATS =====
+async function saveLiveStats() {
+  try {
+    await fetch(`https://api.github.com/gists/${LIVE_GIST_ID}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `token ${GITHUB_TOKEN}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        files: {
+          [LIVE_STATS_FILE]: {
+            content: JSON.stringify(liveStats, null, 2)
+          }
+        }
+      })
+    });
+  } catch (err) {
+    console.error("SAVE LIVE STATS ERROR:", err);
+  }
+}
+
+// ===== RESET DIARIO UTC-6 =====
+async function checkDailyReset() {
+  const today = getUTC6DateString();
+
+  if (!liveStats.currentDay) {
+    liveStats.currentDay = today;
+    return;
+  }
+
+  if (today !== liveStats.currentDay) {
+
+    liveStats.history.unshift({
+      date: liveStats.currentDay,
+      gp: liveStats.daily.gp,
+      alive: liveStats.daily.alive
+    });
+
+    liveStats.history = liveStats.history.slice(0, 5);
+
+    liveStats.currentDay = today;
+    liveStats.daily = { gp: 0, alive: 0 };
+
+    await saveLiveStats();
+  }
+}
+
+
+
+
+
 async function updateStats(client) {
   const channel = await client.channels.fetch(STATS_CHANNEL_ID);
   if (!channel) return;
@@ -228,6 +321,8 @@ async function createTestMessage(client) {
 
 module.exports = async (client) => {
     await loadData();
+        await loadLiveStats();
+        
   
 
 client.once("clientReady", async () => {
@@ -385,6 +480,15 @@ packVotes.set(sentMessage.id, {
   username,
   friendId
 });
+// ===== SUMAR GP TOTAL =====
+await checkDailyReset();
+
+liveStats.totalGP += 1;
+liveStats.daily.gp += 1;
+
+await saveLiveStats();
+
+
 
 // ===== AHORA AGREGAR BOTÓN EDIT CON EL ID REAL =====
 const editButton = new ButtonBuilder()
@@ -570,6 +674,14 @@ if (interaction.isButton()) {
 let status = null;
 
 if (data.alive.size === 2) {
+
+  await checkDailyReset();
+
+  liveStats.totalAlive += 1;
+  liveStats.daily.alive += 1;
+
+  await saveLiveStats();
+
   status = "alive";
 }
 
