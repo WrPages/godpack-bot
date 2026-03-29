@@ -630,16 +630,15 @@ if (interaction.isModalSubmit() && interaction.customId.startsWith("edit_panel_"
   if (rarity === 5) color = 0xFFD700;
 
   // ===== MANTENER IMAGEN EXISTENTE =====
-  const oldEmbed = message.embeds[0];
+const oldEmbed = message.embeds[0];
 
-  const newEmbed = EmbedBuilder.from(oldEmbed)
-    .setColor(color)
-    .setDescription(`## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`);
+const newEmbed = EmbedBuilder.from(oldEmbed)
+  .setColor(color)
+  .setDescription(`## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`);
 
-  // ⚠️ NO borres la imagen automáticamente
-  // solo se mantiene la que ya tenía
+// ⚠️ NO tocar .setImage()
 
-  await message.edit({ embeds: [newEmbed] });
+await message.edit({ embeds: [newEmbed] });
 
   await interaction.editReply("✅ Panel actualizado correctamente.");
 }
@@ -651,103 +650,117 @@ if (interaction.isButton()) {
 
   if (interaction.customId !== "gp_alive" && interaction.customId !== "gp_dead") return;
 
-  await interaction.deferUpdate();
+await interaction.deferUpdate();
 
-  const row = interaction.message.components[0];
-  const buttons = row.components;
+const message = interaction.message;
+const embed = message.embeds[0];
 
-  let aliveCount = 0;
-  let deadCount = 0;
+// ===== LEER FOOTER =====
+let footer = embed.footer?.text || "VOTES:alive=|dead=";
 
-  const aliveBtn = buttons.find(b => b.customId === "gp_alive");
-  const deadBtn = buttons.find(b => b.customId === "gp_dead");
+let aliveUsers = [];
+let deadUsers = [];
 
-  if (aliveBtn) {
-    const match = aliveBtn.label.match(/\((\d+)\)/);
-    if (match) aliveCount = parseInt(match[1]);
-  }
+const matchAlive = footer.match(/alive=([^|]*)/);
+const matchDead = footer.match(/dead=(.*)/);
 
-  if (deadBtn) {
-    const match = deadBtn.label.match(/\((\d+)\)/);
-    if (match) deadCount = parseInt(match[1]);
-  }
+if (matchAlive) aliveUsers = matchAlive[1] ? matchAlive[1].split(",") : [];
+if (matchDead) deadUsers = matchDead[1] ? matchDead[1].split(",") : [];
 
-  // ===== SUMAR =====
-  if (interaction.customId === "gp_alive") aliveCount++;
-  if (interaction.customId === "gp_dead") deadCount++;
+const userId = interaction.user.id;
 
-  // ===== CONFIRMACIONES =====
-  let status = null;
-
-  if (aliveCount >= 2) {
-    status = "alive";
-
-    await checkDailyReset();
-    liveStats.totalAlive += 1;
-    liveStats.daily.alive += 1;
-    await saveLiveStats();
-  }
-
-  if (deadCount >= 3) {
-    status = "dead";
-  }
-
-  // ===== CAMBIAR NOMBRE DEL HILO =====
-  if (status) {
-    // Sacar datos desde el embed (NO memoria)
-    const desc = interaction.message.embeds[0]?.description || "";
-
-    const rarityMatch = desc.match(/(\d)\/5/);
-    const packMatch = desc.match(/• (\d+)P/);
-    const userMatch = desc.match(/\*\*(.*?)\*\*/);
-
-    const rarity = rarityMatch ? parseInt(rarityMatch[1]) : 0;
-    const packNumber = packMatch ? parseInt(packMatch[1]) : 0;
-    const username = userMatch ? userMatch[1] : "Unknown";
-
-    await updateThreadName(
-      interaction.message,
-      status,
-      rarity,
-      packNumber,
-      username,
-      "ID"
-    );
-  }
-
-  // ===== RECONSTRUIR BOTONES =====
-  const newRow = new ActionRowBuilder();
-
-  if (deadCount < 3) {
-    newRow.addComponents(
-      new ButtonBuilder()
-        .setCustomId("gp_alive")
-        .setLabel(`🟢 Alive (${aliveCount})`)
-        .setStyle(ButtonStyle.Success)
-    );
-  }
-
-  if (aliveCount < 2) {
-    newRow.addComponents(
-      new ButtonBuilder()
-        .setCustomId("gp_dead")
-        .setLabel(`🔴 Dead (${deadCount})`)
-        .setStyle(ButtonStyle.Danger)
-    );
-  }
-
-  newRow.addComponents(
-    new ButtonBuilder()
-      .setCustomId(`edit_panel_${interaction.message.id}`)
-      .setEmoji("✏️")
-      .setStyle(ButtonStyle.Secondary)
-  );
-
-  await interaction.message.edit({ components: [newRow] });
+// 🚫 SI YA VOTÓ → BLOQUEAR
+if (aliveUsers.includes(userId) || deadUsers.includes(userId)) {
+  return interaction.followUp({
+    content: "⚠️ Ya votaste en este GP.",
+    ephemeral: true
+  });
 }
 
+// ===== CONTADORES =====
+const row = message.components[0];
+const buttons = row.components;
 
-    // tu lógica sigue igual...
-  
+let aliveCount = 0;
+let deadCount = 0;
+
+const aliveBtn = buttons.find(b => b.customId === "gp_alive");
+const deadBtn = buttons.find(b => b.customId === "gp_dead");
+
+if (aliveBtn) {
+  const m = aliveBtn.label.match(/\((\d+)\)/);
+  if (m) aliveCount = parseInt(m[1]);
+}
+
+if (deadBtn) {
+  const m = deadBtn.label.match(/\((\d+)\)/);
+  if (m) deadCount = parseInt(m[1]);
+}
+
+// ===== VOTO =====
+if (interaction.customId === "gp_alive") {
+  aliveCount++;
+  aliveUsers.push(userId);
+}
+
+if (interaction.customId === "gp_dead") {
+  deadCount++;
+  deadUsers.push(userId);
+}
+
+// ===== GUARDAR FOOTER =====
+const newFooter = `VOTES:alive=${aliveUsers.join(",")}|dead=${deadUsers.join(",")}`;
+
+const newEmbed = EmbedBuilder.from(embed).setFooter({ text: newFooter });
+
+// ===== CONFIRMACIONES =====
+let status = null;
+
+if (aliveCount >= 2) status = "alive";
+if (deadCount >= 3) status = "dead";
+
+if (status) {
+  const desc = embed.description || "";
+
+  const rarity = (desc.match(/(\d)\/5/) || [])[1] || 0;
+  const pack = (desc.match(/• (\d+)P/) || [])[1] || 0;
+  const user = (desc.match(/\*\*(.*?)\*\*/) || [])[1] || "Unknown";
+
+  await updateThreadName(message, status, rarity, pack, user, "ID");
+}
+
+// ===== BOTONES =====
+const newRow = new ActionRowBuilder();
+
+if (deadCount < 3) {
+  newRow.addComponents(
+    new ButtonBuilder()
+      .setCustomId("gp_alive")
+      .setLabel(`🟢 Alive (${aliveCount})`)
+      .setStyle(ButtonStyle.Success)
+  );
+}
+
+if (aliveCount < 2) {
+  newRow.addComponents(
+    new ButtonBuilder()
+      .setCustomId("gp_dead")
+      .setLabel(`🔴 Dead (${deadCount})`)
+      .setStyle(ButtonStyle.Danger)
+  );
+}
+
+newRow.addComponents(
+  new ButtonBuilder()
+    .setCustomId(`edit_panel_${message.id}`)
+    .setEmoji("✏️")
+    .setStyle(ButtonStyle.Secondary)
+);
+
+await message.edit({
+  embeds: [newEmbed],
+  components: [newRow]
 });
+
+
 };
