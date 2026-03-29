@@ -504,7 +504,7 @@ client.on("interactionCreate", async (interaction) => {
     const embed = EmbedBuilder.from(message.embeds[0])
       .setColor(color)
       .setDescription(`## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`);
-        .setImage(null); // 🔥 ELIMINA LA IMAGEN
+       // .setImage(null); // 🔥 ELIMINA LA IMAGEN
 
     await message.edit({ embeds: [embed] });
 
