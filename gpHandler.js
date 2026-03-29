@@ -675,7 +675,10 @@ if (aliveUsers.includes(userId) || deadUsers.includes(userId)) {
   });
 }
 
-  await interaction.deferUpdate();
+await interaction.update({
+  embeds: [newEmbed],
+  components: [newRow]
+});
 
   // ===== CONTADORES =====
   const row = message.components[0];
@@ -771,10 +774,7 @@ await thread.send({
       .setStyle(ButtonStyle.Secondary)
   );
 
-await message.edit({
-  embeds: [newEmbed],
-  components: [newRow]
-});
+
 
 return;
 }
