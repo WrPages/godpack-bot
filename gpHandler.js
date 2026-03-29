@@ -669,8 +669,12 @@ if (interaction.isButton()) {
 
   // 🚫 BLOQUEAR SI YA VOTÓ (ANTES de defer)
 if (aliveUsers.includes(userId) || deadUsers.includes(userId)) {
-  await interaction.deferUpdate(); // ✅ responde sin mostrar nada
-  return;
+  await interaction.deferUpdate();
+
+  return interaction.followUp({
+    content: "⚠️ You have already voted in this GP.",
+    ephemeral: true
+  });
 }
 
 await interaction.deferUpdate();
