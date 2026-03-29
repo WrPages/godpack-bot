@@ -614,7 +614,6 @@ if (interaction.isModalSubmit() && interaction.customId.startsWith("edit_panel_"
     return interaction.editReply("❌ Mensaje no encontrado.");
   }
 
-  // ===== DATOS DEL MODAL =====
   const rarity = parseInt(interaction.fields.getTextInputValue("rarity"));
   const packNumber = parseInt(interaction.fields.getTextInputValue("pack"));
   const username = interaction.fields.getTextInputValue("username");
@@ -623,144 +622,141 @@ if (interaction.isModalSubmit() && interaction.customId.startsWith("edit_panel_"
     return interaction.editReply("❌ Rareza inválida.");
   }
 
-  // ===== COLOR =====
   let color = 0x808080;
   if (rarity === 3) color = 0x3498db;
   if (rarity === 4) color = 0x9b59b6;
   if (rarity === 5) color = 0xFFD700;
 
-  // ===== MANTENER IMAGEN EXISTENTE =====
-const oldEmbed = message.embeds[0];
+  const oldEmbed = message.embeds[0];
 
-const newEmbed = EmbedBuilder.from(oldEmbed)
-  .setColor(color)
-  .setDescription(`## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`);
+  const newEmbed = EmbedBuilder.from(oldEmbed)
+    .setColor(color)
+    .setDescription(`## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`);
 
-// ⚠️ NO tocar .setImage()
-
-await message.edit({ embeds: [newEmbed] });
+  await message.edit({ embeds: [newEmbed] });
 
   await interaction.editReply("✅ Panel actualizado correctamente.");
+  return; // 🔥 IMPORTANTE
 }
 
-  // =========================
-  // 3️⃣ BOTONES ALIVE / DEAD
-  // =========================
+// =========================
+// 3️⃣ BOTONES ALIVE / DEAD
+// =========================
 if (interaction.isButton()) {
 
   if (interaction.customId !== "gp_alive" && interaction.customId !== "gp_dead") return;
 
-await interaction.deferUpdate();
+  const message = interaction.message;
+  const embed = message.embeds[0];
 
-const message = interaction.message;
-const embed = message.embeds[0];
+  // ===== LEER FOOTER =====
+  let footer = embed.footer?.text || "VOTES:alive=|dead=";
 
-// ===== LEER FOOTER =====
-let footer = embed.footer?.text || "VOTES:alive=|dead=";
+  let aliveUsers = [];
+  let deadUsers = [];
 
-let aliveUsers = [];
-let deadUsers = [];
+  const matchAlive = footer.match(/alive=([^|]*)/);
+  const matchDead = footer.match(/dead=(.*)/);
 
-const matchAlive = footer.match(/alive=([^|]*)/);
-const matchDead = footer.match(/dead=(.*)/);
+  if (matchAlive) aliveUsers = matchAlive[1] ? matchAlive[1].split(",") : [];
+  if (matchDead) deadUsers = matchDead[1] ? matchDead[1].split(",") : [];
 
-if (matchAlive) aliveUsers = matchAlive[1] ? matchAlive[1].split(",") : [];
-if (matchDead) deadUsers = matchDead[1] ? matchDead[1].split(",") : [];
+  const userId = interaction.user.id;
 
-const userId = interaction.user.id;
+  // 🚫 BLOQUEAR SI YA VOTÓ (ANTES de defer)
+  if (aliveUsers.includes(userId) || deadUsers.includes(userId)) {
+    return interaction.reply({
+      content: "⚠️ Ya votaste en este GP.",
+      ephemeral: true
+    });
+  }
 
-// 🚫 SI YA VOTÓ → BLOQUEAR
-if (aliveUsers.includes(userId) || deadUsers.includes(userId)) {
-  return interaction.followUp({
-    content: "⚠️ Ya votaste en este GP.",
-    ephemeral: true
+  await interaction.deferUpdate();
+
+  // ===== CONTADORES =====
+  const row = message.components[0];
+  const buttons = row.components;
+
+  let aliveCount = 0;
+  let deadCount = 0;
+
+  const aliveBtn = buttons.find(b => b.customId === "gp_alive");
+  const deadBtn = buttons.find(b => b.customId === "gp_dead");
+
+  if (aliveBtn) {
+    const m = aliveBtn.label.match(/\((\d+)\)/);
+    if (m) aliveCount = parseInt(m[1]);
+  }
+
+  if (deadBtn) {
+    const m = deadBtn.label.match(/\((\d+)\)/);
+    if (m) deadCount = parseInt(m[1]);
+  }
+
+  // ===== VOTO =====
+  if (interaction.customId === "gp_alive") {
+    aliveCount++;
+    aliveUsers.push(userId);
+  }
+
+  if (interaction.customId === "gp_dead") {
+    deadCount++;
+    deadUsers.push(userId);
+  }
+
+  // ===== GUARDAR FOOTER =====
+  const newFooter = `VOTES:alive=${aliveUsers.join(",")}|dead=${deadUsers.join(",")}`;
+  const newEmbed = EmbedBuilder.from(embed).setFooter({ text: newFooter });
+
+  // ===== CONFIRMACIONES =====
+  let status = null;
+
+  if (aliveCount >= 2) status = "alive";
+  if (deadCount >= 3) status = "dead";
+
+  if (status) {
+    const desc = embed.description || "";
+
+    const rarity = (desc.match(/(\d)\/5/) || [])[1] || 0;
+    const pack = (desc.match(/• (\d+)P/) || [])[1] || 0;
+    const user = (desc.match(/\*\*(.*?)\*\*/) || [])[1] || "Unknown";
+
+    await updateThreadName(message, status, rarity, pack, user, "ID");
+  }
+
+  // ===== BOTONES =====
+  const newRow = new ActionRowBuilder();
+
+  if (deadCount < 3) {
+    newRow.addComponents(
+      new ButtonBuilder()
+        .setCustomId("gp_alive")
+        .setLabel(`🟢 Alive (${aliveCount})`)
+        .setStyle(ButtonStyle.Success)
+    );
+  }
+
+  if (aliveCount < 2) {
+    newRow.addComponents(
+      new ButtonBuilder()
+        .setCustomId("gp_dead")
+        .setLabel(`🔴 Dead (${deadCount})`)
+        .setStyle(ButtonStyle.Danger)
+    );
+  }
+
+  newRow.addComponents(
+    new ButtonBuilder()
+      .setCustomId(`edit_panel_${message.id}`)
+      .setEmoji("✏️")
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  await message.edit({
+    embeds: [newEmbed],
+    components: [newRow]
   });
 }
-
-// ===== CONTADORES =====
-const row = message.components[0];
-const buttons = row.components;
-
-let aliveCount = 0;
-let deadCount = 0;
-
-const aliveBtn = buttons.find(b => b.customId === "gp_alive");
-const deadBtn = buttons.find(b => b.customId === "gp_dead");
-
-if (aliveBtn) {
-  const m = aliveBtn.label.match(/\((\d+)\)/);
-  if (m) aliveCount = parseInt(m[1]);
-}
-
-if (deadBtn) {
-  const m = deadBtn.label.match(/\((\d+)\)/);
-  if (m) deadCount = parseInt(m[1]);
-}
-
-// ===== VOTO =====
-if (interaction.customId === "gp_alive") {
-  aliveCount++;
-  aliveUsers.push(userId);
-}
-
-if (interaction.customId === "gp_dead") {
-  deadCount++;
-  deadUsers.push(userId);
-}
-
-// ===== GUARDAR FOOTER =====
-const newFooter = `VOTES:alive=${aliveUsers.join(",")}|dead=${deadUsers.join(",")}`;
-
-const newEmbed = EmbedBuilder.from(embed).setFooter({ text: newFooter });
-
-// ===== CONFIRMACIONES =====
-let status = null;
-
-if (aliveCount >= 2) status = "alive";
-if (deadCount >= 3) status = "dead";
-
-if (status) {
-  const desc = embed.description || "";
-
-  const rarity = (desc.match(/(\d)\/5/) || [])[1] || 0;
-  const pack = (desc.match(/• (\d+)P/) || [])[1] || 0;
-  const user = (desc.match(/\*\*(.*?)\*\*/) || [])[1] || "Unknown";
-
-  await updateThreadName(message, status, rarity, pack, user, "ID");
-}
-
-// ===== BOTONES =====
-const newRow = new ActionRowBuilder();
-
-if (deadCount < 3) {
-  newRow.addComponents(
-    new ButtonBuilder()
-      .setCustomId("gp_alive")
-      .setLabel(`🟢 Alive (${aliveCount})`)
-      .setStyle(ButtonStyle.Success)
-  );
-}
-
-if (aliveCount < 2) {
-  newRow.addComponents(
-    new ButtonBuilder()
-      .setCustomId("gp_dead")
-      .setLabel(`🔴 Dead (${deadCount})`)
-      .setStyle(ButtonStyle.Danger)
-  );
-}
-
-newRow.addComponents(
-  new ButtonBuilder()
-    .setCustomId(`edit_panel_${message.id}`)
-    .setEmoji("✏️")
-    .setStyle(ButtonStyle.Secondary)
-);
-
-await message.edit({
-  embeds: [newEmbed],
-  components: [newRow]
-});
 
 
 };
