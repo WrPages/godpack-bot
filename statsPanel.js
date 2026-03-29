@@ -1,236 +1,253 @@
-const { Client, GatewayIntentBits, EmbedBuilder } = require("discord.js");
+/****************************************************
+ *              🔥 PANEL ULTRA PRO 🔥
+ *   Sistema avanzado de estadísticas de reroll
+ ****************************************************/
+
+const { 
+  Client, 
+  GatewayIntentBits, 
+  EmbedBuilder 
+} = require("discord.js");
+
 const axios = require("axios");
 
-/********************************************************************/
-/************************ CONFIG ************************************/
-/********************************************************************/
+/****************************************************
+ *              🔧 VARIABLES CONFIGURABLES
+ ****************************************************/
 
-const BOT_TOKEN = process.env.TOKEN;
+// === DISCORD ===
+const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
+const HEARTBEAT_CHANNEL_ID = "HEARTBEAT_CHANNEL_ID";
+const STATS_CHANNEL_ID = "STATS_CHANNEL_ID";
+
+// === GISTS ===
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 
-if (!BOT_TOKEN) {
-    console.error("❌ TOKEN no definido");
-    process.exit(1);
-}
+const GIST_REGISTROS_ID = "GIST_REGISTROS_ID";
+const GIST_ONLINE_IDS_ID = "GIST_ONLINE_IDS_ID";
+const GIST_GP_HISTORY_ID = "GIST_GP_HISTORY_ID";
+const GIST_PPM_HISTORY_ID = "GIST_PPM_HISTORY_ID";
+const GIST_PANEL_CACHE_ID = "GIST_PANEL_CACHE_ID";
 
-if (!GITHUB_TOKEN) {
-    console.error("❌ GITHUB_TOKEN no definido");
-    process.exit(1);
-}
-
-const PANEL_CHANNEL_ID = "1484015417411244082";
-const HEARTBEAT_CHANNEL_ID = "1483616146996465735";
-
-const GIST_REGISTERED_USERS = "bb18eda2ea748723d8fe0131dd740b70";
-const GIST_ONLINE_USERS = "d9db3a72fed74c496fd6cc830f9ca6e9";
-
-const UPDATE_INTERVAL = 60 * 1000;
-const GP_PROBABILITY = 0.0005;
-
-/********************************************************************/
-/************************ CLIENT ************************************/
-/********************************************************************/
+/****************************************************
+ *              🤖 INICIAR BOT
+ ****************************************************/
 
 const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent
-    ]
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent
+  ]
 });
 
-/********************************************************************/
-/*********************** CACHE **************************************/
-/********************************************************************/
+client.once("ready", async () => {
+  console.log(`✅ Bot conectado como ${client.user.tag}`);
+  updatePanel();
+  setInterval(updatePanel, 5 * 60 * 1000); // Actualiza cada 5 min
+});
 
-let cachedPanelMessage = null;
-let ppmHistory = [];
+/****************************************************
+ *              📡 FUNCIONES GIST
+ ****************************************************/
 
-/********************************************************************/
-/*********************** SAFE GIST **********************************/
-/********************************************************************/
+async function getGist(id) {
+  const res = await axios.get(`https://api.github.com/gists/${id}`, {
+    headers: { Authorization: `Bearer ${GITHUB_TOKEN}` }
+  });
 
-async function getGistSafe(gistId) {
-    try {
-        const res = await axios.get(`https://api.github.com/gists/${gistId}`, {
-            headers: { Authorization: `Bearer ${GITHUB_TOKEN}` }
-        });
-
-        const file = Object.values(res.data.files)[0];
-        return JSON.parse(file.content || "{}");
-
-    } catch (err) {
-        console.error("Gist error:", err.response?.status || err.message);
-        return {};
-    }
+  const file = Object.keys(res.data.files)[0];
+  return JSON.parse(res.data.files[file].content);
 }
 
-/********************************************************************/
-/*********************** HEARTBEAT **********************************/
-/********************************************************************/
-
-async function fetchHeartbeatMessagesSafe() {
-    try {
-        const channel = await client.channels.fetch(HEARTBEAT_CHANNEL_ID);
-        if (!channel) return [];
-
-        const messages = await channel.messages.fetch({ limit: 100 });
-        return [...messages.values()];
-
-    } catch (err) {
-        console.error("Heartbeat error:", err.message);
-        return [];
+async function updateGist(id, content) {
+  await axios.patch(
+    `https://api.github.com/gists/${id}`,
+    {
+      files: {
+        "data.json": {
+          content: JSON.stringify(content, null, 2)
+        }
+      }
+    },
+    {
+      headers: { Authorization: `Bearer ${GITHUB_TOKEN}` }
     }
+  );
 }
 
-/********************************************************************/
-/*********************** ULTRA PANEL ********************************/
-/********************************************************************/
+/****************************************************
+ *      🔎 BUSCAR ÚLTIMO MENSAJE DE USUARIO
+ ****************************************************/
+
+async function getUserHeartbeatData(username) {
+  const channel = await client.channels.fetch(HEARTBEAT_CHANNEL_ID);
+  const messages = await channel.messages.fetch({ limit: 100 });
+
+  const userMessage = messages.find(m => 
+    m.content.includes(username)
+  );
+
+  if (!userMessage) return null;
+
+  const content = userMessage.content;
+
+  const ppmMatch = content.match(/pack por minuto[:\s]+([\d.]+)/i);
+  const onlineMatch = content.match(/online[:\s]+(.+)/i);
+  const offlineMatch = content.match(/offline[:\s]+(.+)/i);
+  const packsMatch = content.match(/packs abiertos[:\s]+(\d+)/i);
+  const timeMatch = content.match(/tiempo[:\s]+(.+)/i);
+  const openingMatch = content.match(/opening\s+(\w+)/i);
+
+  return {
+    ppm: ppmMatch ? parseFloat(ppmMatch[1]) : 0,
+    onlineInstances: onlineMatch ? onlineMatch[1].split(",").filter(i => i !== "main").length : 0,
+    offlineInstances: offlineMatch ? offlineMatch[1].split(",").filter(i => i !== "main").length : 0,
+    packs: packsMatch ? parseInt(packsMatch[1]) : 0,
+    time: timeMatch ? timeMatch[1] : "N/A",
+    opening: openingMatch ? openingMatch[1] : ""
+  };
+}
+
+/****************************************************
+ *          📊 ACTUALIZAR PANEL COMPLETO
+ ****************************************************/
 
 async function updatePanel() {
-    try {
 
-        const registered = await getGistSafe(GIST_REGISTERED_USERS);
-        const onlineIds = await getGistSafe(GIST_ONLINE_USERS);
-        const heartbeatMessages = await fetchHeartbeatMessagesSafe();
+  console.log("🔄 Actualizando panel...");
 
-        let totalPPM = 0;
-        let totalInstances = 0;
+  const registros = await getGist(GIST_REGISTROS_ID);
+  const onlineIDs = await getGist(GIST_ONLINE_IDS_ID);
+  const gpHistory = await getGist(GIST_GP_HISTORY_ID);
+  let ppmHistory = await getGist(GIST_PPM_HISTORY_ID);
 
-        for (const userId in registered) {
+  const users = [];
+  let totalPPM = 0;
+  let totalInstances = 0;
+  let totalPacks = 0;
 
-            const user = registered[userId];
-            if (!user?.name) continue;
+  /****************************************************
+   *      👤 PROCESAR USUARIOS ONLINE/OFFLINE
+   ****************************************************/
 
-            const message = heartbeatMessages.find(m =>
-                m.content.includes(user.name)
-            );
+  for (const user of registros) {
 
-            if (!message) continue;
+    const isOnline = onlineIDs.includes(user.id);
 
-            const ppmMatch = message.content.match(/Avg:\s([\d.]+)/);
-            const ppm = ppmMatch ? parseFloat(ppmMatch[1]) : 0;
+    const heartbeatData = isOnline
+      ? await getUserHeartbeatData(user.username)
+      : null;
 
-            totalPPM += ppm;
+    const ppm = heartbeatData?.ppm || 0;
+    const onlineInstances = heartbeatData?.onlineInstances || 0;
+    const offlineInstances = heartbeatData?.offlineInstances || 0;
+    const totalUserInstances = onlineInstances + offlineInstances;
+    const packs = heartbeatData?.packs || 0;
 
-            if (onlineIds.includes?.(userId)) {
-                totalInstances++;
-            }
-        }
+    if (isOnline) totalPPM += ppm;
+    totalInstances += totalUserInstances;
+    totalPacks += packs;
 
-        const packsPerHour = totalPPM * 60;
-        const packsPerDay = packsPerHour * 24;
+    users.push({
+      username: user.username,
+      isOnline,
+      ppm,
+      onlineInstances,
+      totalUserInstances,
+      packs,
+      time: heartbeatData?.time || "Offline",
+      opening: heartbeatData?.opening || ""
+    });
+  }
 
-        const expectedGPPerHour = packsPerHour * GP_PROBABILITY;
-        const expectedGPPerDay = packsPerDay * GP_PROBABILITY;
+  /****************************************************
+   *      📈 MEDIA PPM 12 HORAS
+   ****************************************************/
 
-        // 📊 Probabilidad acumulada real
-        const prob1h = 1 - Math.pow((1 - GP_PROBABILITY), packsPerHour);
-        const prob6h = 1 - Math.pow((1 - GP_PROBABILITY), packsPerHour * 6);
-        const prob24h = 1 - Math.pow((1 - GP_PROBABILITY), packsPerDay);
+  const now = Date.now();
 
-        const hoursPerGP = packsPerHour > 0
-            ? 1 / (packsPerHour * GP_PROBABILITY)
-            : 0;
+  ppmHistory.push({ time: now, ppm: totalPPM });
 
-        /************* HISTORIAL 12H EN MEMORIA *************/
+  ppmHistory = ppmHistory.filter(p =>
+    now - p.time <= 12 * 60 * 60 * 1000
+  );
 
-        const now = Date.now();
-        ppmHistory.push({ time: now, ppm: totalPPM });
+  const avgPPM = (
+    ppmHistory.reduce((a, b) => a + b.ppm, 0) /
+    ppmHistory.length
+  ).toFixed(2);
 
-        const twelveHoursAgo = now - (12 * 60 * 60 * 1000);
-        ppmHistory = ppmHistory.filter(e => e.time >= twelveHoursAgo);
+  await updateGist(GIST_PPM_HISTORY_ID, ppmHistory);
 
-        const avgPPM12h =
-            ppmHistory.reduce((sum, e) => sum + e.ppm, 0) /
-            (ppmHistory.length || 1);
+  /****************************************************
+   *              📊 CONSTRUIR EMBED
+   ****************************************************/
 
-        const trend =
-            totalPPM > avgPPM12h ? "📈 Trending Up" :
-            totalPPM < avgPPM12h ? "📉 Trending Down" :
-            "➖ Stable";
+  const embed = new EmbedBuilder()
+    .setTitle("🔥 REROLL STATISTICS PANEL 🔥")
+    .setColor(0x00ffcc)
+    .setTimestamp();
 
-        /************* EMBED *************/
+  // === USUARIOS ONLINE ===
+  const onlineList = users
+    .filter(u => u.isOnline)
+    .map(u =>
+      `🟢 **${u.username}** | ${u.ppm} PPM | ${u.onlineInstances}/${u.totalUserInstances} inst | ${u.packs} packs | ${u.opening}`
+    ).join("\n") || "Ninguno";
 
-        const embed = new EmbedBuilder()
-            .setTitle("⚔️ REROLL COMMAND CENTER — ULTRA PRO")
-            .setColor(
-                totalPPM > avgPPM12h ? 0x00ff88 :
-                totalPPM < avgPPM12h ? 0xff4444 :
-                0x111111
-            )
-            .setDescription(
-                `🔥 **${totalPPM.toFixed(2)} PPM**\n` +
-                `${trend}\n` +
-                `12h Avg: ${avgPPM12h.toFixed(2)}`
-            )
-            .addFields(
-                {
-                    name: "🧠 SYSTEM LOAD",
-                    value:
-                        `Active Instances: ${totalInstances}\n` +
-                        `Packs/hour: ${packsPerHour.toFixed(0)}\n` +
-                        `Packs/day: ${packsPerDay.toFixed(0)}`
-                },
-                {
-                    name: "🎯 GP EXPECTATION (0.05%)",
-                    value:
-                        `Expected GP/hour: ${expectedGPPerHour.toFixed(2)}\n` +
-                        `Expected GP/day: ${expectedGPPerDay.toFixed(2)}`
-                },
-                {
-                    name: "📊 REAL PROBABILITY MODEL",
-                    value:
-                        `1h chance: ${(prob1h * 100).toFixed(2)}%\n` +
-                        `6h chance: ${(prob6h * 100).toFixed(2)}%\n` +
-                        `24h chance: ${(prob24h * 100).toFixed(2)}%`
-                },
-                {
-                    name: "⏳ TIME ESTIMATION",
-                    value:
-                        hoursPerGP > 0
-                            ? `Avg time per GP: ${hoursPerGP.toFixed(2)} hours`
-                            : "No activity"
-                }
-            )
-            .setFooter({ text: "Ultra Pro Analytics Engine v3" })
-            .setTimestamp();
+  embed.addFields({
+    name: "🟢 Online Users",
+    value: onlineList
+  });
 
-        const channel = await client.channels.fetch(PANEL_CHANNEL_ID);
-        if (!channel) return;
+  // === OFFLINE ===
+  const offlineList = users
+    .filter(u => !u.isOnline)
+    .map(u => `🔴 ${u.username}`)
+    .join("\n") || "Ninguno";
 
-        if (!cachedPanelMessage) {
-            cachedPanelMessage = await channel.send({ embeds: [embed] });
-        } else {
-            await cachedPanelMessage.edit({ embeds: [embed] });
-        }
+  embed.addFields({
+    name: "🔴 Offline Users",
+    value: offlineList
+  });
 
-    } catch (err) {
-        console.error("Ultra panel error:", err.message);
-    }
+  // === GLOBAL ===
+  embed.addFields({
+    name: "🌎 GLOBAL STATS",
+    value:
+      `🔥 **PPM ACTUAL:** ${totalPPM.toFixed(2)}\n` +
+      `📊 Media 12h: ${avgPPM}\n` +
+      `📦 Packs abiertos: ${totalPacks}\n` +
+      `⚙ Instancias totales: ${totalInstances}\n` +
+      `👥 Registrados: ${registros.length}\n` +
+      `🟢 Online: ${users.filter(u => u.isOnline).length}`
+  });
+
+  // === GP SECTION ===
+  embed.addFields({
+    name: "💎 GP STATS",
+    value:
+      `✨ GP Hoy: ${gpHistory.today}\n` +
+      `🟢 GP Vivos Hoy: ${gpHistory.aliveToday}\n` +
+      `📈 Media últimos días: ${gpHistory.last5Avg}`
+  });
+
+  /****************************************************
+   *          📨 ENVIAR O EDITAR MENSAJE
+   ****************************************************/
+
+  const channel = await client.channels.fetch(STATS_CHANNEL_ID);
+  const messages = await channel.messages.fetch({ limit: 10 });
+  const existing = messages.find(m => m.author.id === client.user.id);
+
+  if (existing) {
+    await existing.edit({ embeds: [embed] });
+  } else {
+    await channel.send({ embeds: [embed] });
+  }
+
+  console.log("✅ Panel actualizado correctamente");
 }
 
-/********************************************************************/
-/************************ START *************************************/
-/********************************************************************/
-
-client.once("ready", () => {
-    console.log("✅ Ultra Pro Panel System Online");
-
-    updatePanel();
-    setInterval(updatePanel, UPDATE_INTERVAL);
-});
-
-client.login(BOT_TOKEN);
-
-/********************************************************************/
-/**************** GLOBAL CRASH PROTECTION ***************************/
-/********************************************************************/
-
-process.on("unhandledRejection", err => {
-    console.error("Unhandled rejection:", err);
-});
-
-process.on("uncaughtException", err => {
-    console.error("Uncaught exception:", err);
-});
+client.login(DISCORD_TOKEN);
