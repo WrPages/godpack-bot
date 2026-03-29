@@ -708,13 +708,13 @@ await interaction.deferUpdate();
 
 // ===== ENVIAR LOG AL HILO =====
 try {
-  if (message.hasThread) {
-    const thread = await message.thread.fetch();
+  const thread = message.thread;
 
-await thread.send({
-  content: `🗳️ <@${userId}> votó **${interaction.customId === "gp_alive" ? "Alive" : "Dead"}**`,
-  allowedMentions: { parse: [] }
-});
+  if (thread) {
+    await thread.send({
+      content: `🗳️ ${interaction.user.username} votó **${interaction.customId === "gp_alive" ? "Alive" : "Dead"}**`,
+      allowedMentions: { parse: [] }
+    });
   }
 } catch (err) {
   console.error("THREAD LOG ERROR:", err);
