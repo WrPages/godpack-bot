@@ -426,7 +426,7 @@ await sentMessage.edit({
     // ===== CREAR HILO =====
     try {
       const thread = await sentMessage.startThread({
-name: `[${rarity}/5][${packNumber}P] [${username}] [${expansion}]`,
+name: `[${rarity}/5][${packNumber}P] [${username}] [${friendId}]`,
         autoArchiveDuration: 1440,
         type: ChannelType.PublicThread
       });
