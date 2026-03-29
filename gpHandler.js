@@ -654,7 +654,7 @@ if (interaction.isButton()) {
   const embed = message.embeds[0];
 
   // ===== LEER FOOTER =====
-  let footer = embed.footer?.text || "VOTES:alive=|dead=";
+ let footer = embed.footer?.text || "VOTES:alive=|dead=";
 
   let aliveUsers = [];
   let deadUsers = [];
