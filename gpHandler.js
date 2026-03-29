@@ -632,7 +632,7 @@ if (interaction.isModalSubmit() && interaction.customId.startsWith("edit_panel_"
   const newEmbed = EmbedBuilder.from(oldEmbed)
     .setColor(color)
     .setDescription(`## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`);
-    //setImage(null); // 🔥 extra seguridad
+    setImage(null); // 🔥 extra seguridad
 
 await message.edit({ embeds: [newEmbed] });
 
