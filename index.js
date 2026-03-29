@@ -2,6 +2,10 @@
   TextInputBuilder,TextInputStyle,ActionRowBuilder} = require('discord.js')
 const fetch = require('node-fetch')
 
+const { startPanelSystem } = require("./panelSystem");
+
+
+
 const client = new Client({ 
   intents: [
     GatewayIntentBits.Guilds,
@@ -197,6 +201,15 @@ require("./gpHandler")(client);
 //Comandos
 client.once("ready", async () => {
   console.log(`✅ Bot listo como ${client.user.tag}`);
+  
+  
+  client.once("ready", () => {
+    console.log("Bot online");
+
+    startPanelSystem(client); // 👈 AQUÍ ACTIVAS EL PANEL
+});
+
+
 
   const { REST, Routes, SlashCommandBuilder } = require("discord.js");
 
