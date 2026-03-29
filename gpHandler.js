@@ -520,40 +520,44 @@ client.on("interactionCreate", async (interaction) => {
   // =========================
   if (interaction.isButton()) {
 
-    if (interaction.customId !== "gp_alive" && interaction.customId !== "gp_dead") return;
+  if (interaction.customId !== "gp_alive" && interaction.customId !== "gp_dead") return;
 
-    const data = packVotes.get(interaction.message.id);
-    if (!data) return;
+  const data = packVotes.get(interaction.message.id);
+  if (!data) return;
 
-    await interaction.deferUpdate();
+  await interaction.deferUpdate();
 
-    if (data.confirmed) return;
+  const userId = interaction.user.id;
 
-    const userId = interaction.user.id;
-
-    if (interaction.customId === "gp_alive") {
-      data.alive.add(userId);
-      data.dead.delete(userId);
-    }
-
-    if (interaction.customId === "gp_dead") {
-      data.dead.add(userId);
-      data.alive.delete(userId);
-    }
-
-    const newButtons = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("gp_alive")
-        .setLabel(`🟢 Alive (${data.alive.size})`)
-        .setStyle(ButtonStyle.Success),
-      new ButtonBuilder()
-        .setCustomId("gp_dead")
-        .setLabel(`🔴 Dead (${data.dead.size})`)
-        .setStyle(ButtonStyle.Danger)
-    );
-
-    await interaction.message.edit({ components: [newButtons] });
+  if (interaction.customId === "gp_alive") {
+    data.alive.add(userId);
+    data.dead.delete(userId);
   }
+
+  if (interaction.customId === "gp_dead") {
+    data.dead.add(userId);
+    data.alive.delete(userId);
+  }
+
+  const newButtons = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("gp_alive")
+      .setLabel(`🟢 Alive (${data.alive.size})`)
+      .setStyle(ButtonStyle.Success),
+
+    new ButtonBuilder()
+      .setCustomId("gp_dead")
+      .setLabel(`🔴 Dead (${data.dead.size})`)
+      .setStyle(ButtonStyle.Danger),
+
+    new ButtonBuilder()
+      .setCustomId(`edit_panel_${interaction.message.id}`)
+      .setEmoji("✏️")
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  await interaction.message.edit({ components: [newButtons] });
+}
 
 
     // tu lógica sigue igual...
