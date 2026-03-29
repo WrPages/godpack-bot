@@ -633,7 +633,10 @@ if (interaction.isModalSubmit() && interaction.customId.startsWith("edit_panel_"
     .setColor(color)
     .setDescription(`## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`);
 
-  await message.edit({ embeds: [newEmbed] });
+await message.edit({
+  embeds: [newEmbed],
+  files: [] // 🔥 elimina attachments
+});
 
   await interaction.editReply("✅ Panel actualizado correctamente.");
   return; // 🔥 IMPORTANTE
