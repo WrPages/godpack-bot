@@ -383,7 +383,7 @@ packVotes.set(sentMessage.id, {
   rarity,
   packNumber,
   username,
- expansion
+ expansion,
 friendId
 
 });
