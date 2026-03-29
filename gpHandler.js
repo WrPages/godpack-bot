@@ -713,8 +713,8 @@ try {
 
   if (thread) {
     await thread.send({
-      content: `🗳️ ${interaction.user.username} votó **${interaction.customId === "gp_alive" ? "Alive" : "Dead"}**`,
-      allowedMentions: { parse: [] }
+ content: `🗳️ ${interaction.user.username} votó **${interaction.customId === "gp_alive" ? "Alive" : "Dead"}**`,
+allowedMentions: { parse: [] }
     });
   }
 } catch (err) {
