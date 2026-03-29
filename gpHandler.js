@@ -103,7 +103,7 @@ async function loadData() {
   }
 }
 //cambia alive o desd hilos
-async function updateThreadName(message, status, rarity, packNumber, username) {
+async function updateThreadName(message, status, rarity, packNumber, username, friendId) {
   try {
     if (!message.hasThread) return;
 
@@ -119,7 +119,7 @@ async function updateThreadName(message, status, rarity, packNumber, username) {
       emoji = "❌";
     }
 
-    const name = `${emoji} [${rarity}/5][${packNumber}P] ${username}`.slice(0, 90);
+ const name = `${emoji} [${rarity}/5][${packNumber}P] ${username} ${friendId}`.slice(0, 90);
 
     await thread.setName(name);
   } catch (err) {
@@ -319,6 +319,28 @@ if (!ALLOWED_CHANNELS.includes(message.channel.id)) return;
       if (match) username = match[1].trim();
     }
 
+// ===== FRIEND ID (16 dígitos con o sin espacios) =====
+let friendId = "Unknown";
+
+const rawText = message.content;
+
+// Buscar 16 dígitos seguidos
+let match = rawText.match(/\b\d{16}\b/);
+
+// Si no encuentra, buscar formato con espacios
+if (!match) {
+  match = rawText.match(/\b(\d{4}\s\d{4}\s\d{4}\s\d{4})\b/);
+  if (match) {
+    friendId = match[1].replace(/\s/g, ""); // quitar espacios
+  }
+} else {
+  friendId = match[0];
+}
+
+console.log("Friend ID detectado:", friendId);
+
+
+
     // ===== COLOR =====
     let color = 0x808080;
     if (rarity === 3) color = 0x3498db;
@@ -360,7 +382,8 @@ packVotes.set(sentMessage.id, {
   confirmed: false,
   rarity,
   packNumber,
-  username
+  username,
+  friendId
 });
 
 // ===== AHORA AGREGAR BOTÓN EDIT CON EL ID REAL =====
@@ -380,7 +403,7 @@ await sentMessage.edit({
     // ===== CREAR HILO =====
     try {
       const thread = await sentMessage.startThread({
-        name: `[${rarity}/5][${packNumber}P] ${username}`,
+        name: `[${rarity}/5][${packNumber}P] ${username}[${friendId}P]`,
         autoArchiveDuration: 1440,
         type: ChannelType.PublicThread
       });
