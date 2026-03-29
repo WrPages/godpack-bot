@@ -774,7 +774,10 @@ await thread.send({
       .setStyle(ButtonStyle.Secondary)
   );
 
-
+await message.edit({
+  embeds: [newEmbed],
+  components: [newRow]
+});
 
 return;
 }
