@@ -518,7 +518,7 @@ client.on("interactionCreate", async (interaction) => {
   // =========================
   // 3️⃣ BOTONES ALIVE / DEAD
   // =========================
-  if (interaction.isButton()) {
+if (interaction.isButton()) {
 
   if (interaction.customId !== "gp_alive" && interaction.customId !== "gp_dead") return;
 
@@ -539,24 +539,37 @@ client.on("interactionCreate", async (interaction) => {
     data.alive.delete(userId);
   }
 
-  const newButtons = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("gp_alive")
-      .setLabel(`🟢 Alive (${data.alive.size})`)
-      .setStyle(ButtonStyle.Success),
+  const row = new ActionRowBuilder();
 
-    new ButtonBuilder()
-      .setCustomId("gp_dead")
-      .setLabel(`🔴 Dead (${data.dead.size})`)
-      .setStyle(ButtonStyle.Danger),
+  // 🔵 Mostrar Alive solo si Dead NO llegó a 3
+  if (data.dead.size < 3) {
+    row.addComponents(
+      new ButtonBuilder()
+        .setCustomId("gp_alive")
+        .setLabel(`🟢 Alive (${data.alive.size})`)
+        .setStyle(ButtonStyle.Success)
+    );
+  }
 
+  // 🔴 Mostrar Dead solo si Alive NO llegó a 2
+  if (data.alive.size < 2) {
+    row.addComponents(
+      new ButtonBuilder()
+        .setCustomId("gp_dead")
+        .setLabel(`🔴 Dead (${data.dead.size})`)
+        .setStyle(ButtonStyle.Danger)
+    );
+  }
+
+  // ✏️ Edit SIEMPRE visible
+  row.addComponents(
     new ButtonBuilder()
       .setCustomId(`edit_panel_${interaction.message.id}`)
       .setEmoji("✏️")
       .setStyle(ButtonStyle.Secondary)
   );
 
-  await interaction.message.edit({ components: [newButtons] });
+  await interaction.message.edit({ components: [row] });
 }
 
 
