@@ -103,7 +103,7 @@ async function loadData() {
   }
 }
 //cambia alive o desd hilos
-async function updateThreadName(message, status, rarity, packNumber, username, expansion){
+async function updateThreadName(message, status, rarity, packNumber, username, expansion, friendId){
   try {
     if (!message.hasThread) return;
 
@@ -119,7 +119,7 @@ async function updateThreadName(message, status, rarity, packNumber, username, e
       emoji = "❌";
     }
 
-const name = `${emoji} [${rarity}/5][${packNumber}P] ${username} [${expansion}]`.slice(0, 90);
+const name = `${emoji} [${rarity}/5][${packNumber}P] ${username} [${expansion}] ${friendId}`.slice(0, 90);
 
     await thread.setName(name);
   } catch (err) {
@@ -303,6 +303,10 @@ if (!ALLOWED_CHANNELS.includes(message.channel.id)) return;
         name: "card.png"
       };
     }
+   
+  
+
+
 
     // ===== DATOS =====
     const rarityMatch = message.content.match(/\[(\d)\/5\]/);
@@ -326,6 +330,15 @@ const expansionMatch = message.content.match(/\[\d\/5\]\[\d+p\]\[([^\]]+)\]/i);
 if (expansionMatch) {
   expansion = expansionMatch[1];
 }
+    
+    // ===== FRIEND ID (16 dígitos) =====
+let friendId = "Unknown";
+
+const friendMatch = message.content.match(/\b\d{16}\b/);
+if (friendMatch) {
+  friendId = friendMatch[0];
+}
+    
     
 
     // ===== COLOR =====
@@ -370,7 +383,9 @@ packVotes.set(sentMessage.id, {
   rarity,
   packNumber,
   username,
-  expansion
+ expansion
+friendId
+
 });
 
 // ===== AHORA AGREGAR BOTÓN EDIT CON EL ID REAL =====
