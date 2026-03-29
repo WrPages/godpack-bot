@@ -103,7 +103,7 @@ async function loadData() {
   }
 }
 //cambia alive o desd hilos
-async function updateThreadName(message, status, rarity, packNumber, username, expansion)
+async function updateThreadName(message, status, rarity, packNumber, username, expansion);
   try {
     if (!message.hasThread) return;
 
