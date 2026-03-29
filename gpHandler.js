@@ -673,7 +673,7 @@ iif (aliveUsers.includes(userId) || deadUsers.includes(userId)) {
     content: "⚠️ You have already voted in this GP.",
     ephemeral: true
   });
-}
+
 
 await interaction.deferUpdate();
 
