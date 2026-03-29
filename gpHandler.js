@@ -335,17 +335,25 @@ if (expansionMatch) {
     
 
 // ===== FRIEND ID dentro de paréntesis =====
+
 let friendId = "Unknown";
 
-const match = message.content.match(/\((\d{16})\)/);
+let rawText = message.content;
+
+// Si no hay contenido, usar descripción del embed
+if (!rawText && message.embeds.length > 0) {
+  rawText = message.embeds[0].description || "";
+}
+
+const match = rawText.match(/\((\d{16})\)/);
 
 if (match) {
   friendId = match[1];
 }
 
 console.log("Friend ID detectado:", friendId);
-    
-    
+
+
 
     // ===== COLOR =====
     let color = 0x808080;
