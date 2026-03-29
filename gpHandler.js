@@ -88,7 +88,7 @@ function getUTC6DateString() {
 
 
 
-let packVotes = new Map();
+let packVotes = {};
 
 let statsData = {
   currentDay: new Date().toDateString(),
@@ -128,6 +128,46 @@ async function loadData() {
     console.error("LOAD GIST ERROR:", err);
   }
 }
+
+//guarda botonee
+async function loadVotes() {
+  try {
+    const res = await fetch(`https://api.github.com/gists/${GIST_ID}`);
+    const data = await res.json();
+
+    if (!data.files["gp_votes.json"]) return;
+
+    packVotes = JSON.parse(data.files["gp_votes.json"].content || "{}");
+  } catch (err) {
+    console.error("LOAD VOTES ERROR:", err);
+    packVotes = {};
+  }
+}
+
+async function saveVotes() {
+  try {
+    await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `token ${GITHUB_TOKEN}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        files: {
+          "gp_votes.json": {
+            content: JSON.stringify(packVotes, null, 2)
+          }
+        }
+      })
+    });
+  } catch (err) {
+    console.error("SAVE VOTES ERROR:", err);
+  }
+}
+
+
+
+
 //cambia alive o desd hilos
 async function updateThreadName(message, status, rarity, packNumber, username, friendId) {
   try {
@@ -322,7 +362,7 @@ async function createTestMessage(client) {
 module.exports = async (client) => {
     await loadData();
         await loadLiveStats();
-        
+        await loadVotes();
   
 
 client.once("clientReady", async () => {
@@ -480,6 +520,7 @@ packVotes.set(sentMessage.id, {
   username,
   friendId
 });
+await saveVotes();
 // ===== SUMAR GP TOTAL =====
 await checkDailyReset();
 
@@ -565,10 +606,13 @@ client.on("interactionCreate", async (interaction) => {
       return interaction.reply({ content: "❌ Mensaje no encontrado.", ephemeral: true });
     }
 
-    const data = packVotes.get(message.id);
-    if (!data) {
-      return interaction.reply({ content: "❌ Datos no encontrados.", ephemeral: true });
-    }
+const data = packVotes[message.id];
+   if (!data) {
+  return interaction.reply({
+    content: "⚠️ Este panel es antiguo o fue reiniciado.",
+    ephemeral: true
+  });
+}
 
     const modal = new ModalBuilder()
       .setCustomId(`edit_panel_${message.id}`)
@@ -612,8 +656,10 @@ client.on("interactionCreate", async (interaction) => {
     const message = await interaction.channel.messages.fetch(messageId).catch(() => null);
     if (!message) return interaction.editReply("❌ Mensaje no encontrado.");
 
-    const data = packVotes.get(message.id);
-    if (!data) return interaction.editReply("❌ Datos no encontrados.");
+const data = packVotes[message.id];
+if (!data) {
+  return interaction.editReply("⚠️ Datos no encontrados (posible reinicio del bot).");
+}
 
     const rarity = parseInt(interaction.fields.getTextInputValue("rarity"));
     const packNumber = parseInt(interaction.fields.getTextInputValue("pack"));
@@ -653,27 +699,46 @@ if (interaction.isButton()) {
 
   if (interaction.customId !== "gp_alive" && interaction.customId !== "gp_dead") return;
 
-  const data = packVotes.get(interaction.message.id);
-  if (!data) return;
+const data = packVotes[interaction.message.id];
+
+if (!data) {
+  return interaction.reply({
+    content: "⚠️ Este panel es antiguo o fue reiniciado.",
+    ephemeral: true
+  });
+}
 
   await interaction.deferUpdate();
 
   const userId = interaction.user.id;
 
   if (interaction.customId === "gp_alive") {
-    data.alive.add(userId);
-    data.dead.delete(userId);
+
+  // agregar si no existe
+  if (!data.alive.includes(userId)) {
+    data.alive.push(userId);
   }
 
-  if (interaction.customId === "gp_dead") {
-    data.dead.add(userId);
-    data.alive.delete(userId);
+  // quitar de dead
+  data.dead = data.dead.filter(id => id !== userId);
+}
+await saveVotes();
+
+if (interaction.customId === "gp_dead") {
+
+  // agregar si no existe
+  if (!data.dead.includes(userId)) {
+    data.dead.push(userId);
   }
-  
+
+  // quitar de alive
+  data.alive = data.alive.filter(id => id !== userId);
+}
+  await saveVotes();
   // ===== CAMBIAR NOMBRE DEL HILO SI SE CONFIRMA =====
 let status = null;
 
-if (data.alive.size === 2) {
+if (data.alive.length === 2) {
 
   await checkDailyReset();
 
@@ -685,7 +750,7 @@ if (data.alive.size === 2) {
   status = "alive";
 }
 
-if (data.dead.size === 3) {
+if (data.dead.length === 3) {
   status = "dead";
 }
 
@@ -703,21 +768,21 @@ if (status) {
   const row = new ActionRowBuilder();
 
   // 🔵 Mostrar Alive solo si Dead NO llegó a 3
-  if (data.dead.size < 3) {
+  if (data.dead.length < 3) {
     row.addComponents(
       new ButtonBuilder()
         .setCustomId("gp_alive")
-        .setLabel(`🟢 Alive (${data.alive.size})`)
+        .setLabel(`🟢 Alive (${data.alive.length})`)
         .setStyle(ButtonStyle.Success)
     );
   }
 
   // 🔴 Mostrar Dead solo si Alive NO llegó a 2
-  if (data.alive.size < 2) {
+  if (data.alive.length < 2) {
     row.addComponents(
       new ButtonBuilder()
         .setCustomId("gp_dead")
-        .setLabel(`🔴 Dead (${data.dead.size})`)
+        .setLabel(`🔴 Dead (${data.dead.length})`)
         .setStyle(ButtonStyle.Danger)
     );
   }
