@@ -103,7 +103,8 @@ async function loadData() {
   }
 }
 //cambia alive o desd hilos
-async function updateThreadName(message, status, rarity, packNumber, username, expansion, friendId){
+//async function updateThreadName(message, status, rarity, packNumber, username, expansion, friendId){
+async function updateThreadName(message, status, rarity, packNumber, username, friendId){
   try {
     if (!message.hasThread) return;
 
@@ -406,7 +407,7 @@ await sentMessage.edit({
     // ===== CREAR HILO =====
     try {
       const thread = await sentMessage.startThread({
-name: `[${rarity}/5][${packNumber}P] ${username} [${expansion}]`,
+name: `[${rarity}/5][${packNumber}P] [${username}] [${expansion}]`,
         autoArchiveDuration: 1440,
         type: ChannelType.PublicThread
       });
