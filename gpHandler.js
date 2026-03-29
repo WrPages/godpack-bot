@@ -103,7 +103,7 @@ async function loadData() {
   }
 }
 //cambia alive o desd hilos
-async function updateThreadName(message, status, rarity, packNumber, username) {
+async function updateThreadName(message, status, rarity, packNumber, username, expansion)
   try {
     if (!message.hasThread) return;
 
@@ -119,7 +119,7 @@ async function updateThreadName(message, status, rarity, packNumber, username) {
       emoji = "❌";
     }
 
-    const name = `${emoji} [${rarity}/5][${packNumber}P] ${username}`.slice(0, 90);
+const name = `${emoji} [${rarity}/5][${packNumber}P] ${username} [${expansion}]`.slice(0, 90);
 
     await thread.setName(name);
   } catch (err) {
@@ -318,6 +318,15 @@ if (!ALLOWED_CHANNELS.includes(message.channel.id)) return;
       const match = usernameLine.match(/^(.+?)\s*\(/);
       if (match) username = match[1].trim();
     }
+    
+    // ===== EXPANSIÓN =====
+let expansion = "Unknown";
+
+const expansionMatch = message.content.match(/\[\d\/5\]\[\d+p\]\[([^\]]+)\]/i);
+if (expansionMatch) {
+  expansion = expansionMatch[1];
+}
+    
 
     // ===== COLOR =====
     let color = 0x808080;
@@ -360,7 +369,8 @@ packVotes.set(sentMessage.id, {
   confirmed: false,
   rarity,
   packNumber,
-  username
+  username,
+  expansion
 });
 
 // ===== AHORA AGREGAR BOTÓN EDIT CON EL ID REAL =====
@@ -380,7 +390,7 @@ await sentMessage.edit({
     // ===== CREAR HILO =====
     try {
       const thread = await sentMessage.startThread({
-        name: `[${rarity}/5][${packNumber}P] ${username}`,
+name: `[${rarity}/5][${packNumber}P] ${username} [${expansion}]`,
         autoArchiveDuration: 1440,
         type: ChannelType.PublicThread
       });
