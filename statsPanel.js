@@ -78,8 +78,8 @@ async function updateGist(gistId, content) {
 /********************* 📊 OBTENER DATOS *****************************/
 /********************************************************************/
 
-async function fetchHeartbeatMessages() {
-    const channel = await client.channels.fetch(HEARTBEAT_CHANNEL_ID);
+async function fetchHeartbeatMessages(client) {
+const channel = await client.channels.fetch(HEARTBEAT_CHANNEL_ID);
     let messages = [];
     let lastId;
 
@@ -304,7 +304,7 @@ function buildPanelEmbed(
 /********************* 🚀 ACTUALIZAR PANEL **************************/
 /********************************************************************/
 
-async function updatePanel() {
+async function updatePanel(client) {
 
     const registered = await getGist(GIST_REGISTERED_USERS);
     const onlineIds = await getGist(GIST_ONLINE_USERS);
