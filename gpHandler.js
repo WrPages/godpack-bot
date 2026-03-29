@@ -121,7 +121,7 @@ async function updateThreadName(message, status, rarity, packNumber, username, f
     }
 
 //const name = `${emoji} [${rarity}/5][${packNumber}P] ${username} [${expansion}] ${friendId}`.slice(0, 90);
- const name = `${emoji} [${rarity}/5][${packNumber}P] ${username} ${friendId}`.slice(0, 90);
+const name = `${emoji} [${rarity}/5][${packNumber}P] ${username} ${friendId}`.slice(0, 90);
 
     await thread.setName(name);
   } catch (err) {
@@ -389,7 +389,7 @@ packVotes.set(sentMessage.id, {
   rarity,
   packNumber,
   username,
- expansion,
+// expansion,
 friendId
 
 });
