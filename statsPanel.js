@@ -13,7 +13,7 @@ const axios = require("axios");
 // ====== DISCORD ======
 const BOT_TOKEN = process.env.TOKEN;
 const PANEL_CHANNEL_ID = "1484015417411244082";
-const HEARTBEAT_CHANNEL_ID = "1483616146996465735;
+const HEARTBEAT_CHANNEL_ID = "1483616146996465735";
 
 // ====== GITHUB ======
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
