@@ -333,13 +333,17 @@ if (expansionMatch) {
   expansion = expansionMatch[1];
 }
     
-    // ===== FRIEND ID (16 dígitos) =====
+
+// ===== FRIEND ID dentro de paréntesis =====
 let friendId = "Unknown";
 
-const friendMatch = message.content.match(/\b\d{16}\b/);
-if (friendMatch) {
-  friendId = friendMatch[0];
+const match = message.content.match(/\((\d{16})\)/);
+
+if (match) {
+  friendId = match[1];
 }
+
+console.log("Friend ID detectado:", friendId);
     
     
 
