@@ -757,8 +757,6 @@ await message.edit({
   components: [newRow]
 });
 
-return;
-}
 
 // 👇 cierre del evento interactionCreate
 });
