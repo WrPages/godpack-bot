@@ -634,7 +634,10 @@ if (interaction.isModalSubmit() && interaction.customId.startsWith("edit_panel_"
     .setDescription(`## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`);
     setImage(null); // 🔥 extra seguridad
 
-await message.edit({ embeds: [newEmbed] });
+await message.edit({
+  embeds: [newEmbed],
+  files: [] // 🔥 elimina attachments
+});
 
   await interaction.editReply("✅ Panel actualizado correctamente.");
   return; // 🔥 IMPORTANTE
