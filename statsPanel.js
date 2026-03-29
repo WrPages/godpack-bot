@@ -1,15 +1,9 @@
 /****************************************************
- *              🔥 PANEL ULTRA PRO 🔥
+ *              🔧 CONFIGURACIÓN
  ****************************************************/
-
-console.log("🚀 Iniciando Stats Panel...");
 
 const { Client, GatewayIntentBits, EmbedBuilder } = require("discord.js");
 const axios = require("axios");
-
-/****************************************************
- *              🔧 CONFIGURACIÓN
- ****************************************************/
 
 const TOKEN = process.env.TOKEN;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
@@ -23,125 +17,57 @@ const GIST_GP_HISTORY_ID = "4773653072f4851e91958a333e503de9";
 const GIST_PPM_HISTORY_ID = "20527051079d88ec4d414c310cdfdf26";
 
 /****************************************************
- *              VALIDACIONES
- ****************************************************/
-
-if (!TOKEN) {
-  console.log("❌ TOKEN no detectado");
-  process.exit(1);
-}
-
-if (!GITHUB_TOKEN) {
-  console.log("❌ GITHUB_TOKEN no detectado");
-  process.exit(1);
-}
-
-/****************************************************
- *              INICIAR BOT
+ *              🚀 CLIENT
  ****************************************************/
 
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
-  ]
+  intents: [GatewayIntentBits.Guilds]
 });
-
-client.once("ready", async () => {
-  console.log(`✅ Bot conectado como ${client.user.tag}`);
-  await updatePanel();
-  setInterval(updatePanel, 300000); // cada 5 min
-});
-
-client.on("error", console.error);
-process.on("unhandledRejection", console.error);
-process.on("uncaughtException", console.error);
 
 /****************************************************
- *              FUNCIONES GIST
+ *              📦 GIST FUNCTIONS
  ****************************************************/
 
-async function getGist(id) {
+async function getGist(gistId) {
   try {
-    const res = await axios.get(`https://api.github.com/gists/${id}`, {
-      headers: { Authorization: `Bearer ${GITHUB_TOKEN}` }
-    });
-
-    const file = Object.keys(res.data.files)[0];
-    const content = res.data.files[file].content;
-
-    return content ? JSON.parse(content) : [];
-  } catch (err) {
-    console.log("❌ Error leyendo gist:", id);
-    console.log(err.response?.data || err.message);
-    return [];
-  }
-}
-
-async function updateGist(id, content) {
-  try {
-    await axios.patch(
-      `https://api.github.com/gists/${id}`,
+    const res = await axios.get(
+      `https://api.github.com/gists/${gistId}`,
       {
-        files: {
-          "data.json": {
-            content: JSON.stringify(content, null, 2)
-          }
-        }
-      },
-      {
-        headers: { Authorization: `Bearer ${GITHUB_TOKEN}` }
+        headers: { Authorization: `token ${GITHUB_TOKEN}` }
       }
     );
+
+    const file = Object.values(res.data.files)[0];
+    return JSON.parse(file.content);
+
   } catch (err) {
-    console.log("❌ Error actualizando gist:", id);
-    console.log(err.response?.data || err.message);
-  }
-}
-
-/****************************************************
- *      BUSCAR ÚLTIMO MENSAJE HEARTBEAT
- ****************************************************/
-
-async function getUserHeartbeatData(username) {
-  try {
-    const channel = await client.channels.fetch(HEARTBEAT_CHANNEL_ID);
-    const messages = await channel.messages.fetch({ limit: 100 });
-
-    const userMessage = messages.find(m =>
-      m.content.includes(username)
-    );
-
-    if (!userMessage) return null;
-
-    const content = userMessage.content;
-
-    const ppmMatch = content.match(/pack por minuto[:\s]+([\d.]+)/i);
-    const onlineMatch = content.match(/online[:\s]+(.+)/i);
-    const offlineMatch = content.match(/offline[:\s]+(.+)/i);
-    const packsMatch = content.match(/packs abiertos[:\s]+(\d+)/i);
-    const openingMatch = content.match(/opening\s+(\w+)/i);
-
-    return {
-      ppm: ppmMatch ? parseFloat(ppmMatch[1]) : 0,
-      onlineInstances: onlineMatch
-        ? onlineMatch[1].split(",").filter(i => i.trim() !== "main").length
-        : 0,
-      offlineInstances: offlineMatch
-        ? offlineMatch[1].split(",").filter(i => i.trim() !== "main").length
-        : 0,
-      packs: packsMatch ? parseInt(packsMatch[1]) : 0,
-      opening: openingMatch ? openingMatch[1] : ""
-    };
-  } catch (err) {
-    console.log("❌ Error leyendo heartbeat de", username);
+    console.log("❌ Error leyendo gist:", err.message);
     return null;
   }
 }
 
+async function updateGist(gistId, data) {
+  try {
+    await axios.patch(
+      `https://api.github.com/gists/${gistId}`,
+      {
+        files: {
+          "data.json": {
+            content: JSON.stringify(data, null, 2)
+          }
+        }
+      },
+      {
+        headers: { Authorization: `token ${GITHUB_TOKEN}` }
+      }
+    );
+  } catch (err) {
+    console.log("❌ Error actualizando gist:", err.message);
+  }
+}
+
 /****************************************************
- *              ACTUALIZAR PANEL
+ *              🔥 PANEL LOGIC
  ****************************************************/
 
 async function updatePanel() {
@@ -150,87 +76,90 @@ async function updatePanel() {
 
   try {
 
-    let registros = await getGist(GIST_REGISTROS_ID);
-    let onlineIDs = await getGist(GIST_ONLINE_IDS_ID);
-    let gpHistory = await getGist(GIST_GP_HISTORY_ID);
-    let ppmHistory = await getGist(GIST_PPM_HISTORY_ID);
-
-    // Normalizar registros
-    if (!Array.isArray(registros)) {
-      registros = Object.entries(registros).map(([id, data]) => ({
-        id,
-        username: data.username || data.name || "Unknown"
-      }));
-    }
-
-    // Normalizar onlineIDs
-    if (!Array.isArray(onlineIDs)) {
-      onlineIDs = Object.keys(onlineIDs);
-    }
-
-    if (!Array.isArray(ppmHistory)) {
-      ppmHistory = [];
-    }
+    const registros = await getGist(GIST_REGISTROS_ID) || {};
+    const onlineIDs = await getGist(GIST_ONLINE_IDS_ID) || [];
+    const ppmHistory = await getGist(GIST_PPM_HISTORY_ID) || [];
 
     const users = [];
     let totalPPM = 0;
     let totalInstances = 0;
     let totalPacks = 0;
 
-    for (const user of registros) {
+    // 🔥 Sacamos IDs automáticamente desde registros
+    const registroIDs = Object.keys(registros);
 
-      const isOnline = onlineIDs.includes(user.id);
+    for (const userId of registroIDs) {
 
-      const heartbeatData = isOnline
-        ? await getUserHeartbeatData(user.username)
-        : null;
+      const username = registros[userId].username;
+      const isOnline = onlineIDs.includes(userId);
 
-      const ppm = heartbeatData?.ppm || 0;
+      // 🔥 Buscar datos en el canal heartbeat
+      let heartbeatData = null;
+
+      try {
+        const channel = await client.channels.fetch(HEARTBEAT_CHANNEL_ID);
+        const messages = await channel.messages.fetch({ limit: 50 });
+
+        const userMessage = messages.find(msg =>
+          msg.content.includes(username)
+        );
+
+        if (userMessage) {
+          heartbeatData = JSON.parse(userMessage.content);
+        }
+
+      } catch (err) {
+        console.log("Error leyendo heartbeat:", err.message);
+      }
+
+      const ppm = isOnline ? (heartbeatData?.ppm || 0) : 0;
       const onlineInstances = heartbeatData?.onlineInstances || 0;
       const offlineInstances = heartbeatData?.offlineInstances || 0;
-      const totalUserInstances = onlineInstances + offlineInstances;
       const packs = heartbeatData?.packs || 0;
+
+      const totalUserInstances = onlineInstances + offlineInstances;
 
       if (isOnline) totalPPM += ppm;
       totalInstances += totalUserInstances;
       totalPacks += packs;
 
       users.push({
-        username: user.username,
+        username,
         isOnline,
         ppm,
         onlineInstances,
         totalUserInstances,
-        packs,
-        opening: heartbeatData?.opening || ""
+        packs
       });
     }
 
-    // MEDIA 12H
+    /**************** MEDIA 12H ****************/
+
     const now = Date.now();
+
     ppmHistory.push({ time: now, ppm: totalPPM });
 
-    ppmHistory = ppmHistory.filter(p =>
+    const filteredHistory = ppmHistory.filter(p =>
       now - p.time <= 12 * 60 * 60 * 1000
     );
 
-    const avgPPM = ppmHistory.length
-      ? (ppmHistory.reduce((a, b) => a + b.ppm, 0) / ppmHistory.length).toFixed(2)
+    const avgPPM = filteredHistory.length
+      ? (filteredHistory.reduce((a, b) => a + b.ppm, 0) / filteredHistory.length).toFixed(2)
       : "0.00";
 
-    await updateGist(GIST_PPM_HISTORY_ID, ppmHistory);
+    await updateGist(GIST_PPM_HISTORY_ID, filteredHistory);
 
-    /************* EMBED *************/
+    /**************** EMBED ****************/
 
     const embed = new EmbedBuilder()
-      .setTitle("🔥 REROLL STATISTICS PANEL 🔥")
+      .setTitle("🔥 REROLL GLOBAL CONTROL PANEL 🔥")
       .setColor(0x00ffcc)
       .setTimestamp();
 
     const onlineList = users
       .filter(u => u.isOnline)
       .map(u =>
-        `🟢 **${u.username}** | ${u.ppm} PPM | ${u.onlineInstances}/${u.totalUserInstances} inst`
+        `🟢 **${u.username}** | ${u.ppm.toFixed(2)} PPM | ${u.onlineInstances}/${u.totalUserInstances}`
       ).join("\n") || "Ninguno";
 
     const offlineList = users
@@ -239,29 +168,17 @@ async function updatePanel() {
       .join("\n") || "Ninguno";
 
     embed.addFields(
-      { name: "🟢 Online Users", value: onlineList },
-      { name: "🔴 Offline Users", value: offlineList },
+      { name: "🟢 ONLINE", value: onlineList },
+      { name: "🔴 OFFLINE", value: offlineList },
       {
-        name: "🌎 Global Stats",
+        name: "🌎 GLOBAL",
         value:
-          `🔥 **PPM ACTUAL:** ${totalPPM.toFixed(2)}\n` +
+          `🔥 PPM ACTUAL: ${totalPPM.toFixed(2)}\n` +
           `📊 Media 12h: ${avgPPM}\n` +
-          `📦 Packs Totales: ${totalPacks}\n` +
-          `⚙ Instancias Totales: ${totalInstances}\n` +
-          `👥 Registrados: ${registros.length}\n` +
-          `🟢 Online: ${users.filter(u => u.isOnline).length}`
+          `📦 Packs: ${totalPacks}\n` +
+          `⚙ Instancias: ${totalInstances}`
       }
     );
-
-    if (gpHistory && gpHistory.today !== undefined) {
-      embed.addFields({
-        name: "💎 GP Stats",
-        value:
-          `✨ GP Hoy: ${gpHistory.today || 0}\n` +
-          `🟢 GP Vivos Hoy: ${gpHistory.aliveToday || 0}\n` +
-          `📈 Media últimos días: ${gpHistory.last5Avg || 0}`
-      });
-    }
 
     const channel = await client.channels.fetch(STATS_CHANNEL_ID);
     const messages = await channel.messages.fetch({ limit: 10 });
@@ -276,9 +193,18 @@ async function updatePanel() {
     console.log("✅ Panel actualizado correctamente");
 
   } catch (err) {
-    console.log("❌ ERROR EN updatePanel:");
-    console.log(err);
+    console.log("❌ ERROR GENERAL:", err);
   }
 }
+
+/****************************************************
+ *              🤖 READY
+ ****************************************************/
+
+client.once("ready", async () => {
+  console.log(`✅ Bot conectado como ${client.user.tag}`);
+  await updatePanel();
+  setInterval(updatePanel, 60000);
+});
 
 client.login(TOKEN);
