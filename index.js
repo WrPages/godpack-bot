@@ -2,7 +2,7 @@
   TextInputBuilder,TextInputStyle,ActionRowBuilder} = require('discord.js')
 const fetch = require('node-fetch')
 
-const { startPanelSystem } = require("./panelSystem");
+const { startPanelSystem } = require("./statsPanel");
 
 
 
