@@ -565,6 +565,28 @@ if (interaction.isButton()) {
     data.dead.add(userId);
     data.alive.delete(userId);
   }
+  
+  // ===== CAMBIAR NOMBRE DEL HILO SI SE CONFIRMA =====
+let status = null;
+
+if (data.alive.size === 2) {
+  status = "alive";
+}
+
+if (data.dead.size === 3) {
+  status = "dead";
+}
+
+if (status) {
+  await updateThreadName(
+    interaction.message,
+    status,
+    data.rarity,
+    data.packNumber,
+    data.username,
+    data.friendId
+  );
+}
 
   const row = new ActionRowBuilder();
 
