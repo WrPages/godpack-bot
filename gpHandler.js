@@ -403,7 +403,7 @@ await sentMessage.edit({
     // ===== CREAR HILO =====
     try {
       const thread = await sentMessage.startThread({
-        name: `[${rarity}/5][${packNumber}P] [${username}] [${friendId}P]`,
+        name: `[${rarity}/5][${packNumber}P] [${username}P] [${friendId}P]`,
         autoArchiveDuration: 1440,
         type: ChannelType.PublicThread
       });
