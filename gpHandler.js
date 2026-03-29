@@ -338,11 +338,18 @@ if (expansionMatch) {
 
 let friendId = "Unknown";
 
-let rawText = message.content;
+let rawText = message.content || "";
 
-// Si no hay contenido, usar descripción del embed
-if (!rawText && message.embeds.length > 0) {
-  rawText = message.embeds[0].description || "";
+if (message.embeds.length > 0) {
+  const embed = message.embeds[0];
+
+  rawText += embed.description || "";
+
+  if (embed.fields) {
+    for (const field of embed.fields) {
+      rawText += field.value;
+    }
+  }
 }
 
 const match = rawText.match(/\((\d{16})\)/);
