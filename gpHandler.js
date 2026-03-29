@@ -664,12 +664,14 @@ if (interaction.isButton()) {
   const userId = interaction.user.id;
 
   // 🚫 BLOQUEAR SI YA VOTÓ (ANTES de defer)
-  if (aliveUsers.includes(userId) || deadUsers.includes(userId)) {
-    return interaction.reply({
-      content: "⚠️ You have already voted in this GP.",
-      ephemeral: true
-    });
-  }
+ if (aliveUsers.includes(userId) || deadUsers.includes(userId)) {
+  await interaction.deferUpdate();
+
+  return interaction.followUp({
+    content: "⚠️ You have already voted in this GP.",
+    ephemeral: true
+  });
+}
 
   await interaction.deferUpdate();
 
