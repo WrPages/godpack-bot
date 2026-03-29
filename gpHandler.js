@@ -752,11 +752,13 @@ if (interaction.isButton()) {
       .setStyle(ButtonStyle.Secondary)
   );
 
-  await message.edit({
-    embeds: [newEmbed],
-    components: [newRow]
-  });
+await message.edit({
+  embeds: [newEmbed],
+  components: [newRow]
+});
+
+return;
 }
 
-
-};
+// 👇 cierre del evento interactionCreate
+});
