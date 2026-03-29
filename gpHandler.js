@@ -771,7 +771,7 @@ try {
   );
 
 await message.edit({
-  embeds: [newEmbed],
+ // embeds: [newEmbed],
   components: [newRow]
 });
 
