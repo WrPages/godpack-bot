@@ -647,28 +647,32 @@ await message.edit({
 // 3️⃣ BOTONES ALIVE / DEAD
 // =========================
 if (interaction.isButton()) {
-
   if (interaction.customId !== "gp_alive" && interaction.customId !== "gp_dead") return;
 
   const message = interaction.message;
   const embed = message.embeds[0];
 
   // ===== LEER FOOTER =====
- let footer = embed.footer?.text || "VOTES:alive=|dead=";
+  let footer = embed.footer?.text || "VOTES:alive=|dead=";
 
+  // Extraer usuarios que ya votaron
   let aliveUsers = [];
   let deadUsers = [];
 
   const matchAlive = footer.match(/alive=([^|]*)/);
   const matchDead = footer.match(/dead=(.*)/);
 
-  if (matchAlive) aliveUsers = matchAlive[1] ? matchAlive[1].split(",") : [];
-  if (matchDead) deadUsers = matchDead[1] ? matchDead[1].split(",") : [];
+  if (matchAlive && matchAlive[1]) {
+    aliveUsers = matchAlive[1].split(",").map(u => u.trim()).filter(Boolean);
+  }
+
+  if (matchDead && matchDead[1]) {
+    deadUsers = matchDead[1].split(",").map(u => u.trim()).filter(Boolean);
+  }
 
   const userId = interaction.user.id;
 
-  // 🚫 BLOQUEAR SI YA VOTÓ (ANTES de defer)
-  // 🚫 BLOQUEAR SI YA VOTÓ (ANTES de defer)
+  // 🚫 BLOQUEAR SI YA VOTÓ
   if (aliveUsers.includes(userId) || deadUsers.includes(userId)) {
     return interaction.reply({
       content: "⚠️ Ya votaste en este GP.",
@@ -676,10 +680,7 @@ if (interaction.isButton()) {
     });
   }
 
-
-
-
-await interaction.deferUpdate();
+  await interaction.deferUpdate();
 
   // ===== CONTADORES =====
   const row = message.components[0];
@@ -705,52 +706,33 @@ await interaction.deferUpdate();
   if (interaction.customId === "gp_alive") {
     aliveCount++;
     aliveUsers.push(userId);
-  }
-
-  if (interaction.customId === "gp_dead") {
+  } else if (interaction.customId === "gp_dead") {
     deadCount++;
     deadUsers.push(userId);
   }
 
-// ===== ENVIAR LOG AL HILO =====
-try {
-  const thread = message.thread;
-
-  if (thread) {
-    await thread.send({
- content: `🗳️ ${interaction.user.username} votó **${interaction.customId === "gp_alive" ? "Alive" : "Dead"}**`,
-allowedMentions: { parse: [] }
-    });
+  // ===== ENVIAR LOG AL HILO =====
+  try {
+    const thread = message.thread;
+    if (thread) {
+      await thread.send({
+        content: `🗳️ ${interaction.user.username} votó **${interaction.customId === "gp_alive" ? "Alive" : "Dead"}**`,
+        allowedMentions: { parse: [] }
+      });
+    }
+  } catch (err) {
+    console.error("THREAD LOG ERROR:", err);
   }
-} catch (err) {
-  console.error("THREAD LOG ERROR:", err);
-}
-
 
   // ===== GUARDAR FOOTER =====
   const newFooter = `VOTES:alive=${aliveUsers.join(",")}|dead=${deadUsers.join(",")}`;
   const newEmbed = EmbedBuilder.from(embed).setFooter({ text: newFooter });
 
-  // ===== CONFIRMACIONES =====
-  let status = null;
-
-  if (aliveCount >= 2) status = "alive";
-  if (deadCount >= 3) status = "dead";
-
-  if (status) {
-    const desc = embed.description || "";
-
-    const rarity = (desc.match(/(\d)\/5/) || [])[1] || 0;
-    const pack = (desc.match(/• (\d+)P/) || [])[1] || 0;
-    const user = (desc.match(/\*\*(.*?)\*\*/) || [])[1] || "Unknown";
-
-    await updateThreadName(message, status, rarity, pack, user, "ID");
-  }
-
-  // ===== BOTONES =====
+  // ===== BOTONES ACTUALIZADOS =====
   const newRow = new ActionRowBuilder();
 
-  if (deadCount < 3) {
+  // Mostrar Alive solo si no alcanzó el límite
+  if (aliveCount < 2) {
     newRow.addComponents(
       new ButtonBuilder()
         .setCustomId("gp_alive")
@@ -759,7 +741,8 @@ allowedMentions: { parse: [] }
     );
   }
 
-  if (aliveCount < 2) {
+  // Mostrar Dead solo si no alcanzó el límite
+  if (deadCount < 3) {
     newRow.addComponents(
       new ButtonBuilder()
         .setCustomId("gp_dead")
@@ -768,6 +751,7 @@ allowedMentions: { parse: [] }
     );
   }
 
+  // Agregar botón Edit
   newRow.addComponents(
     new ButtonBuilder()
       .setCustomId(`edit_panel_${message.id}`)
@@ -775,12 +759,27 @@ allowedMentions: { parse: [] }
       .setStyle(ButtonStyle.Secondary)
   );
 
-await message.edit({
- // embeds: [newEmbed],
-  components: [newRow]
-});
+  // ===== ACTUALIZAR MENSAJE =====
+  await message.edit({
+    embeds: [newEmbed],
+    components: [newRow]
+  });
 
-return;
+  // ===== ACTUALIZAR THREAD NAME SI SE ALCANZA STATUS =====
+  let status = null;
+  if (aliveCount >= 2) status = "alive";
+  if (deadCount >= 3) status = "dead";
+
+  if (status) {
+    const desc = embed.description || "";
+    const rarity = (desc.match(/(\d)\/5/) || [])[1] || 0;
+    const pack = (desc.match(/• (\d+)P/) || [])[1] || 0;
+    const user = (desc.match(/\*\*(.*?)\*\*/) || [])[1] || "Unknown";
+
+    await updateThreadName(message, status, rarity, pack, user, "ID");
+  }
+
+  return;
 }
 
 // 👇 cierre del interactionCreate
