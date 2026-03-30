@@ -734,35 +734,36 @@ message.votedUsers = votedUsers.concat(userId);
   const newEmbed = EmbedBuilder.from(embed).setFooter({ text: newFooter });
 
   // ===== BOTONES ACTUALIZADOS =====
-  const newRow = new ActionRowBuilder();
+// ===== BOTONES ACTUALIZADOS =====
+const newRow = new ActionRowBuilder();
 
-  // Mostrar Alive solo si no alcanzó el límite
-  if (aliveCount < 2) {
-    newRow.addComponents(
-      new ButtonBuilder()
-        .setCustomId("gp_alive")
-        .setLabel(`🟢 Alive (${aliveCount})`)
-        .setStyle(ButtonStyle.Success)
-    );
-  }
-
-  // Mostrar Dead solo si no alcanzó el límite
-  if (deadCount < 3) {
-    newRow.addComponents(
-      new ButtonBuilder()
-        .setCustomId("gp_dead")
-        .setLabel(`🔴 Dead (${deadCount})`)
-        .setStyle(ButtonStyle.Danger)
-    );
-  }
-
-  // Agregar botón Edit
+// Mostrar Alive solo si no alcanzó el límite
+if (aliveCount < 2) {
   newRow.addComponents(
     new ButtonBuilder()
-      .setCustomId(`edit_panel_${message.id}`)
-      .setEmoji("✏️")
-      .setStyle(ButtonStyle.Secondary)
+      .setCustomId("gp_alive")
+      .setLabel(`🟢 Alive (${aliveCount})`)
+      .setStyle(ButtonStyle.Success)
   );
+}
+
+// Mostrar Dead solo si no alcanzó el límite
+if (deadCount < 3) {
+  newRow.addComponents(
+    new ButtonBuilder()
+      .setCustomId("gp_dead")
+      .setLabel(`🔴 Dead (${deadCount})`)
+      .setStyle(ButtonStyle.Danger)
+  );
+}
+
+// Agregar botón Edit
+newRow.addComponents(
+  new ButtonBuilder()
+    .setCustomId(`edit_panel_${message.id}`)
+    .setEmoji("✏️")
+    .setStyle(ButtonStyle.Secondary)
+);
 
   // ===== ACTUALIZAR MENSAJE =====
   await message.edit({
