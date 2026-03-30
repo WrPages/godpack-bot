@@ -676,7 +676,7 @@ if (interaction.isButton()) {
 const votedUsers = message.votedUsers || [];
 if (votedUsers.includes(userId)) {
   return interaction.reply({
-    content: "⚠️ Ya votaste en este GP.",
+    content: "⚠️ You already voted for this GP.",
     ephemeral: true
   });
 }
