@@ -782,7 +782,7 @@ if (status === "alive" && !message.aliveCounted) {
 
   await loadLiveStats(); // 🔥 SIEMPRE recargar antes
 
-  liveStats.totalAlive += 1;
+  //liveStats.totalAlive += 1;
   liveStats.daily.alive += 1;
 
   await saveLiveStats();
