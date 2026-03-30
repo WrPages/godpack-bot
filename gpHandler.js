@@ -775,6 +775,18 @@ newRow.addComponents(
   let status = null;
   if (aliveCount >= 2) status = "alive";
   if (deadCount >= 3) status = "dead";
+  
+  // ===== SUMAR ALIVE AL GIST =====
+if (status === "alive" && !message.aliveCounted) {
+  message.aliveCounted = true; // evitar duplicados
+
+  await loadLiveStats(); // 🔥 SIEMPRE recargar antes
+
+  liveStats.totalAlive += 1;
+  liveStats.daily.alive += 1;
+
+  await saveLiveStats();
+}
 
   if (status) {
     const desc = embed.description || "";
