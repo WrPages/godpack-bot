@@ -673,12 +673,16 @@ if (interaction.isButton()) {
   const userId = interaction.user.id;
 
   // 🚫 BLOQUEAR SI YA VOTÓ
-  if (aliveUsers.includes(userId) || deadUsers.includes(userId)) {
-    return interaction.reply({
-      content: "⚠️ Ya votaste en este GP.",
-      ephemeral: true
-    });
-  }
+const votedUsers = message.votedUsers || [];
+if (votedUsers.includes(userId)) {
+  return interaction.reply({
+    content: "⚠️ Ya votaste en este GP.",
+    ephemeral: true
+  });
+}
+
+// Registrar voto en memoria temporal del mensaje
+message.votedUsers = votedUsers.concat(userId);
 
   await interaction.deferUpdate();
 
