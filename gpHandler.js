@@ -472,6 +472,7 @@ const sentMessage = await message.channel.send({
 
 
 // ===== SUMAR GP TOTAL =====
+await loadLiveStats(); // 🔥 SIEMPRE recargar primero
 await checkDailyReset();
 
 liveStats.totalGP += 1;
