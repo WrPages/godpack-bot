@@ -761,7 +761,7 @@ if (interaction.isButton()) {
 
   // ===== ACTUALIZAR MENSAJE =====
   await message.edit({
-    embeds: [newEmbed],
+    //embeds: [newEmbed],
     components: [newRow]
   });
 
