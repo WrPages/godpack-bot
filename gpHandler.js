@@ -701,7 +701,7 @@ await interaction.deferUpdate();
   // ===== VOTO =====
   if (interaction.customId === "gp_alive") {
     aliveCount++;
-   // aliveUsers.push(userId);
+    aliveUsers.push(userId);
   }
 
   if (interaction.customId === "gp_dead") {
