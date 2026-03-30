@@ -668,13 +668,13 @@ if (interaction.isButton()) {
   const userId = interaction.user.id;
 
   // 🚫 BLOQUEAR SI YA VOTÓ (ANTES de defer)
-// 🚫 BLOQUEAR SI YA VOTÓ
-if (aliveUsers.includes(userId) || deadUsers.includes(userId)) {
-  return interaction.reply({
-    content: "⚠️ You have already voted in this GP.",
-    ephemeral: true
-  });
-}
+  // 🚫 BLOQUEAR SI YA VOTÓ (ANTES de defer)
+  if (aliveUsers.includes(userId) || deadUsers.includes(userId)) {
+    return interaction.reply({
+      content: "⚠️ Ya votaste en este GP.",
+      ephemeral: true
+    });
+  }
 
 
 
