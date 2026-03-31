@@ -748,7 +748,7 @@ if (aliveCount < 2) {
 }
 
 // Mostrar Dead solo si no alcanzó el límite
-if (deadCount < 3) {
+if (deadCount < 4) {
   newRow.addComponents(
     new ButtonBuilder()
       .setCustomId("gp_dead")
@@ -776,7 +776,7 @@ newRow.addComponents(
 let status = null;
 
 if (aliveCount >= 1) status = "alive"; // 🔥 cambio a 1
-if (deadCount >= 3) status = "dead";
+if (deadCount >= 4) status = "dead";
 
 // ===== SUMAR ALIVE AL GIST =====
 if (status === "alive" && !message.aliveCounted) {
