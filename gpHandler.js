@@ -771,33 +771,77 @@ newRow.addComponents(
     components: [newRow]
   });
 
-  // ===== ACTUALIZAR THREAD NAME SI SE ALCANZA STATUS =====
-  let status = null;
-  if (aliveCount >= 2) status = "alive";
-  if (deadCount >= 3) status = "dead";
-  
-  // ===== SUMAR ALIVE AL GIST =====
+ // ===== ESTADO FINAL =====
+// ===== ESTADO FINAL =====
+let status = null;
+
+if (aliveCount >= 1) status = "alive"; // 🔥 cambio a 1
+if (deadCount >= 3) status = "dead";
+
+// ===== SUMAR ALIVE AL GIST =====
 if (status === "alive" && !message.aliveCounted) {
   message.aliveCounted = true; // evitar duplicados
 
-  await loadLiveStats(); // 🔥 SIEMPRE recargar antes
+  await loadLiveStats(); // siempre recargar antes
 
-  //liveStats.totalAlive += 1;
+  liveStats.totalAlive += 1; // 🔥 importante (lo tenías comentado)
   liveStats.daily.alive += 1;
 
   await saveLiveStats();
 }
 
-  if (status) {
-    const desc = embed.description || "";
-    const rarity = (desc.match(/(\d)\/5/) || [])[1] || 0;
-    const pack = (desc.match(/• (\d+)P/) || [])[1] || 0;
-    const user = (desc.match(/\*\*(.*?)\*\*/) || [])[1] || "Unknown";
+// ===== BOTONES =====
+let components = [];
 
-    await updateThreadName(message, status, rarity, pack, user, "ID");
-  }
+if (status) {
+  // 🔒 SOLO EDIT (sin Alive/Dead)
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`edit_panel_${message.id}`)
+      .setEmoji("✏️")
+      .setStyle(ButtonStyle.Secondary)
+  );
 
-  return;
+  components = [row];
+
+} else {
+  // 🟢 AÚN ACTIVO
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("gp_alive")
+      .setLabel(`🟢 Alive (${aliveCount})`)
+      .setStyle(ButtonStyle.Success),
+
+    new ButtonBuilder()
+      .setCustomId("gp_dead")
+      .setLabel(`🔴 Dead (${deadCount})`)
+      .setStyle(ButtonStyle.Danger),
+
+    new ButtonBuilder()
+      .setCustomId(`edit_panel_${message.id}`)
+      .setEmoji("✏️")
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  components = [row];
+}
+
+// ===== ACTUALIZAR MENSAJE =====
+await message.edit({
+  components: components
+});
+
+// ===== ACTUALIZAR THREAD NAME SI SE ALCANZA STATUS =====
+if (status) {
+  const desc = embed.description || "";
+  const rarity = (desc.match(/(\d)\/5/) || [])[1] || 0;
+  const pack = (desc.match(/• (\d+)P/) || [])[1] || 0;
+  const user = (desc.match(/\*\*(.*?)\*\*/) || [])[1] || "Unknown";
+
+  await updateThreadName(message, status, rarity, pack, user, "ID");
+}
+
+return;
 }
 
 // 👇 cierre del interactionCreate
