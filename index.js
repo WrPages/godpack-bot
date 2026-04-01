@@ -219,13 +219,13 @@ client.once("ready", async () => {
 
 
     // 🗑️ BORRAR COMANDOS ANTIGUOS DEL SERVIDOR
-    await rest.put(
-      Routes.applicationGuildCommands(
-        process.env.CLIENT_ID,
-        process.env.GUILD_ID
-      ),
-      { body: [] }
-   );
+   // await rest.put(
+   //   Routes.applicationGuildCommands(
+     //   process.env.CLIENT_ID,
+     //   process.env.GUILD_ID
+    //  ),
+    //  { body: [] }
+ //  );
 
     console.log("🗑️ Comandos antiguos eliminados");
 
