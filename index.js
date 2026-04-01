@@ -1,5 +1,5 @@
  const { Client, GatewayIntentBits, EmbedBuilder, ModalBuilder,
-  TextInputBuilder,TextInputStyle,ActionRowBuilder} = require('discord.js')
+  TextInputBuilder,TextInputStyle,ActionRowBuilder,StringSelectMenuBuilder, ButtonBuilder, ButtonStyle} = require('discord.js')
 const fetch = require('node-fetch')
 
 const { startPanelSystem } = require("./statsPanel");
@@ -219,13 +219,13 @@ client.once("ready", async () => {
 
 
     // 🗑️ BORRAR COMANDOS ANTIGUOS DEL SERVIDOR
-    //await rest.put(
-      //Routes.applicationGuildCommands(
-        //process.env.CLIENT_ID,
-        //process.env.GUILD_ID
-    //  ),
-     // { body: [] }
-    //);
+    await rest.put(
+      Routes.applicationGuildCommands(
+        process.env.CLIENT_ID,
+        process.env.GUILD_ID
+      ),
+      { body: [] }
+   );
 
     console.log("🗑️ Comandos antiguos eliminados");
 
@@ -263,6 +263,39 @@ client.once("ready", async () => {
           .setRequired(true)
       ),
 
+///////
+
+new SlashCommandBuilder()
+  .setName("schedule_events")
+  .setDescription("Schedule online/offline")
+  .addStringOption(opt =>
+    opt.setName("action")
+      .setDescription("Action")
+      .setRequired(true)
+      .addChoices(
+        { name: "Online", value: "online" },
+        { name: "Offline", value: "offline" }
+      )
+  )
+  .addIntegerOption(opt =>
+    opt.setName("hours")
+      .setDescription("Hours")
+      .setRequired(false)
+  )
+  .addIntegerOption(opt =>
+    opt.setName("minutes")
+      .setDescription("Minutes")
+      .setRequired(false)
+  ),
+
+new SlashCommandBuilder()
+  .setName("set_offline")
+  .setDescription("Force a user offline"),
+
+
+
+   
+/////
     new SlashCommandBuilder()
       .setName("online")
       .setDescription("Set your main account online"),
@@ -462,7 +495,59 @@ client.on("interactionCreate", async (interaction) => {
 
   const userId = interaction.user.id
   let users = await getUsers()
-  
+
+//SCHENDULE
+
+ if (interaction.commandName === "schedule_events") {
+
+  const group = getUserGroup(interaction)
+  if (!group) {
+    return interaction.reply("❌ No reroll group detected")
+  }
+
+  const config = GROUP_CONFIG[group]
+
+  const action = interaction.options.getString("action")
+  const hours = interaction.options.getInteger("hours") || 0
+  const minutes = interaction.options.getInteger("minutes") || 0
+
+  const totalMs = (hours * 60 + minutes) * 60 * 1000
+
+  if (totalMs <= 0) {
+    return interaction.reply("❌ Invalid time")
+  }
+
+  let users = await getUsers(
+    config.USERS_GIST_ID,
+    config.USERS_FILENAME
+  )
+
+  const userData = users[interaction.user.id]
+
+  if (!userData?.main_id) {
+    return interaction.reply("❌ You need a registered ID")
+  }
+
+  const id = userData.main_id
+
+  await interaction.reply(
+    `⏱️ Scheduled **${action}** in ${hours}h ${minutes}m`
+  )
+
+  setTimeout(async () => {
+    try {
+      await fetch(`${API_URL}?action=${action}&id=${id}&group=${group}`)
+      console.log(`✅ Scheduled ${action} executed for ${id}`)
+    } catch (err) {
+      console.error("Schedule error:", err)
+    }
+  }, totalMs)
+}
+
+
+
+
+ 
 // 🔹 VIP ids
 if (interaction.commandName === "gp") {
   const id = interaction.options.getString("id")
@@ -683,6 +768,9 @@ if (interaction.commandName === "online_sec") {
 
 
 
+
+ 
+
   // 🔹 OFFLINE
   if (interaction.commandName === "offline") {
 
@@ -720,6 +808,109 @@ if (userData.sec_id) {
 
   return interaction.editReply(`🔴 ${userData.name} is now OFFLINE in ${group}`)
 }
+ 
+//SETOFFLINE
+
+ if (interaction.commandName === "set_offline") {
+
+  const group = getUserGroup(interaction)
+  if (!group) return interaction.reply("❌ No group")
+
+  const config = GROUP_CONFIG[group]
+
+  // 🔹 Obtener IDs online
+  const res = await fetch(
+    `https://api.github.com/gists/${config.IDS_GIST_ID}?t=${Date.now()}`,
+    {
+      headers: {
+        Authorization: `Bearer ${GITHUB_TOKEN}`
+      }
+    }
+  )
+
+  const data = await res.json()
+  const content = data.files["elite_ids.txt"]?.content || ""
+
+  const onlineIds = content
+    .split("\n")
+    .map(x => x.trim())
+    .filter(Boolean)
+
+  if (onlineIds.length === 0) {
+    return interaction.reply("⚫ No users online")
+  }
+
+  const users = await getUsers(
+    config.USERS_GIST_ID,
+    config.USERS_FILENAME
+  )
+
+  const options = []
+
+  for (const id of onlineIds) {
+    let name = "Unknown"
+
+    for (const uid in users) {
+      const u = users[uid]
+
+      if (u.main_id === id || u.sec_id === id) {
+        name = u.name
+        break
+      }
+    }
+
+    options.push({
+      label: `${name}`,
+      description: id,
+      value: id
+    })
+  }
+
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId("select_offline_user")
+    .setPlaceholder("Select user")
+    .addOptions(options.slice(0, 25))
+
+  const row = new ActionRowBuilder().addComponents(menu)
+
+  await interaction.reply({
+    content: "Select user to set OFFLINE:",
+    components: [row],
+    ephemeral: true
+  })
+}
+//////
+ if (interaction.isStringSelectMenu() && interaction.customId === "select_offline_user") {
+
+  const id = interaction.values[0]
+
+  const confirm = new ButtonBuilder()
+    .setCustomId(`confirm_offline_${id}`)
+    .setLabel("Confirm")
+    .setStyle(ButtonStyle.Danger)
+
+  const row = new ActionRowBuilder().addComponents(confirm)
+
+  await interaction.update({
+    content: `⚠️ Confirm OFFLINE for ID: ${id}?`,
+    components: [row]
+  })
+}
+
+if (interaction.isButton() && interaction.customId.startsWith("confirm_offline_")) {
+
+  const id = interaction.customId.replace("confirm_offline_", "")
+
+  const group = getUserGroup(interaction)
+
+  await fetch(`${API_URL}?action=offline&id=${id}&group=${group}`)
+
+  await interaction.update({
+    content: `🔴 ID ${id} set OFFLINE`,
+    components: []
+  })
+}
+ //////////
 
 // 🔹 LIST
 if (interaction.commandName === "list") {
