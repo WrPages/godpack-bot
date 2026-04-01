@@ -813,6 +813,15 @@ if (userData.sec_id) {
 
  if (interaction.commandName === "set_offline") {
 
+const member = interaction.member;
+
+if (!member.roles.cache.some(role => role.name === "Champion")) {
+  return interaction.reply({
+    content: "❌ You need the **Champion** role to use this command.",
+    ephemeral: true
+  });
+}
+  
   const group = getUserGroup(interaction)
   if (!group) return interaction.reply("❌ No group")
 
