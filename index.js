@@ -279,14 +279,14 @@ client.once("ready", async () => {
   try {
 
 
-    // 🗑️ BORRAR COMANDOS ANTIGUOS DEL SERVIDOR
-   // await rest.put(
-   //   Routes.applicationGuildCommands(
-     //   process.env.CLIENT_ID,
-     //   process.env.GUILD_ID
-    //  ),
-    //  { body: [] }
- //  );
+     🗑️ BORRAR COMANDOS ANTIGUOS DEL SERVIDOR
+    await rest.put(
+      Routes.applicationGuildCommands(
+       process.env.CLIENT_ID,
+       process.env.GUILD_ID
+      ),
+      { body: [] }
+   );
 
     console.log("🗑️ Comandos antiguos eliminados");
 
@@ -574,9 +574,9 @@ if (interaction.commandName === "schedule_events") {
   const mode = interaction.options.getString("mode")
   const schedules = loadSchedules()
 
-  const now = new Date()
-  const utcNow = `${now.getUTCHours().toString().padStart(2,"0")}:${now.getUTCMinutes().toString().padStart(2,"0")}`
+const now = new Date()
 
+const utcNow = now.toISOString().slice(11,16) // HH:MM en UTC real 24h
   if (mode === "stop") {
 
     delete schedules[interaction.user.id]
