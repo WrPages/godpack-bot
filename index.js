@@ -95,6 +95,66 @@ const fs = require("fs")
 const HISTORY_FILE = "./ppm_history.json"
 const TWELVE_HOURS = 12 * 60 * 60 * 1000
 
+// ================= DAILY SCHEDULE SYSTEM =================
+
+const SCHEDULE_FILE = "./daily_schedules.json"
+
+function loadSchedules() {
+  if (!fs.existsSync(SCHEDULE_FILE)) return {}
+  return JSON.parse(fs.readFileSync(SCHEDULE_FILE))
+}
+
+function saveSchedules(data) {
+  fs.writeFileSync(SCHEDULE_FILE, JSON.stringify(data, null, 2))
+}
+
+function startDailyScheduler() {
+
+  setInterval(async () => {
+
+    const schedules = loadSchedules()
+    const now = new Date()
+
+    const utcHour = now.getUTCHours()
+    const utcMinute = now.getUTCMinutes()
+
+    for (const userId in schedules) {
+
+      const data = schedules[userId]
+
+      if (!data.group || !data.main_id) continue
+
+      // ONLINE
+      if (
+        data.online_hour === utcHour &&
+        data.online_minute === utcMinute &&
+        data.last_online !== now.toDateString()
+      ) {
+        await fetch(`${API_URL}?action=online&id=${data.main_id}&group=${data.group}`)
+        data.last_online = now.toDateString()
+        console.log("🟢 Daily ONLINE ejecutado:", data.main_id)
+      }
+
+      // OFFLINE
+      if (
+        data.offline_hour === utcHour &&
+        data.offline_minute === utcMinute &&
+        data.last_offline !== now.toDateString()
+      ) {
+        await fetch(`${API_URL}?action=offline&id=${data.main_id}&group=${data.group}`)
+        data.last_offline = now.toDateString()
+        console.log("🔴 Daily OFFLINE ejecutado:", data.main_id)
+      }
+
+    }
+
+    saveSchedules(schedules)
+
+  }, 60 * 1000)
+}
+
+
+
 function loadHistory() {
   if (!fs.existsSync(HISTORY_FILE)) return []
   return JSON.parse(fs.readFileSync(HISTORY_FILE))
@@ -193,6 +253,7 @@ async function addVipID(id) {
 client.on("ready", () => {
   setInterval(updateTotalPPM, 5 * 60 * 1000)
   updateTotalPPM()
+ startDailyScheduler() 
   console.log("Bot ready 🔥")
 })
 require("./gpHandler")(client);
@@ -267,24 +328,34 @@ client.once("ready", async () => {
 
 new SlashCommandBuilder()
   .setName("schedule_events")
-  .setDescription("Schedule online/offline")
+  .setDescription("Daily online/offline scheduler (UTC)")
   .addStringOption(opt =>
-    opt.setName("action")
-      .setDescription("Action")
+    opt.setName("mode")
+      .setDescription("Start or Stop")
       .setRequired(true)
       .addChoices(
-        { name: "Online", value: "online" },
-        { name: "Offline", value: "offline" }
+        { name: "Start Daily Schedule", value: "start" },
+        { name: "Stop All Schedules", value: "stop" }
       )
   )
   .addIntegerOption(opt =>
-    opt.setName("hours")
-      .setDescription("Hours")
+    opt.setName("online_hour")
+      .setDescription("Online Hour (UTC 0-23)")
       .setRequired(false)
   )
   .addIntegerOption(opt =>
-    opt.setName("minutes")
-      .setDescription("Minutes")
+    opt.setName("online_minute")
+      .setDescription("Online Minute (0-59)")
+      .setRequired(false)
+  )
+  .addIntegerOption(opt =>
+    opt.setName("offline_hour")
+      .setDescription("Offline Hour (UTC 0-23)")
+      .setRequired(false)
+  )
+  .addIntegerOption(opt =>
+    opt.setName("offline_minute")
+      .setDescription("Offline Minute (0-59)")
       .setRequired(false)
   ),
 
@@ -498,52 +569,75 @@ client.on("interactionCreate", async (interaction) => {
 
 //SCHENDULE
 
- if (interaction.commandName === "schedule_events") {
+if (interaction.commandName === "schedule_events") {
+
+  const mode = interaction.options.getString("mode")
+  const schedules = loadSchedules()
+
+  const now = new Date()
+  const utcNow = `${now.getUTCHours().toString().padStart(2,"0")}:${now.getUTCMinutes().toString().padStart(2,"0")}`
+
+  if (mode === "stop") {
+
+    delete schedules[interaction.user.id]
+    saveSchedules(schedules)
+
+    return interaction.reply(`🛑 All daily schedules stopped.\n🕒 Current UTC time: ${utcNow}`)
+  }
 
   const group = getUserGroup(interaction)
-  if (!group) {
-    return interaction.reply("❌ No reroll group detected")
-  }
+  if (!group) return interaction.reply("❌ No reroll group detected")
 
   const config = GROUP_CONFIG[group]
 
-  const action = interaction.options.getString("action")
-  const hours = interaction.options.getInteger("hours") || 0
-  const minutes = interaction.options.getInteger("minutes") || 0
-
-  const totalMs = (hours * 60 + minutes) * 60 * 1000
-
-  if (totalMs <= 0) {
-    return interaction.reply("❌ Invalid time")
-  }
-
-  let users = await getUsers(
-    config.USERS_GIST_ID,
-    config.USERS_FILENAME
-  )
-
+  let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
   const userData = users[interaction.user.id]
 
   if (!userData?.main_id) {
-    return interaction.reply("❌ You need a registered ID")
+    return interaction.reply("❌ You must register first")
   }
 
-  const id = userData.main_id
+  const onlineHour = interaction.options.getInteger("online_hour")
+  const onlineMinute = interaction.options.getInteger("online_minute")
+  const offlineHour = interaction.options.getInteger("offline_hour")
+  const offlineMinute = interaction.options.getInteger("offline_minute")
 
-  await interaction.reply(
-    `⏱️ Scheduled **${action}** in ${hours}h ${minutes}m`
+  if (
+    onlineHour == null || onlineMinute == null ||
+    offlineHour == null || offlineMinute == null
+  ) {
+    return interaction.reply("❌ You must provide all time values")
+  }
+
+  if (
+    onlineHour < 0 || onlineHour > 23 ||
+    offlineHour < 0 || offlineHour > 23 ||
+    onlineMinute < 0 || onlineMinute > 59 ||
+    offlineMinute < 0 || offlineMinute > 59
+  ) {
+    return interaction.reply("❌ Invalid UTC time format")
+  }
+
+  schedules[interaction.user.id] = {
+    group,
+    main_id: userData.main_id,
+    online_hour: onlineHour,
+    online_minute: onlineMinute,
+    offline_hour: offlineHour,
+    offline_minute: offlineMinute,
+    last_online: null,
+    last_offline: null
+  }
+
+  saveSchedules(schedules)
+
+  return interaction.reply(
+    `✅ Daily schedule activated\n\n` +
+    `🟢 Online: ${onlineHour.toString().padStart(2,"0")}:${onlineMinute.toString().padStart(2,"0")} UTC\n` +
+    `🔴 Offline: ${offlineHour.toString().padStart(2,"0")}:${offlineMinute.toString().padStart(2,"0")} UTC\n\n` +
+    `🕒 Current UTC time: ${utcNow}`
   )
-
-  setTimeout(async () => {
-    try {
-      await fetch(`${API_URL}?action=${action}&id=${id}&group=${group}`)
-      console.log(`✅ Scheduled ${action} executed for ${id}`)
-    } catch (err) {
-      console.error("Schedule error:", err)
-    }
-  }, totalMs)
 }
-
 
 
 
