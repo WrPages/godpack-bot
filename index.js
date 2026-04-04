@@ -125,29 +125,27 @@ function startDailyScheduler() {
 
       if (!data.group || !data.main_id) continue
 
-      // ONLINE
-    if (
+// ONLINE
+if (
   data.online_hour === utcHour &&
   data.online_minute === utcMinute &&
   data.last_online !== todayUTC
 ) {
-        await fetch(`${API_URL}?action=online&id=${data.main_id}&group=${data.group}`)
-         data.last_online !== todayUTC
-        console.log("🟢 Daily ONLINE ejecutado:", data.main_id)
-      }
+  await fetch(`${API_URL}?action=online&id=${data.main_id}&group=${data.group}`)
+  data.last_online = todayUTC
+  console.log("🟢 Daily ONLINE ejecutado:", data.main_id)
+}
 
-      // OFFLINE
-      if (
-        data.offline_hour === utcHour &&
-        data.offline_minute === utcMinute &&
-       data.last_offline = todayUTC
-      ) {
-        await fetch(`${API_URL}?action=offline&id=${data.main_id}&group=${data.group}`)
-        data.last_offline = todayUTC
-        console.log("🔴 Daily OFFLINE ejecutado:", data.main_id)
-      }
-
-    }
+// OFFLINE
+if (
+  data.offline_hour === utcHour &&
+  data.offline_minute === utcMinute &&
+  data.last_offline !== todayUTC
+) {
+  await fetch(`${API_URL}?action=offline&id=${data.main_id}&group=${data.group}`)
+  data.last_offline = todayUTC
+  console.log("🔴 Daily OFFLINE ejecutado:", data.main_id)
+}
 
     saveSchedules(schedules)
 
