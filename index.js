@@ -117,41 +117,42 @@ function startDailyScheduler() {
 
     const utcHour = now.getUTCHours()
     const utcMinute = now.getUTCMinutes()
-   const todayUTC = now.toISOString().slice(0,10)
+    const todayUTC = now.toISOString().slice(0,10)
 
     for (const userId in schedules) {
 
       const data = schedules[userId]
-
       if (!data.group || !data.main_id) continue
 
-// ONLINE
-if (
-  data.online_hour === utcHour &&
-  data.online_minute === utcMinute &&
-  data.last_online !== todayUTC
-) {
-  await fetch(`${API_URL}?action=online&id=${data.main_id}&group=${data.group}`)
-  data.last_online = todayUTC
-  console.log("🟢 Daily ONLINE ejecutado:", data.main_id)
-}
+      // ONLINE
+      if (
+        data.online_hour === utcHour &&
+        data.online_minute === utcMinute &&
+        data.last_online !== todayUTC
+      ) {
+        await fetch(`${API_URL}?action=online&id=${data.main_id}&group=${data.group}`)
+        data.last_online = todayUTC
+        console.log("🟢 Daily ONLINE ejecutado:", data.main_id)
+      }
 
-// OFFLINE
-if (
-  data.offline_hour === utcHour &&
-  data.offline_minute === utcMinute &&
-  data.last_offline !== todayUTC
-) {
-  await fetch(`${API_URL}?action=offline&id=${data.main_id}&group=${data.group}`)
-  data.last_offline = todayUTC
-  console.log("🔴 Daily OFFLINE ejecutado:", data.main_id)
-}
+      // OFFLINE
+      if (
+        data.offline_hour === utcHour &&
+        data.offline_minute === utcMinute &&
+        data.last_offline !== todayUTC
+      ) {
+        await fetch(`${API_URL}?action=offline&id=${data.main_id}&group=${data.group}`)
+        data.last_offline = todayUTC
+        console.log("🔴 Daily OFFLINE ejecutado:", data.main_id)
+      }
+
+    }
 
     saveSchedules(schedules)
 
   }, 60 * 1000)
-}
 
+}
 
 
 function loadHistory() {
