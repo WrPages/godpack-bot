@@ -199,7 +199,9 @@ client.once("clientReady", async () => {
       )
 
   ].map(c => c.toJSON())
-
+console.log("CLIENT_ID:", process.env.CLIENT_ID)
+console.log("GUILD_ID:", process.env.GUILD_ID)
+console.log("TOKEN OK:", !!TOKEN)
   try {
     await rest.put(
       Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
