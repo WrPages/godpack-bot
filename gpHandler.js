@@ -496,50 +496,67 @@ await sentMessage.edit({
 });
     
 
-    // ===== CREAR HILO =====
-    try {
-      const thread = await sentMessage.startThread({
-        name: `[${rarity}/5][${packNumber}P] [${username}P] [${friendId}P]`,
-        autoArchiveDuration: 1440,
-        type: ChannelType.PublicThread
-      });
+ // ===== CREAR HILO =====
+try {
+  const thread = await sentMessage.startThread({
+    name: `[${rarity}/5][${packNumber}P] [${username}P] [${friendId}P]`,
+    autoArchiveDuration: 1440,
+    type: ChannelType.PublicThread
+  });
 
-      // Menciones online
-      const onlineIDs = await getOnlineIDs();
-      const users = await getUsers();
-      const onlineClean = onlineIDs.map(id => id.trim());
-      const mentionList = [];
-      for (const discordId in users) {
-        const userData = users[discordId];
-        const mainId = userData.main_id?.trim();
-        const secId = userData.sec_id?.trim();
-        if (onlineClean.includes(mainId) || (secId && onlineClean.includes(secId))) {
-          mentionList.push(`<@${discordId}>`);
-        }
-      }
-      const onlineMention = mentionList.join(" ");
-      if (onlineMention) {
-        await thread.send({
-          content: onlineMention,
-          allowedMentions: { parse: ["users"] }
-        });
-      }
-
-      await thread.send("📂 Original webhook message:");
-      await thread.send({
-        content: message.content,
-        files: message.attachments.map(att => att.url),
-        allowedMentions: { parse: [] }
-      });
-
-      await message.delete().catch(() => {});
-    } catch (err) {
-      console.error("THREAD ERROR:", err);
+  // Menciones online
+  const onlineIDs = await getOnlineIDs();
+  const users = await getUsers();
+  const onlineClean = onlineIDs.map(id => id.trim());
+  const mentionList = [];
+  for (const discordId in users) {
+    const userData = users[discordId];
+    const mainId = userData.main_id?.trim();
+    const secId = userData.sec_id?.trim();
+    if (onlineClean.includes(mainId) || (secId && onlineClean.includes(secId))) {
+      mentionList.push(`<@${discordId}>`);
     }
-
-  } catch (err) {
-    console.error("GP Handler Error:", err);
   }
+  const onlineMention = mentionList.join(" ");
+  if (onlineMention) {
+    await thread.send({
+      content: onlineMention,
+      allowedMentions: { parse: ["users"] }
+    });
+  }
+
+  await thread.send("📂 Original webhook message:");
+  await thread.send({
+    content: message.content,
+    files: message.attachments.map(att => att.url),
+    allowedMentions: { parse: [] }
+  });
+
+  // ===== AÑADIR BOTONES AL HILO =====
+  const threadButtons = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("gp_alive")
+      .setLabel("🟢 Alive (0)")
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId("gp_dead")
+      .setLabel("🔴 Dead (0)")
+      .setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId(`edit_panel_${sentMessage.id}`)
+      .setEmoji("✏️")
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  await thread.send({
+    content: "🗳️ Vote using the buttons below:",
+    components: [threadButtons]
+  });
+
+  await message.delete().catch(() => {});
+} catch (err) {
+  console.error("THREAD ERROR:", err);
+}
 });
 
 
