@@ -329,43 +329,6 @@ module.exports = async (client) => {
         await loadLiveStats();
         
   
-
-client.once("clientReady", async () => {
-
-  const commands = [
-    new SlashCommandBuilder()
-      .setName("editpanel")
-      .setDescription("Editar un panel de GP")
-      .addStringOption(option =>
-        option
-          .setName("mensaje_id")
-          .setDescription("ID del mensaje del panel")
-          .setRequired(true)
-      )
-      .toJSON()
-  ];
-
-  const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
-
-  try {
-    console.log("Registrando /editpanel...");
-
-    await rest.put(
-      Routes.applicationGuildCommands(
-        client.user.id,
-        "1483615153743462571" // TU SERVER ID
-      ),
-      { body: commands }
-    );
-
-    console.log("✅ /editpanel registrado");
-  } catch (error) {
-    console.error("❌ Error registrando comando:", error);
-  }
-});
-
-
-
   
   
   
