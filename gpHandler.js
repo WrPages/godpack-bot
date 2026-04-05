@@ -494,6 +494,27 @@ const newButtons = ActionRowBuilder.from(buttons).addComponents(editButton);
 await sentMessage.edit({
   components: [newButtons]
 });
+
+// ===== SINCRONIZAR BOTONES DEL HILO =====
+const thread = message.thread;
+
+if (thread) {
+  const threadMessages = await thread.messages.fetch({ limit: 20 });
+
+  const voteMessage = threadMessages.find(m =>
+    m.components?.length &&
+    m.components[0].components.some(b =>
+      b.customId === "gp_alive" || b.customId === "gp_dead"
+    )
+  );
+
+  if (voteMessage) {
+    await voteMessage.edit({
+      components: [newButtons] // mismos botones del embed
+    });
+  }
+}
+
     
 
     // ===== CREAR HILO =====
@@ -884,6 +905,26 @@ if (status) {
 await message.edit({
   components: components
 });
+
+// ===== ELIMINAR BOTONES DEL HILO =====
+const thread = message.thread;
+
+if (thread) {
+  const threadMessages = await thread.messages.fetch({ limit: 20 });
+
+  const voteMessage = threadMessages.find(m =>
+    m.components?.length &&
+    m.components[0].components.some(b =>
+      b.customId === "gp_alive" || b.customId === "gp_dead"
+    )
+  );
+
+  if (voteMessage) {
+    await voteMessage.edit({
+      components: []
+    });
+  }
+}
 
 // ===== ACTUALIZAR THREAD NAME SI SE ALCANZA STATUS =====
 if (status) {
