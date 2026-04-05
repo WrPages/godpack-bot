@@ -498,11 +498,16 @@ await sentMessage.edit({
 
     // ===== CREAR HILO =====
     try {
-      const thread = await sentMessage.startThread({
-        name: `[${rarity}/5][${packNumber}P] [${username}P] [${friendId}P]`,
-        autoArchiveDuration: 1440,
-        type: ChannelType.PublicThread
-      });
+      const thread = await message.channel.threads.create({
+  name: `[${rarity}/5][${packNumber}P] ${username} ${friendId}`,
+  autoArchiveDuration: 1440,
+  type: ChannelType.PublicThread
+});
+const threadMessage = await thread.send({
+  embeds: [embed],
+  components: [newButtons], // mismos botones que el panel
+  files: imageFile ? [imageFile] : []
+});
 
       // Menciones online
       const onlineIDs = await getOnlineIDs();
@@ -652,6 +657,21 @@ if (interaction.isButton()) {
 
   const message = interaction.message;
   const embed = message.embeds[0];
+  let mainMessage = message;
+let threadMessage = null;
+
+if (message.linkedMainMessageId) {
+  mainMessage = await interaction.channel.messages
+    .fetch(message.linkedMainMessageId)
+    .catch(() => null);
+}
+
+if (message.linkedThreadMessageId) {
+  const thread = interaction.channel;
+  threadMessage = await thread.messages
+    .fetch(message.linkedThreadMessageId)
+    .catch(() => null);
+}
 
   // ===== LEER FOOTER =====
   let footer = embed.footer?.text || "VOTES:alive=|dead=";
@@ -794,17 +814,16 @@ if (status === "alive" && !message.aliveCounted) {
 let components = [];
 
 if (status) {
-  // 🔒 SOLO EDIT (sin Alive/Dead)
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
-      .setCustomId(`edit_panel_${message.id}`)
+      .setCustomId(`edit_panel_${mainMessage.id}`)
       .setEmoji("✏️")
       .setStyle(ButtonStyle.Secondary)
   );
 
   components = [row];
-
-} else {
+}
+else {
   // 🟢 AÚN ACTIVO
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
@@ -827,9 +846,13 @@ if (status) {
 }
 
 // ===== ACTUALIZAR MENSAJE =====
-await message.edit({
-  components: components
-});
+if (mainMessage) {
+  await mainMessage.edit({ components: components }).catch(() => {});
+}
+
+if (threadMessage) {
+  await threadMessage.edit({ components: components }).catch(() => {});
+}
 
 // ===== ACTUALIZAR THREAD NAME SI SE ALCANZA STATUS =====
 if (status) {
