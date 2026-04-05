@@ -658,25 +658,34 @@ if (interaction.isButton()) {
 
   await interaction.deferUpdate();
 
-  let mainMessage;
+  let mainMessage = null;
+  let threadMessage = null;
   let threadChannel = null;
 
-  // ===== SI SE PRESIONA EN HILO =====
+  // ===== SI ESTAMOS EN HILO =====
   if (interaction.channel.isThread()) {
 
     threadChannel = interaction.channel;
-    mainMessage = await threadChannel.parent.messages.fetch(threadChannel.parentId).catch(() => null);
+    threadMessage = interaction.message;
+
+    const panelIdMatch = threadMessage.content.match(/PANEL_ID:(\d+)/);
+    if (!panelIdMatch) return;
+
+    const panelId = panelIdMatch[1];
+    mainMessage = await threadChannel.parent.messages.fetch(panelId).catch(() => null);
 
   } 
-  // ===== SI SE PRESIONA EN EMBED PRINCIPAL =====
+  // ===== SI ESTAMOS EN EMBED PRINCIPAL =====
   else {
 
     mainMessage = interaction.message;
 
-    if (interaction.message.hasThread) {
-      threadChannel = interaction.message.thread;
-    }
+    if (!mainMessage.hasThread) return;
 
+    threadChannel = mainMessage.thread;
+
+    const messages = await threadChannel.messages.fetch({ limit: 20 });
+    threadMessage = messages.find(m => m.content.includes(`PANEL_ID:${mainMessage.id}`));
   }
 
   if (!mainMessage) return;
@@ -719,7 +728,7 @@ if (interaction.isButton()) {
     );
   }
 
-  // 🔥 EDIT SIEMPRE PRESENTE
+  // 🔥 EDIT SIEMPRE
   row.addComponents(
     new ButtonBuilder()
       .setCustomId(`edit_panel_${mainMessage.id}`)
@@ -742,25 +751,22 @@ if (interaction.isButton()) {
   }
 
   // ===== ACTUALIZAR MENSAJE EN HILO =====
-  if (threadChannel) {
+  if (threadMessage) {
 
-    const threadMessages = await threadChannel.messages.fetch({ limit: 5 });
-    const botPanelMessage = threadMessages.find(m => m.author.id === interaction.client.user.id);
-
-    if (botPanelMessage) {
-      if (!status) {
-        await botPanelMessage.edit({
-          embeds: [newEmbed],
-          components
-        }).catch(() => {});
-      } else {
-        await botPanelMessage.edit({
-          components
-        }).catch(() => {});
-      }
+    if (!status) {
+      await threadMessage.edit({
+        embeds: [newEmbed],
+        components
+      }).catch(() => {});
+    } else {
+      await threadMessage.edit({
+        components
+      }).catch(() => {});
     }
+  }
 
-    // 🔥 SOLO enviar quién votó al hilo
+  // ===== ENVIAR QUIÉN VOTÓ SOLO AL HILO =====
+  if (threadChannel) {
     await threadChannel.send({
       content: `🗳️ **${interaction.user.username}** votó ${interaction.customId === "gp_alive" ? "🟢 Alive" : "🔴 Dead"}`,
       allowedMentions: { parse: [] }
