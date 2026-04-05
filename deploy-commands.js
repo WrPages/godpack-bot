@@ -72,16 +72,20 @@ const commands = [
         )
     )
     .addIntegerOption(opt =>
-      opt.setName("online_hour").setDescription("Online Hour (UTC 0-23)")
+      opt.setName("online_hour")
+        .setDescription("Online Hour (UTC 0-23)")
     )
     .addIntegerOption(opt =>
-      opt.setName("online_minute").setDescription("Online Minute (0-59)")
+      opt.setName("online_minute")
+        .setDescription("Online Minute (0-59)")
     )
     .addIntegerOption(opt =>
-      opt.setName("offline_hour").setDescription("Offline Hour (UTC 0-23)")
+      opt.setName("offline_hour")
+        .setDescription("Offline Hour (UTC 0-23)")
     )
     .addIntegerOption(opt =>
-      opt.setName("offline_minute").setDescription("Offline Minute (0-59)")
+      opt.setName("offline_minute")
+        .setDescription("Offline Minute (0-59)")
     ),
 
   new SlashCommandBuilder()
@@ -90,11 +94,31 @@ const commands = [
 
 ].map(cmd => cmd.toJSON())
 
+// 🔥 DEBUG DE COMANDOS
+commands.forEach(cmd => {
+  if (!cmd.description) {
+    console.log("❌ Comando sin descripción:", cmd.name)
+  }
+})
+
 const rest = new REST({ version: "10" }).setToken(process.env.TOKEN)
 
 ;(async () => {
   try {
     console.log("🚀 Registrando comandos...")
+
+    // 🔎 DEBUG ENV
+    if (!process.env.TOKEN) {
+      throw new Error("TOKEN no definido")
+    }
+    if (!process.env.CLIENT_ID) {
+      throw new Error("CLIENT_ID no definido")
+    }
+    if (!process.env.GUILD_ID) {
+      throw new Error("GUILD_ID no definido")
+    }
+
+    console.log("📡 Enviando request a Discord...")
 
     await rest.put(
       Routes.applicationGuildCommands(
@@ -105,7 +129,10 @@ const rest = new REST({ version: "10" }).setToken(process.env.TOKEN)
     )
 
     console.log("✅ Comandos registrados correctamente")
+    process.exit(0)
+
   } catch (error) {
     console.error("❌ Error registrando comandos:", error)
+    process.exit(1)
   }
 })()
