@@ -675,3 +675,4 @@ client.on("interactionCreate", async (interaction) => {
     await saveLiveStats();
   }
 });
+};
