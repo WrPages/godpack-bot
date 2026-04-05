@@ -437,12 +437,19 @@ module.exports = async (client) => {
       await sentMessage.edit({ components: [newButtons] });
 
      // ===== CREAR HILO CON BOTONES FUNCIONALES =====
+// ===== CREAR HILO CON BOTONES FUNCIONALES =====
 try {
   const thread = await sentMessage.startThread({
     name: `[${rarity}/5][${packNumber}P] [${username}P] [${friendId}P]`,
     autoArchiveDuration: 1440,
     type: ChannelType.PublicThread
   });
+
+  // ... resto del código de menciones y mensajes
+
+} catch (err) {
+  console.error("THREAD ERROR:", err);
+}
 
   // Menciones online
   const onlineIDs = await getOnlineIDs();
