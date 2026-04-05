@@ -662,19 +662,20 @@ let mainMessage = null;
 let threadMessage = null;
 let threadChannel = null;
 
-// ===== SI ESTAMOS EN HILO =====
+// ===== SI SE PRESIONA EN HILO =====
 if (interaction.channel.isThread()) {
 
   threadChannel = interaction.channel;
-
-  // El mensaje principal es el padre del hilo
-  mainMessage = await threadChannel.parent.messages.fetch(threadChannel.id).catch(() => null);
-
-  // El mensaje del panel en el hilo es el mensaje donde se presionó
   threadMessage = interaction.message;
 
-} 
-// ===== SI ESTAMOS EN EMBED PRINCIPAL =====
+  const panelMatch = threadMessage.content.match(/PANEL_ID:(\d+)/);
+  if (!panelMatch) return;
+
+  const mainId = panelMatch[1];
+  mainMessage = await threadChannel.parent.messages.fetch(mainId).catch(() => null);
+
+}
+// ===== SI SE PRESIONA EN EMBED PRINCIPAL =====
 else {
 
   mainMessage = interaction.message;
@@ -683,12 +684,11 @@ else {
 
   threadChannel = mainMessage.thread;
 
-  // El mensaje del panel en el hilo es el PRIMER mensaje del bot
-  const messages = await threadChannel.messages.fetch({ limit: 5 });
-  threadMessage = messages.find(m => m.author.id === interaction.client.user.id);
+  const messages = await threadChannel.messages.fetch({ limit: 50 });
+  threadMessage = messages.find(m => m.content.includes(`PANEL_ID:${mainMessage.id}`));
 }
 
-  if (!mainMessage) return;
+if (!mainMessage || !threadMessage) return;
 
   const embed = mainMessage.embeds[0];
   if (!embed) return;
