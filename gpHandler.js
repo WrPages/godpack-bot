@@ -129,25 +129,30 @@ async function loadData() {
   }
 }
 //cambia alive o desd hilos
-async function updateThreadName(message, status, rarity, packNumber, username, friendId) {
+async function updateThreadName(message, status, rarity, packNumber, username) {
   try {
     if (!message.hasThread) return;
 
     const thread = await message.thread.fetch();
 
+    // 🔥 Extraer friendId del nombre actual del hilo
+    const currentName = thread.name;
+
+    let friendIdMatch = currentName.match(/\[(\d{16})P?\]/);
+    let friendId = friendIdMatch ? friendIdMatch[1] : "";
+
     let emoji = "⚪";
+    if (status === "alive") emoji = "✅";
+    if (status === "dead") emoji = "❌";
 
-    if (status === "alive") {
-      emoji = "✅";
-    }
-
-    if (status === "dead") {
-      emoji = "❌";
-    }
-
- const name = `${emoji} [${rarity}/5][${packNumber}P] ${username} ${friendId}`.slice(0, 90);
+    const name =
+      `${emoji} [${rarity}/5][${packNumber}P] ${username} ${friendId}`
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 90);
 
     await thread.setName(name);
+
   } catch (err) {
     console.error("THREAD NAME ERROR:", err);
   }
@@ -848,7 +853,7 @@ if (status) {
   const pack = (desc.match(/• (\d+)P/) || [])[1] || 0;
   const user = (desc.match(/\*\*(.*?)\*\*/) || [])[1] || "Unknown";
 
-  await updateThreadName(message, status, rarity, pack, user, "ID");
+  await updateThreadName(message, status, rarity, pack, user);
 }
 
 return;
