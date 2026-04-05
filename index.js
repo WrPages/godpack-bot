@@ -18,7 +18,15 @@ const fetch = require('node-fetch')
 const fs = require("fs")
 
 const { startPanelSystem } = require("./statsPanel");
-require("./gpHandler")
+const gpHandler = require("./gpHandler")
+
+client.once("clientReady", async () => {
+  console.log(`✅ Bot listo como ${client.user.tag}`)
+
+  await gpHandler(client) // 🔥 ESTO FALTABA
+
+  // resto de tu código...
+
 
 const client = new Client({
   intents: [
