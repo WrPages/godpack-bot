@@ -18,9 +18,9 @@ const fetch = require('node-fetch')
 const fs = require("fs")
 
 const { startPanelSystem } = require("./statsPanel")
-const gpHandler = require("./gpHandler")
+const gpHandler = require("./gpHandler") // 👈 se deja pero NO se usa
 
-// ✅ CREAR CLIENT PRIMERO
+// ✅ CREAR CLIENTE
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -69,9 +69,7 @@ function getUserGroup(interaction) {
 async function getUsers(gistId, fileName) {
   try {
     const res = await fetch(`https://api.github.com/gists/${gistId}?t=${Date.now()}`, {
-      headers: {
-        Authorization: `Bearer ${GITHUB_TOKEN}`
-      }
+      headers: { Authorization: `Bearer ${GITHUB_TOKEN}` }
     })
 
     const data = await res.json()
@@ -80,34 +78,37 @@ async function getUsers(gistId, fileName) {
 
     return JSON.parse(data.files[fileName].content || "{}")
 
-  } catch {
+  } catch (err) {
+    console.error("❌ ERROR GET USERS:", err)
     return {}
   }
 }
 
 async function saveUsers(users, gistId, fileName) {
-  await fetch(`https://api.github.com/gists/${gistId}`, {
-    method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${GITHUB_TOKEN}`
-    },
-    body: JSON.stringify({
-      files: {
-        [fileName]: {
-          content: JSON.stringify(users, null, 2)
+  try {
+    await fetch(`https://api.github.com/gists/${gistId}`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${GITHUB_TOKEN}` },
+      body: JSON.stringify({
+        files: {
+          [fileName]: {
+            content: JSON.stringify(users, null, 2)
+          }
         }
-      }
+      })
     })
-  })
+  } catch (err) {
+    console.error("❌ ERROR SAVE USERS:", err)
+  }
 }
 
-// ================= READY (ÚNICO) =================
+// ================= READY =================
 
 client.once("clientReady", async () => {
   console.log(`✅ Bot listo como ${client.user.tag}`)
 
-  // 🔥 ACTIVAR TU HANDLER (ESTO ERA CLAVE)
-  await gpHandler(client)
+  // ❌ HANDLER DESACTIVADO
+  // await gpHandler(client)
 
   const rest = new REST({ version: "10" }).setToken(TOKEN)
 
@@ -184,74 +185,79 @@ client.once("clientReady", async () => {
 
   ].map(c => c.toJSON())
 
-  await rest.put(
-    Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
-    { body: commands }
-  )
+  try {
+    await rest.put(
+      Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
+      { body: commands }
+    )
 
-  console.log("🚀 Comandos registrados")
+    console.log("🚀 Comandos registrados")
+  } catch (err) {
+    console.error("❌ ERROR REGISTRANDO COMANDOS:", err)
+  }
 })
 
 // ================= COMMAND HANDLER =================
 
 client.on("interactionCreate", async interaction => {
-  if (!interaction.isChatInputCommand()) return
+  try {
+    if (!interaction.isChatInputCommand()) return
 
-  const { commandName } = interaction
-  const group = getUserGroup(interaction)
-  if (!group) return interaction.reply("❌ No group")
+    const { commandName } = interaction
+    const group = getUserGroup(interaction)
+    if (!group) return interaction.reply("❌ No group")
 
-  const config = GROUP_CONFIG[group]
+    const config = GROUP_CONFIG[group]
+    let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
 
-  let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+    if (commandName === "register") {
+      const id = interaction.options.getString("id")
 
-  if (commandName === "register") {
-    const id = interaction.options.getString("id")
+      users[interaction.user.id] = {
+        main_id: id,
+        sec_id: null,
+        name: interaction.member.displayName
+      }
 
-    users[interaction.user.id] = {
-      main_id: id,
-      sec_id: null,
-      name: interaction.member.displayName
+      await saveUsers(users, config.USERS_GIST_ID, config.USERS_FILENAME)
+      return interaction.reply("✅ Registered")
     }
 
-    await saveUsers(users, config.USERS_GIST_ID, config.USERS_FILENAME)
+    if (commandName === "add_sec") {
+      const id = interaction.options.getString("id")
 
-    return interaction.reply("✅ Registered")
-  }
+      if (!users[interaction.user.id])
+        return interaction.reply("❌ Register first")
 
-  if (commandName === "add_sec") {
-    const id = interaction.options.getString("id")
+      users[interaction.user.id].sec_id = id
+      await saveUsers(users, config.USERS_GIST_ID, config.USERS_FILENAME)
 
-    if (!users[interaction.user.id])
-      return interaction.reply("❌ Register first")
+      return interaction.reply("✅ Secondary added")
+    }
 
-    users[interaction.user.id].sec_id = id
+    if (commandName === "online") {
+      const user = users[interaction.user.id]
+      if (!user) return interaction.reply("❌ Register first")
 
-    await saveUsers(users, config.USERS_GIST_ID, config.USERS_FILENAME)
+      await fetch(`${API_URL}?action=online&id=${user.main_id}&group=${group}`)
+      return interaction.reply("🟢 Online")
+    }
 
-    return interaction.reply("✅ Secondary added")
-  }
+    if (commandName === "offline") {
+      const user = users[interaction.user.id]
+      if (!user) return interaction.reply("❌ Register first")
 
-  if (commandName === "online") {
-    const user = users[interaction.user.id]
-    if (!user) return interaction.reply("❌ Register first")
+      if (user.main_id)
+        await fetch(`${API_URL}?action=offline&id=${user.main_id}&group=${group}`)
 
-    await fetch(`${API_URL}?action=online&id=${user.main_id}&group=${group}`)
+      if (user.sec_id)
+        await fetch(`${API_URL}?action=offline&id=${user.sec_id}&group=${group}`)
 
-    return interaction.reply("🟢 Online")
-  }
+      return interaction.reply("🔴 Offline")
+    }
 
-  if (commandName === "offline") {
-    const user = users[interaction.user.id]
-    if (!user) return interaction.reply("❌ Register first")
-
-    if (user.main_id)
-      await fetch(`${API_URL}?action=offline&id=${user.main_id}&group=${group}`)
-
-    if (user.sec_id)
-      await fetch(`${API_URL}?action=offline&id=${user.sec_id}&group=${group}`)
-
-    return interaction.reply("🔴 Offline")
+  } catch (err) {
+    console.error("❌ ERROR INTERACTION:", err)
   }
 })
 
