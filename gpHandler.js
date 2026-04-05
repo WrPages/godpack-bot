@@ -719,28 +719,33 @@ if (interaction.isButton()) {
   const newEmbed = EmbedBuilder.from(embed)
     .setFooter({ text: `Alive: ${aliveCount} | Dead: ${deadCount}` });
 
-  let components = [];
+let row = new ActionRowBuilder();
 
-  if (!status) {
+// Si NO está finalizado → mostrar alive y dead
+if (!status) {
 
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("gp_alive")
-        .setLabel(`🟢 Alive (${aliveCount})`)
-        .setStyle(ButtonStyle.Success),
+  row.addComponents(
+    new ButtonBuilder()
+      .setCustomId("gp_alive")
+      .setLabel(`🟢 Alive (${aliveCount})`)
+      .setStyle(ButtonStyle.Success),
 
-      new ButtonBuilder()
-        .setCustomId("gp_dead")
-        .setLabel(`🔴 Dead (${deadCount})`)
-        .setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId("gp_dead")
+      .setLabel(`🔴 Dead (${deadCount})`)
+      .setStyle(ButtonStyle.Danger)
+  );
+}
 
-      new ButtonBuilder()
-        .setCustomId(`edit_panel_${mainMessage.id}`)
-        .setEmoji("✏️")
-        .setStyle(ButtonStyle.Secondary)
-    );
+// 🔥 El botón EDIT SIEMPRE se agrega
+row.addComponents(
+  new ButtonBuilder()
+    .setCustomId(`edit_panel_${mainMessage.id}`)
+    .setEmoji("✏️")
+    .setStyle(ButtonStyle.Secondary)
+);
 
-    components = [row];
+let components = [row];
 
   }
 
@@ -748,7 +753,7 @@ if (interaction.isButton()) {
  // ===== ACTUALIZAR MENSAJES =====
 if (!status) {
 
-  // Solo actualizar embed si todavía está activo
+  // Mientras está activo → actualizar embed y botones
   await mainMessage.edit({
     embeds: [newEmbed],
     components
@@ -763,19 +768,21 @@ if (!status) {
 
 } else {
 
-  // Si ya es alive o dead → NO tocar embed, solo quitar botones
+  // 🔥 Cuando llega a alive o dead:
+  // NO tocar embed
+  // Solo actualizar botones (sin alive/dead, pero con edit)
+
   await mainMessage.edit({
-    components: []
+    components
   }).catch(() => {});
 
   if (threadMessage) {
     await threadMessage.edit({
-      components: []
+      components
     }).catch(() => {});
   }
 
 }
-
   // ===== CAMBIAR NOMBRE DEL HILO =====
   if (status) {
 
