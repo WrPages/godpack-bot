@@ -1,7 +1,4 @@
-const { Client, GatewayIntentBits, EmbedBuilder, ModalBuilder,
-  TextInputBuilder, TextInputStyle, ActionRowBuilder,
-  StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js')
-
+const { Client, GatewayIntentBits } = require('discord.js')
 const fetch = require('node-fetch')
 
 const client = new Client({ 
@@ -14,7 +11,6 @@ const client = new Client({
 })
 
 const TOKEN = process.env.TOKEN
-const API_URL = "https://add-ids.netlify.app/.netlify/functions/api"
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
 
 // ===== CONFIG =====
@@ -39,68 +35,7 @@ const GROUP_CONFIG = {
   }
 }
 
-// ===== UTIL =====
-function getUserGroup(interaction) {
-  const role = interaction.member.roles.cache.find(r =>
-    Object.keys(GROUP_CONFIG).includes(r.name)
-  )
-  return role ? role.name : null
-}
-
 // ===== GIST =====
-async function getOnlineIDs(gistId) {
-  try {
-    const res = await fetch(`https://api.github.com/gists/${gistId}?t=${Date.now()}`, {
-      headers: {
-        Authorization: `Bearer ${GITHUB_TOKEN}`,
-        Accept: "application/vnd.github+json",
-        "Cache-Control": "no-cache"
-      }
-    })
-
-    const data = await res.json()
-    const content = data.files["elite_ids.txt"]?.content || ""
-
-    return content.split("\n").map(x => x.trim()).filter(Boolean)
-
-  } catch (err) {
-    console.error("Error leyendo ids:", err)
-    return []
-  }
-}
-
-async function getUsers(gistId, fileName) {
-  try {
-    const res = await fetch(`https://api.github.com/gists/${gistId}?t=${Date.now()}`, {
-      headers: {
-        Authorization: `Bearer ${GITHUB_TOKEN}`
-      }
-    })
-
-    const data = await res.json()
-    return JSON.parse(data.files[fileName]?.content || "{}")
-  } catch (err) {
-    console.error("Error loading users:", err)
-    return {}
-  }
-}
-
-async function saveUsers(users, gistId, fileName) {
-  await fetch(`https://api.github.com/gists/${gistId}`, {
-    method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${GITHUB_TOKEN}`
-    },
-    body: JSON.stringify({
-      files: {
-        [fileName]: {
-          content: JSON.stringify(users, null, 2)
-        }
-      }
-    })
-  })
-}
-
 async function addVipID(id) {
   try {
     const res = await fetch(`https://api.github.com/gists/${process.env.VIP_GIST_ID}?t=${Date.now()}`, {
@@ -138,76 +73,98 @@ client.once("clientReady", async () => {
 
   const { REST, Routes, SlashCommandBuilder } = require("discord.js")
 
-  const rest = new REST({ version: "10" })
-    .setToken(TOKEN)
-    .setHeaders({
-      "Content-Type": "application/json"
-    })
+  const rest = new REST({ version: "10" }).setToken(TOKEN)
 
   console.log("🔥 Registrando comandos...")
 
-  const commands = [
-    new SlashCommandBuilder()
-      .setName("register")
-      .setDescription("Register your main game ID")
-      .addStringOption(o => o.setName("id").setDescription("Your 16 digit ID").setRequired(true))
-      .toJSON(),
-
-    new SlashCommandBuilder()
-      .setName("add_sec")
-      .setDescription("Register secondary ID")
-      .addStringOption(o => o.setName("id").setDescription("Your secondary ID").setRequired(true))
-      .toJSON(),
-
-    new SlashCommandBuilder()
-      .setName("change")
-      .setDescription("Change main ID")
-      .addStringOption(o => o.setName("id").setDescription("New ID").setRequired(true))
-      .toJSON(),
-
-    new SlashCommandBuilder().setName("online").setDescription("Set your main ID as online").toJSON(),
-    new SlashCommandBuilder().setName("online_sec").setDescription("Set your secondary ID as online").toJSON(),
-    new SlashCommandBuilder().setName("offline").setDescription("Set your ID as offline").toJSON(),
-    new SlashCommandBuilder().setName("list").setDescription("Show registered users").toJSON(),
-    new SlashCommandBuilder().setName("online_list").setDescription("Show online users").toJSON(),
-
-    new SlashCommandBuilder()
-      .setName("gp")
-      .setDescription("Add VIP ID")
-      .addStringOption(o => o.setName("id").setDescription("VIP ID").setRequired(true))
-      .toJSON()
-  ]
-
-  console.log("Comandos:", commands.length)
-  console.log("CLIENT_ID:", process.env.CLIENT_ID)
-  console.log("GUILD_ID:", process.env.GUILD_ID)
-  console.log("TOKEN OK:", !!TOKEN)
-
-  console.log("➡️ Enviando comandos a Discord...")
-
   try {
-    await Promise.race([
-      rest.put(
-        Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
-        { body: commands }
-      ),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Timeout registrando comandos")), 10000)
-      )
-    ])
+    const commands = [
 
-    console.log("⬅️ Discord respondió")
-    console.log("✅ Slash commands registrados")
+      new SlashCommandBuilder()
+        .setName("register")
+        .setDescription("Register your main game ID")
+        .addStringOption(o =>
+          o.setName("id")
+           .setDescription("Your 16 digit ID")
+           .setRequired(true)
+        ).toJSON(),
+
+      new SlashCommandBuilder()
+        .setName("add_sec")
+        .setDescription("Register secondary ID")
+        .addStringOption(o =>
+          o.setName("id")
+           .setDescription("Your secondary ID")
+           .setRequired(true)
+        ).toJSON(),
+
+      new SlashCommandBuilder()
+        .setName("change")
+        .setDescription("Change main ID")
+        .addStringOption(o =>
+          o.setName("id")
+           .setDescription("New ID")
+           .setRequired(true)
+        ).toJSON(),
+
+      new SlashCommandBuilder()
+        .setName("online")
+        .setDescription("Set your main ID as online")
+        .toJSON(),
+
+      new SlashCommandBuilder()
+        .setName("online_sec")
+        .setDescription("Set your secondary ID as online")
+        .toJSON(),
+
+      new SlashCommandBuilder()
+        .setName("offline")
+        .setDescription("Set your ID as offline")
+        .toJSON(),
+
+      new SlashCommandBuilder()
+        .setName("list")
+        .setDescription("Show registered users")
+        .toJSON(),
+
+      new SlashCommandBuilder()
+        .setName("online_list")
+        .setDescription("Show online users")
+        .toJSON(),
+
+      new SlashCommandBuilder()
+        .setName("gp")
+        .setDescription("Add VIP ID")
+        .addStringOption(o =>
+          o.setName("id")
+           .setDescription("VIP ID")
+           .setRequired(true)
+        ).toJSON()
+    ]
+
+    console.log("CLIENT_ID:", process.env.CLIENT_ID)
+    console.log("GUILD_ID:", process.env.GUILD_ID)
+    console.log("TOKEN OK:", !!TOKEN)
+
+    await rest.put(
+      Routes.applicationGuildCommands(
+        process.env.CLIENT_ID,
+        process.env.GUILD_ID
+      ),
+      { body: commands }
+    )
+
+    console.log("✅ Slash commands registrados correctamente")
 
   } catch (err) {
-    console.error("❌ Error comandos:", err)
+    console.error("❌ Error registrando comandos:", err)
   }
 })
 
 // ===== HANDLERS =====
 require("./gpHandler")(client)
 
-// ===== MESSAGE DETECTOR =====
+// ===== DETECTOR =====
 client.on("messageCreate", async (message) => {
   const match = message.content.match(/\b\d{16}\b/)
   if (!match) return
@@ -215,6 +172,15 @@ client.on("messageCreate", async (message) => {
   const id = match[0]
   console.log("🔥 GP detectado:", id)
   await addVipID(id)
+})
+
+// ===== ERROR HANDLER GLOBAL =====
+client.on("error", (err) => {
+  console.error("❌ CLIENT ERROR:", err)
+})
+
+process.on("unhandledRejection", (err) => {
+  console.error("❌ UNHANDLED PROMISE:", err)
 })
 
 // ===== LOGIN =====
