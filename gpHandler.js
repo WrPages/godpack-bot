@@ -759,15 +759,15 @@ else {
     await updateThreadName(mainMessage, status, rarity, pack, user, "ID").catch(() => {});
   }
 
-  // ===== QUIÉN VOTÓ SOLO AL HILO =====
-  if (threadChannel) {
-    await threadChannel.send({
-      content: `🗳️ **${interaction.user.username}** votó ${interaction.customId === "gp_alive" ? "🟢 Alive" : "🔴 Dead"}`,
-      allowedMentions: { parse: [] }
-    }).catch(() => {});
-  }
+// ===== QUIÉN VOTÓ SOLO AL HILO =====
+if (threadChannel) {
+  await threadChannel.send({
+    content: `🗳️ **${interaction.user.username}** votó ${interaction.customId === "gp_alive" ? "🟢 Alive" : "🔴 Dead"}`,
+    allowedMentions: { parse: [] }
+  }).catch(() => {});
+}
 
-  // ===== GUARDAR LIVE STATS EN GIST =====
+// ===== GUARDAR LIVE STATS EN GIST =====
 await loadLiveStats(); // recargar antes
 
 if (aliveUsers.length >= 1 && !message.aliveCounted) {
@@ -782,7 +782,9 @@ if (deadUsers.length >= 4 && !message.deadCounted) {
 }
 
 await saveLiveStats(); // ✅ guardar en GitHub
-}
+
+// ===== ACTUALIZAR BOTONES Y THREAD =====
+// aquí sigue tu código actual de actualizar embed, botones y cambiar nombre de hilo
 
 
 });
