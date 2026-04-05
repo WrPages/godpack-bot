@@ -1141,4 +1141,4 @@ client.on("messageCreate", async (message) => {
   await addVipID(id)
 })
 
-client.login(TOKEN)
+//client.login(TOKEN)
