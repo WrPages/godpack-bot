@@ -3,7 +3,6 @@ const { Client, GatewayIntentBits, EmbedBuilder, ModalBuilder,
   StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js')
 
 const fetch = require('node-fetch')
-const { startPanelSystem } = require("./statsPanel")
 
 const client = new Client({ 
   intents: [
@@ -79,6 +78,7 @@ async function getUsers(gistId, fileName) {
     })
 
     const data = await res.json()
+
     return JSON.parse(data.files[fileName]?.content || "{}")
 
   } catch (err) {
@@ -138,8 +138,6 @@ async function addVipID(id) {
 client.once("ready", async () => {
   console.log(`✅ Bot listo como ${client.user.tag}`)
 
-  startPanelSystem(client)
-
   const { REST, Routes, SlashCommandBuilder } = require("discord.js")
   const rest = new REST({ version: "10" }).setToken(TOKEN)
 
@@ -159,24 +157,16 @@ client.once("ready", async () => {
       .setDescription("Change main ID")
       .addStringOption(o => o.setName("id").setRequired(true)),
 
-    new SlashCommandBuilder()
-      .setName("online"),
-
-    new SlashCommandBuilder()
-      .setName("online_sec"),
-
-    new SlashCommandBuilder()
-      .setName("offline"),
-
-    new SlashCommandBuilder()
-      .setName("list"),
-
-    new SlashCommandBuilder()
-      .setName("online_list"),
+    new SlashCommandBuilder().setName("online"),
+    new SlashCommandBuilder().setName("online_sec"),
+    new SlashCommandBuilder().setName("offline"),
+    new SlashCommandBuilder().setName("list"),
+    new SlashCommandBuilder().setName("online_list"),
 
     new SlashCommandBuilder()
       .setName("gp")
       .addStringOption(o => o.setName("id").setRequired(true))
+
   ].map(c => c.toJSON())
 
   try {
