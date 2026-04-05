@@ -665,11 +665,47 @@ await message.edit({
 // =========================
 // 3️⃣ BOTONES ALIVE / DEAD
 // =========================
+// =========================
+// 3️⃣ BOTONES ALIVE / DEAD
+// =========================
 if (interaction.isButton()) {
   if (interaction.customId !== "gp_alive" && interaction.customId !== "gp_dead") return;
 
-  const message = interaction.message;
+  let message = interaction.message;
+
+  // 🔥 SI EL BOTÓN ESTÁ EN UN HILO
+  if (interaction.channel.isThread()) {
+
+    const parentChannel = interaction.channel.parent;
+    if (!parentChannel) return;
+
+    const messages = await parentChannel.messages.fetch({ limit: 50 });
+
+    const mainMessage = messages.find(m =>
+      m.embeds?.length &&
+      m.components?.length &&
+      m.components[0].components.some(b =>
+        b.customId === "gp_alive" || b.customId === "gp_dead"
+      )
+    );
+
+    if (!mainMessage) {
+      return interaction.reply({
+        content: "❌ No se encontró el mensaje principal.",
+        ephemeral: true
+      });
+    }
+
+    message = mainMessage;
+  }
+
   const embed = message.embeds[0];
+  if (!embed) {
+    return interaction.reply({
+      content: "❌ Este botón ya no es válido.",
+      ephemeral: true
+    });
+  }
 
   // ===== LEER FOOTER =====
   let footer = embed.footer?.text || "VOTES:alive=|dead=";
