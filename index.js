@@ -262,39 +262,18 @@ require("./gpHandler")(client);
 //Comandos
 client.once("ready", async () => {
   console.log(`✅ Bot listo como ${client.user.tag}`);
-  
-  
-  client.once("ready", () => {
-    console.log("Bot online");
 
-    startPanelSystem(client); // 👈 AQUÍ ACTIVAS EL PANEL
-});
+  // 🔥 INICIAR SISTEMAS
+  startPanelSystem(client);
+  startDailyScheduler();
 
-
+  setInterval(updateTotalPPM, 5 * 60 * 1000);
+  updateTotalPPM();
 
   const { REST, Routes, SlashCommandBuilder } = require("discord.js");
-
   const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
-  try {
-
-
-    // 🗑️ BORRAR COMANDOS ANTIGUOS DEL SERVIDOR
-  //  await rest.put(
-    //  Routes.applicationGuildCommands(
-     //  process.env.CLIENT_ID,
-     //  process.env.GUILD_ID
-     // ),
-      //{ body: [] }
-   //);
-
-    console.log("🗑️ Comandos antiguos eliminados");
-
-  } catch (error) {
-    console.error("❌ Error borrando comandos:", error);
-  }
-
-  // 🔥 DEFINIR COMANDOS NUEVOS
+  // 🔥 DEFINIR COMANDOS
   const commands = [
 
     new SlashCommandBuilder()
@@ -324,49 +303,39 @@ client.once("ready", async () => {
           .setRequired(true)
       ),
 
-///////
-
-new SlashCommandBuilder()
-  .setName("schedule_events")
-  .setDescription("Daily online/offline scheduler (UTC)")
-  .addStringOption(opt =>
-    opt.setName("mode")
-      .setDescription("Start or Stop")
-      .setRequired(true)
-      .addChoices(
-        { name: "Start Daily Schedule", value: "start" },
-        { name: "Stop All Schedules", value: "stop" }
+    new SlashCommandBuilder()
+      .setName("schedule_events")
+      .setDescription("Daily online/offline scheduler (UTC)")
+      .addStringOption(opt =>
+        opt.setName("mode")
+          .setDescription("Start or Stop")
+          .setRequired(true)
+          .addChoices(
+            { name: "Start Daily Schedule", value: "start" },
+            { name: "Stop All Schedules", value: "stop" }
+          )
       )
-  )
-  .addIntegerOption(opt =>
-    opt.setName("online_hour")
-      .setDescription("Online Hour (UTC 0-23)")
-      .setRequired(false)
-  )
-  .addIntegerOption(opt =>
-    opt.setName("online_minute")
-      .setDescription("Online Minute (0-59)")
-      .setRequired(false)
-  )
-  .addIntegerOption(opt =>
-    opt.setName("offline_hour")
-      .setDescription("Offline Hour (UTC 0-23)")
-      .setRequired(false)
-  )
-  .addIntegerOption(opt =>
-    opt.setName("offline_minute")
-      .setDescription("Offline Minute (0-59)")
-      .setRequired(false)
-  ),
+      .addIntegerOption(opt =>
+        opt.setName("online_hour")
+          .setDescription("Online Hour (UTC 0-23)")
+      )
+      .addIntegerOption(opt =>
+        opt.setName("online_minute")
+          .setDescription("Online Minute (0-59)")
+      )
+      .addIntegerOption(opt =>
+        opt.setName("offline_hour")
+          .setDescription("Offline Hour (UTC 0-23)")
+      )
+      .addIntegerOption(opt =>
+        opt.setName("offline_minute")
+          .setDescription("Offline Minute (0-59)")
+      ),
 
-new SlashCommandBuilder()
-  .setName("set_offline")
-  .setDescription("Force a user offline"),
+    new SlashCommandBuilder()
+      .setName("set_offline")
+      .setDescription("Force a user offline"),
 
-
-
-   
-/////
     new SlashCommandBuilder()
       .setName("online")
       .setDescription("Set your main account online"),
@@ -395,15 +364,10 @@ new SlashCommandBuilder()
           .setDescription("16 digit VIP ID")
           .setRequired(true)
       )
-  
-      
-      
 
   ].map(cmd => cmd.toJSON());
 
   try {
-
-    // 🚀 REGISTRAR NUEVOS COMANDOS
     await rest.put(
       Routes.applicationGuildCommands(
         process.env.CLIENT_ID,
@@ -412,7 +376,7 @@ new SlashCommandBuilder()
       { body: commands }
     );
 
-    console.log("✅ Slash commands registrados automáticamente");
+    console.log("✅ Slash commands registrados correctamente");
 
   } catch (error) {
     console.error("❌ Error registrando comandos:", error);
