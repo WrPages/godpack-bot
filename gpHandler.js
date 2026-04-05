@@ -330,7 +330,7 @@ module.exports = async (client) => {
         
   
 
-client.on("clientReady", async () => {
+client.once("clientReady", async () => {
 
   const commands = [
 
