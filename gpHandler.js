@@ -504,6 +504,7 @@ await sentMessage.edit({
   type: ChannelType.PublicThread
 });
 const threadMessage = await thread.send({
+  content: `PANEL_ID:${sentMessage.id}`,
   embeds: [embed],
   components: [newButtons], // mismos botones que el panel
   files: imageFile ? [imageFile] : []
@@ -658,57 +659,35 @@ if (interaction.isButton()) {
 
   await interaction.deferUpdate();
 
-  let mainMessage = interaction.message;
-  let threadMessage = null;
+  let mainMessage;
+  let threadMessage;
 
-  // =========================
-  // Detectar si estamos en hilo
-  // =========================
-
+  // ===== SI ESTAMOS EN HILO =====
   if (interaction.channel.isThread()) {
 
     threadMessage = interaction.message;
-    const parentChannel = interaction.channel.parent;
 
-    try {
-      const parentMessages = await parentChannel.messages.fetch({ limit: 50 });
+    const panelIdMatch = threadMessage.content.match(/PANEL_ID:(\d+)/);
+    if (!panelIdMatch) return;
 
-      mainMessage = parentMessages.find(msg =>
-        msg.embeds.length &&
-        msg.embeds[0].description === threadMessage.embeds[0].description
-      );
+    const panelId = panelIdMatch[1];
+    mainMessage = await interaction.channel.parent.messages.fetch(panelId).catch(() => null);
 
-    } catch {
-      mainMessage = null;
-    }
-
-  } else {
+  } 
+  // ===== SI ESTAMOS EN CANAL PRINCIPAL =====
+  else {
 
     mainMessage = interaction.message;
 
-    if (mainMessage.hasThread) {
+    if (!mainMessage.hasThread) return;
 
-      const thread = mainMessage.thread;
+    const thread = mainMessage.thread;
 
-      try {
-        const threadMessages = await thread.messages.fetch({ limit: 20 });
-
-        threadMessage = threadMessages.find(msg =>
-          msg.embeds.length &&
-          msg.embeds[0].description === mainMessage.embeds[0].description
-        );
-
-      } catch {
-        threadMessage = null;
-      }
-    }
+    const messages = await thread.messages.fetch({ limit: 10 });
+    threadMessage = messages.find(m => m.content.includes(`PANEL_ID:${mainMessage.id}`));
   }
 
   if (!mainMessage) return;
-
-  // =========================
-  // Obtener datos actuales
-  // =========================
 
   const embed = mainMessage.embeds[0];
   const footer = embed.footer?.text || "";
@@ -719,10 +698,6 @@ if (interaction.isButton()) {
   let aliveCount = aliveMatch ? parseInt(aliveMatch[1]) : 0;
   let deadCount = deadMatch ? parseInt(deadMatch[1]) : 0;
 
-  // =========================
-  // Sumar voto
-  // =========================
-
   if (interaction.customId === "gp_alive") aliveCount++;
   if (interaction.customId === "gp_dead") deadCount++;
 
@@ -731,16 +706,8 @@ if (interaction.isButton()) {
   if (aliveCount >= 2) status = "alive";
   if (deadCount >= 4) status = "dead";
 
-  // =========================
-  // Crear nuevo embed
-  // =========================
-
   const newEmbed = EmbedBuilder.from(embed)
     .setFooter({ text: `Alive: ${aliveCount} | Dead: ${deadCount}` });
-
-  // =========================
-  // Crear botones
-  // =========================
 
   let components = [];
 
@@ -765,26 +732,18 @@ if (interaction.isButton()) {
 
     components = [row];
 
-  } else {
-
-    // 🔥 Cuando se confirma, eliminamos todos los botones
-    components = [];
-
   }
 
-  // =========================
-  // Actualizar ambos mensajes
-  // =========================
-
+  // 🔥 ACTUALIZAR AMBOS MENSAJES
   await mainMessage.edit({
     embeds: [newEmbed],
-    components: components
+    components
   }).catch(() => {});
 
   if (threadMessage) {
     await threadMessage.edit({
       embeds: [newEmbed],
-      components: components
+      components
     }).catch(() => {});
   }
 
