@@ -72,92 +72,115 @@ client.once("clientReady", async () => {
   console.log(`✅ Bot listo como ${client.user.tag}`)
 
   const { REST, Routes, SlashCommandBuilder } = require("discord.js")
-
   const rest = new REST({ version: "10" }).setToken(TOKEN)
 
   console.log("🔥 Registrando comandos...")
 
+  // ===== TEST CONEXIÓN =====
   try {
-    const commands = [
+    const test = await fetch("https://discord.com/api/v10/gateway")
+    console.log("🌐 Discord API status:", test.status)
+  } catch (err) {
+    console.error("❌ No hay conexión a Discord:", err)
+  }
 
-      new SlashCommandBuilder()
-        .setName("register")
-        .setDescription("Register your main game ID")
-        .addStringOption(o =>
-          o.setName("id")
-           .setDescription("Your 16 digit ID")
-           .setRequired(true)
-        ).toJSON(),
+  const commands = [
 
-      new SlashCommandBuilder()
-        .setName("add_sec")
-        .setDescription("Register secondary ID")
-        .addStringOption(o =>
-          o.setName("id")
-           .setDescription("Your secondary ID")
-           .setRequired(true)
-        ).toJSON(),
+    new SlashCommandBuilder()
+      .setName("register")
+      .setDescription("Register your main game ID")
+      .addStringOption(o =>
+        o.setName("id")
+         .setDescription("Your 16 digit ID")
+         .setRequired(true)
+      ).toJSON(),
 
-      new SlashCommandBuilder()
-        .setName("change")
-        .setDescription("Change main ID")
-        .addStringOption(o =>
-          o.setName("id")
-           .setDescription("New ID")
-           .setRequired(true)
-        ).toJSON(),
+    new SlashCommandBuilder()
+      .setName("add_sec")
+      .setDescription("Register secondary ID")
+      .addStringOption(o =>
+        o.setName("id")
+         .setDescription("Your secondary ID")
+         .setRequired(true)
+      ).toJSON(),
 
-      new SlashCommandBuilder()
-        .setName("online")
-        .setDescription("Set your main ID as online")
-        .toJSON(),
+    new SlashCommandBuilder()
+      .setName("change")
+      .setDescription("Change main ID")
+      .addStringOption(o =>
+        o.setName("id")
+         .setDescription("New ID")
+         .setRequired(true)
+      ).toJSON(),
 
-      new SlashCommandBuilder()
-        .setName("online_sec")
-        .setDescription("Set your secondary ID as online")
-        .toJSON(),
+    new SlashCommandBuilder()
+      .setName("online")
+      .setDescription("Set your main ID as online")
+      .toJSON(),
 
-      new SlashCommandBuilder()
-        .setName("offline")
-        .setDescription("Set your ID as offline")
-        .toJSON(),
+    new SlashCommandBuilder()
+      .setName("online_sec")
+      .setDescription("Set your secondary ID as online")
+      .toJSON(),
 
-      new SlashCommandBuilder()
-        .setName("list")
-        .setDescription("Show registered users")
-        .toJSON(),
+    new SlashCommandBuilder()
+      .setName("offline")
+      .setDescription("Set your ID as offline")
+      .toJSON(),
 
-      new SlashCommandBuilder()
-        .setName("online_list")
-        .setDescription("Show online users")
-        .toJSON(),
+    new SlashCommandBuilder()
+      .setName("list")
+      .setDescription("Show registered users")
+      .toJSON(),
 
-      new SlashCommandBuilder()
-        .setName("gp")
-        .setDescription("Add VIP ID")
-        .addStringOption(o =>
-          o.setName("id")
-           .setDescription("VIP ID")
-           .setRequired(true)
-        ).toJSON()
-    ]
+    new SlashCommandBuilder()
+      .setName("online_list")
+      .setDescription("Show online users")
+      .toJSON(),
 
-    console.log("CLIENT_ID:", process.env.CLIENT_ID)
-    console.log("GUILD_ID:", process.env.GUILD_ID)
-    console.log("TOKEN OK:", !!TOKEN)
+    new SlashCommandBuilder()
+      .setName("gp")
+      .setDescription("Add VIP ID")
+      .addStringOption(o =>
+        o.setName("id")
+         .setDescription("VIP ID")
+         .setRequired(true)
+      ).toJSON()
+  ]
 
-    await rest.put(
+  console.log("CLIENT_ID:", process.env.CLIENT_ID)
+  console.log("GUILD_ID:", process.env.GUILD_ID)
+  console.log("TOKEN OK:", !!TOKEN)
+
+  // ===== REGISTRO CON TIMEOUT =====
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 10000)
+
+  try {
+    const res = await rest.put(
       Routes.applicationGuildCommands(
         process.env.CLIENT_ID,
         process.env.GUILD_ID
       ),
-      { body: commands }
+      { 
+        body: commands,
+        signal: controller.signal
+      }
     )
 
+    clearTimeout(timeout)
+
     console.log("✅ Slash commands registrados correctamente")
+    console.log("📦 Respuesta Discord:", res)
 
   } catch (err) {
-    console.error("❌ Error registrando comandos:", err)
+    clearTimeout(timeout)
+
+    if (err.name === "AbortError") {
+      console.error("❌ TIMEOUT: Discord no respondió (10s)")
+    } else {
+      console.error("❌ Error registrando comandos:", err)
+    }
   }
 })
 
@@ -174,7 +197,7 @@ client.on("messageCreate", async (message) => {
   await addVipID(id)
 })
 
-// ===== ERROR HANDLER GLOBAL =====
+// ===== ERRORES =====
 client.on("error", (err) => {
   console.error("❌ CLIENT ERROR:", err)
 })
