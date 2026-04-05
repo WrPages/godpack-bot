@@ -498,10 +498,10 @@ await sentMessage.edit({
 
     // ===== CREAR HILO =====
     try {
-      const thread = await message.channel.threads.create({
+const thread = await sentMessage.startThread({
   name: `[${rarity}/5][${packNumber}P] ${username} ${friendId}`,
   autoArchiveDuration: 1440,
-  type: ChannelType.PublicThread
+  reason: "Thread para panel GP",
 });
 const threadMessage = await thread.send({
   content: `PANEL_ID:${sentMessage.id}`,
