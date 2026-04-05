@@ -766,29 +766,24 @@ else {
       allowedMentions: { parse: [] }
     }).catch(() => {});
   }
+
+  // ===== GUARDAR LIVE STATS EN GIST =====
+await loadLiveStats(); // recargar antes
+
+if (aliveUsers.length >= 1 && !message.aliveCounted) {
+  message.aliveCounted = true;
+  liveStats.totalAlive += 1;
+  liveStats.daily.alive += 1;
 }
-// ===== GUARDAR EN GIST =====
-let status = null;
-if (aliveCount >= 1) status = "alive";
-if (deadCount >= 4) status = "dead";
 
-if (status) {
-  await loadLiveStats(); // recargar antes
-
-  if (status === "alive" && !message.aliveCounted) {
-    message.aliveCounted = true; // evitar duplicados
-    liveStats.totalAlive += 1;
-    liveStats.daily.alive += 1;
-  }
-
-  if (status === "dead" && !message.deadCounted) {
-    message.deadCounted = true; // evitar duplicados
-    liveStats.totalDead = (liveStats.totalDead || 0) + 1;
-  }
-
-  await saveLiveStats(); // guardar en GitHub
+if (deadUsers.length >= 4 && !message.deadCounted) {
+  message.deadCounted = true;
+  liveStats.totalDead = (liveStats.totalDead || 0) + 1;
 }
-  
+
+await saveLiveStats(); // ✅ guardar en GitHub
+}
+
 
 });
 
