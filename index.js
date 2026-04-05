@@ -216,7 +216,7 @@ async function updateTotalPPM() {
 }
 
 // ================= READY =================
-client.once("ready", async () => {
+client.once("clientReady", async () => {
   console.log("🔥 READY DISPARADO (DEPLOY)");
 
   startDailyScheduler()
