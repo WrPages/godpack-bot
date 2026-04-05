@@ -320,52 +320,39 @@ async function createTestMessage(client) {
 }
 
 module.exports = async (client) => {
-    await loadData();
-        await loadLiveStats();
-        
-  
+  await loadData();
+  await loadLiveStats();
 
-client.once("clientReady", async () => {
+  client.once("clientReady", async () => {
+    const commands = [
+      new SlashCommandBuilder()
+        .setName("editpanel")
+        .setDescription("Editar un panel de GP")
+        .addStringOption(option =>
+          option
+            .setName("mensaje_id")
+            .setDescription("ID del mensaje del panel")
+            .setRequired(true)
+        )
+        .toJSON()
+    ];
 
-  const commands = [
-    new SlashCommandBuilder()
-      .setName("editpanel")
-      .setDescription("Editar un panel de GP")
-      .addStringOption(option =>
-        option
-          .setName("mensaje_id")
-          .setDescription("ID del mensaje del panel")
-          .setRequired(true)
-      )
-      .toJSON()
-  ];
+    const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
 
-  const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
-
-  try {
-    console.log("Registrando /editpanel...");
-
-    await rest.put(
-      Routes.applicationGuildCommands(
-        client.user.id,
-        "1483615153743462571" // TU SERVER ID
-      ),
-      { body: commands }
-    );
-
-    console.log("✅ /editpanel registrado");
-  } catch (error) {
-    console.error("❌ Error registrando comando:", error);
-  }
-});
-
-
-
-  
-  
-  
-  
-
+    try {
+      console.log("Registrando /editpanel...");
+      await rest.put(
+        Routes.applicationGuildCommands(
+          client.user.id,
+          "1483615153743462571" // TU SERVER ID
+        ),
+        { body: commands }
+      );
+      console.log("✅ /editpanel registrado");
+    } catch (error) {
+      console.error("❌ Error registrando comando:", error);
+    }
+  });
 
   // Crear/actualizar panel de estadísticas y mensaje de prueba
   (async () => {
@@ -382,186 +369,117 @@ client.once("clientReady", async () => {
     updateStats(client).catch(() => {});
   }, 60 * 60 * 1000);
 
+  // ==========================================
+  //  MESSAGE CREATE
+  // ==========================================
+  client.on("messageCreate", async (message) => {
+    if (!ALLOWED_CHANNELS.includes(message.channel.id)) return;
+    if (!message.webhookId) return;
+    if (!message.content.includes("God Pack found")) return;
 
-client.on("messageCreate", async (message) => {
-if (!ALLOWED_CHANNELS.includes(message.channel.id)) return;
-  if (!message.webhookId) return;
-  if (!message.content.includes("God Pack found")) return;
+    try {
+      // ===== IMAGEN =====
+      const attachment = message.attachments.first();
+      let imageFile = attachment ? { attachment: attachment.url, name: "card.png" } : null;
 
-  try {
-    // ===== IMAGEN =====
-    const attachment = message.attachments.first();
-    let imageFile = null;
-    if (attachment) {
-      imageFile = {
-        attachment: attachment.url,
-        name: "card.png"
-      };
+      // ===== DATOS =====
+      const rarityMatch = message.content.match(/\[(\d)\/5\]/);
+      if (!rarityMatch) return;
+      const rarity = parseInt(rarityMatch[1]);
+
+      const packMatch = message.content.match(/\[(\d+)P\]/i);
+      const packNumber = packMatch ? parseInt(packMatch[1]) : 1;
+
+      let username = "Unknown";
+      const usernameLine = message.content.split("\n").find(line => line.includes("(") && line.includes(")"));
+      if (usernameLine) {
+        const match = usernameLine.match(/^(.+?)\s*\(/);
+        if (match) username = match[1].trim();
+      }
+
+      // ===== FRIEND ID =====
+      let friendId = "Unknown";
+      const rawText = message.content;
+      let match = rawText.match(/\b\d{16}\b/);
+      if (!match) match = rawText.match(/\b(\d{4}\s\d{4}\s\d{4}\s\d{4})\b/);
+      if (match) friendId = match[0].replace(/\s/g, "");
+
+      // ===== COLOR =====
+      let color = 0x808080;
+      if (rarity === 3) color = 0x3498db;
+      if (rarity === 4) color = 0x9b59b6;
+      if (rarity === 5) color = 0xFFD700;
+
+      // ===== EMBED =====
+      const description = `## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`;
+      const embed = new EmbedBuilder()
+        .setColor(color)
+        .setDescription(description)
+        .setTimestamp();
+      if (imageFile) embed.setImage("attachment://card.png");
+
+      // ===== BOTONES =====
+      const buttons = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId("gp_alive").setLabel("🟢 Alive (0)").setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId("gp_dead").setLabel("🔴 Dead (0)").setStyle(ButtonStyle.Danger)
+      );
+
+      const sentMessage = await message.channel.send({
+        embeds: [embed],
+        components: [buttons],
+        files: imageFile ? [imageFile] : [],
+        allowedMentions: { parse: ["users"] }
+      });
+
+      // ===== BOTÓN EDIT =====
+      const editButton = new ButtonBuilder().setCustomId(`edit_panel_${sentMessage.id}`).setEmoji("✏️").setStyle(ButtonStyle.Secondary);
+      const newButtons = ActionRowBuilder.from(buttons).addComponents(editButton);
+      await sentMessage.edit({ components: [newButtons] });
+
+      // ===== CREAR HILO =====
+      try {
+        const thread = await sentMessage.startThread({
+          name: `[${rarity}/5][${packNumber}P] [${username}P] [${friendId}P]`,
+          autoArchiveDuration: 1440,
+          type: ChannelType.PublicThread
+        });
+
+        // ===== Menciones ONLINE =====
+        const onlineIDs = await getOnlineIDs();
+        const users = await getUsers();
+        const onlineClean = onlineIDs.map(id => id.trim());
+        const mentionList = [];
+        for (const discordId in users) {
+          const userData = users[discordId];
+          const mainId = userData.main_id?.trim();
+          const secId = userData.sec_id?.trim();
+          if (onlineClean.includes(mainId) || (secId && onlineClean.includes(secId))) {
+            mentionList.push(`<@${discordId}>`);
+          }
+        }
+        const onlineMention = mentionList.join(" ");
+        if (onlineMention) await thread.send({ content: onlineMention, allowedMentions: { parse: ["users"] } });
+
+        // ===== MENSAJES EN HILO =====
+        await thread.send("📂 Original webhook message:");
+        await thread.send({ content: message.content, files: message.attachments.map(att => att.url), allowedMentions: { parse: [] } });
+
+        // ===== BOTONES EN HILO =====
+        const threadButtons = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId("gp_alive").setLabel("🟢 Alive (0)").setStyle(ButtonStyle.Success),
+          new ButtonBuilder().setCustomId("gp_dead").setLabel("🔴 Dead (0)").setStyle(ButtonStyle.Danger),
+          new ButtonBuilder().setCustomId(`edit_panel_${sentMessage.id}`).setEmoji("✏️").setStyle(ButtonStyle.Secondary)
+        );
+
+        await thread.send({ content: "🗳️ Vota tu estado:", components: [threadButtons] });
+        await message.delete().catch(() => {});
+      } catch (err) {
+        console.error("THREAD ERROR:", err);
+      }
+    } catch (err) {
+      console.error("MESSAGE CREATE ERROR:", err);
     }
-
-    // ===== DATOS =====
-    const rarityMatch = message.content.match(/\[(\d)\/5\]/);
-    if (!rarityMatch) return;
-    const rarity = parseInt(rarityMatch[1]);
-
-    const packMatch = message.content.match(/\[(\d)P\]/i);
-    const packNumber = packMatch ? parseInt(packMatch[1]) : 1;
-
-    let username = "Unknown";
-    const usernameLine = message.content.split("\n").find(line => line.includes("(") && line.includes(")"));
-    if (usernameLine) {
-      const match = usernameLine.match(/^(.+?)\s*\(/);
-      if (match) username = match[1].trim();
-    }
-
-// ===== FRIEND ID (16 dígitos con o sin espacios) =====
-let friendId = "Unknown";
-
-const rawText = message.content;
-
-// Buscar 16 dígitos seguidos
-let match = rawText.match(/\b\d{16}\b/);
-
-// Si no encuentra, buscar formato con espacios
-if (!match) {
-  match = rawText.match(/\b(\d{4}\s\d{4}\s\d{4}\s\d{4})\b/);
-  if (match) {
-    friendId = match[1].replace(/\s/g, ""); // quitar espacios
-  }
-} else {
-  friendId = match[0];
-}
-
-console.log("Friend ID detectado:", friendId);
-
-
-
-    // ===== COLOR =====
-    let color = 0x808080;
-    if (rarity === 3) color = 0x3498db;
-    if (rarity === 4) color = 0x9b59b6;
-    if (rarity === 5) color = 0xFFD700;
-
-    // ===== EMBED =====
-    let description = `## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`;
-    const embed = new EmbedBuilder()
-      .setColor(color)
-      .setDescription(description)
-      .setTimestamp();
-    if (imageFile) embed.setImage("attachment://card.png");
-
-// ===== BOTONES =====
-// ===== ENVIAR MENSAJE SIN BOTÓN EDIT PRIMERO =====
-const buttons = new ActionRowBuilder().addComponents(
-  new ButtonBuilder()
-    .setCustomId("gp_alive")
-    .setLabel("🟢 Alive (0)")
-    .setStyle(ButtonStyle.Success),
-  new ButtonBuilder()
-    .setCustomId("gp_dead")
-    .setLabel("🔴 Dead (0)")
-    .setStyle(ButtonStyle.Danger)
-);
-
-const sentMessage = await message.channel.send({
-  embeds: [embed],
-  components: [buttons],
-  files: imageFile ? [imageFile] : [],
-  allowedMentions: { parse: ["users"] }
-});
-
-
-// ===== SUMAR GP TOTAL =====
-await loadLiveStats(); // 🔥 SIEMPRE recargar primero
-await checkDailyReset();
-
-liveStats.totalGP += 1;
-liveStats.daily.gp += 1;
-
-await saveLiveStats();
-
-
-
-// ===== AHORA AGREGAR BOTÓN EDIT CON EL ID REAL =====
-const editButton = new ButtonBuilder()
-  .setCustomId(`edit_panel_${sentMessage.id}`)
-  .setStyle(ButtonStyle.Secondary)
-  .setEmoji("✏️"); // solo icono, cuadro pequeño
-
-// Tomamos la fila de botones existente y agregamos Edit
-const newButtons = ActionRowBuilder.from(buttons).addComponents(editButton);
-
-await sentMessage.edit({
-  components: [newButtons]
-});
-    
-
- // ===== CREAR HILO CON BOTONES =====
-try {
-  const thread = await sentMessage.startThread({
-    name: `[${rarity}/5][${packNumber}P] [${username}P] [${friendId}P]`,
-    autoArchiveDuration: 1440,
-    type: ChannelType.PublicThread
   });
-
-  // Menciones online
-  const onlineIDs = await getOnlineIDs();
-  const users = await getUsers();
-  const onlineClean = onlineIDs.map(id => id.trim());
-  const mentionList = [];
-  for (const discordId in users) {
-    const userData = users[discordId];
-    const mainId = userData.main_id?.trim();
-    const secId = userData.sec_id?.trim();
-    if (onlineClean.includes(mainId) || (secId && onlineClean.includes(secId))) {
-      mentionList.push(`<@${discordId}>`);
-    }
-  }
-  const onlineMention = mentionList.join(" ");
-  if (onlineMention) {
-    await thread.send({
-      content: onlineMention,
-      allowedMentions: { parse: ["users"] }
-    });
-  }
-
-  // Mensajes dentro del hilo
-  await thread.send("📂 Original webhook message:");
-  await thread.send({
-    content: message.content,
-    files: message.attachments.map(att => att.url),
-    allowedMentions: { parse: [] }
-  });
-
-  // ===== AGREGAR BOTONES AL HILO =====
-  const threadButtons = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("gp_alive")
-      .setLabel("🟢 Alive (0)")
-      .setStyle(ButtonStyle.Success),
-    new ButtonBuilder()
-      .setCustomId("gp_dead")
-      .setLabel("🔴 Dead (0)")
-      .setStyle(ButtonStyle.Danger),
-    new ButtonBuilder()
-      .setCustomId(`edit_panel_${sentMessage.id}`)
-      .setEmoji("✏️")
-      .setStyle(ButtonStyle.Secondary)
-  );
-
-  // Enviar un mensaje inicial en el hilo con botones
-  await thread.send({
-    content: "🗳️ Vota tu estado:",
-    components: [threadButtons]
-  });
-
-  // Eliminar mensaje webhook original
-  await message.delete().catch(() => {});
-
-} catch (err) {
-  console.error("THREAD ERROR:", err);
-}
-
 
 
 client.on("interactionCreate", async (interaction) => {
@@ -869,3 +787,4 @@ return;
 
 // 👇 cierre del module.exports
 
+  };
