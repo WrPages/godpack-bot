@@ -506,7 +506,7 @@ await sentMessage.edit({
 // ===== MENSAJE GRANDE DE ACCESO AL VOTO =====
 const voteAccessRow = new ActionRowBuilder().addComponents(
   new ButtonBuilder()
-    .setLabel("🗳️ VOTE ALIVE OR DEAD")
+    
     .setStyle(ButtonStyle.Link)
     .setURL(`https://discord.com/channels/${message.guild.id}/${message.channel.id}/${sentMessage.id}`)
 );
