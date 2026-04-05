@@ -768,7 +768,7 @@ if (threadChannel) {
 }
 
 // ===== GUARDAR LIVE STATS EN GIST =====
-await loadLiveStats(); // recargar antes
+await loadLiveStats();
 
 if (aliveUsers.length >= 1 && !message.aliveCounted) {
   message.aliveCounted = true;
@@ -781,12 +781,9 @@ if (deadUsers.length >= 4 && !message.deadCounted) {
   liveStats.totalDead = (liveStats.totalDead || 0) + 1;
 }
 
-await saveLiveStats(); // ✅ guardar en GitHub
+await saveLiveStats();
 
 // ===== ACTUALIZAR BOTONES Y THREAD =====
-// aquí sigue tu código actual de actualizar embed, botones y cambiar nombre de hilo
+// tu código para actualizar embed, botones y thread aquí
 
-
-});
-
-};
+}); // 👈 solo este cierra interactionCreate
