@@ -216,8 +216,8 @@ async function updateTotalPPM() {
 }
 
 // ================= READY =================
-client.once("clientReady", async () => {
-  console.log(`✅ Bot listo como ${client.user.tag}`)
+client.once("ready", async () => {
+  console.log("🔥 READY DISPARADO (DEPLOY)");
 
   startDailyScheduler()
   updateTotalPPM()
