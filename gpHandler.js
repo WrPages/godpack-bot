@@ -331,7 +331,7 @@ module.exports = async (client) => {
   
 
 client.once("clientReady", async () => {
-
+console.log("🔥 HANDLER READY");
   const commands = [
 
     new SlashCommandBuilder()
@@ -435,28 +435,30 @@ client.once("clientReady", async () => {
 
   ].map(cmd => cmd.toJSON());
 
-  console.log("Commands:", commands.length);
-  console.log("First command:", commands[0]);
-
   const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
   try {
     console.log("🚀 Registrando comandos...");
 
-    await rest.put(
-      Routes.applicationGuildCommands(
-        client.user.id,
-        "1483615153743462571" // TU GUILD ID
+    const res = await Promise.race([
+      rest.put(
+        Routes.applicationGuildCommands(
+          client.user.id,
+          "1483615153743462571"
+        ),
+        { body: commands }
       ),
-      { body: commands }
-    );
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout al registrar comandos")), 10000)
+      )
+    ]);
 
+    console.log("✅ RESPUESTA DISCORD:", res);
     console.log("✅ Comandos registrados correctamente");
 
   } catch (error) {
-    console.error("❌ Error registrando comandos:", error);
+    console.error("❌ ERROR REGISTRANDO:", error);
   }
-
 });
 
 
