@@ -1,56 +1,111 @@
-const { Client, GatewayIntentBits } = require('discord.js')
-const fetch = require('node-fetch')
+const {
+  Client,
+  GatewayIntentBits,
+  SlashCommandBuilder,
+  REST,
+  Routes,
+  ActionRowBuilder,
+  StringSelectMenuBuilder,
+  ButtonBuilder,
+  ButtonStyle
+} = require("discord.js")
 
-const client = new Client({ 
+const fetch = require("node-fetch")
+const fs = require("fs")
+
+const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent
-  ] 
+  ]
 })
 
 const TOKEN = process.env.TOKEN
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
+const API_URL = "https://add-ids.netlify.app/.netlify/functions/api"
 
-// ===== CONFIG =====
+const HEARTBEAT_CHANNEL_ID = "1483616146996465735"
+const TOTAL_CHANNEL_ID = "1484416376436424794"
+
+const HISTORY_FILE = "./ppm_history.json"
+const SCHEDULE_FILE = "./daily_schedules.json"
+const TWELVE_HOURS = 12 * 60 * 60 * 1000
+
+// ================= GROUP CONFIG =================
 const GROUP_CONFIG = {
   Trainer: {
     USERS_FILENAME: "trainer_users.json",
     USERS_GIST_ID: "1c066922bc39ac136b6f234fad6d9420",
-    IDS_GIST_ID: "4edcf4d341cd4f7d5d0fb8a50f8b8c3c",
-    VIP_GIST_ID: "16541fd83785a49ad4a0f22bbeb06000"
+    IDS_GIST_ID: "4edcf4d341cd4f7d5d0fb8a50f8b8c3c"
   },
   Gym_Leader: {
     USERS_FILENAME: "gym_users.json",
     USERS_GIST_ID: "a3f5f3d8a2e6ddf2378fb3481dff49f6",
-    IDS_GIST_ID: "e110c37b3e0b8de83a33a1b0a5eb64e8",
-    VIP_GIST_ID: "79a0e30c401cfd63e78d9ec5a9210091"
+    IDS_GIST_ID: "e110c37b3e0b8de83a33a1b0a5eb64e8"
   },
   Elite_Four: {
     USERS_FILENAME: "elite_users.json",
     USERS_GIST_ID: "bb18eda2ea748723d8fe0131dd740b70",
-    IDS_GIST_ID: "d9db3a72fed74c496fd6cc830f9ca6e9",
-    VIP_GIST_ID: "5f2f23e0391882ab4e255bd67e98334a"
+    IDS_GIST_ID: "d9db3a72fed74c496fd6cc830f9ca6e9"
   }
 }
 
-// ===== GIST =====
-async function addVipID(id) {
+// ================= UTIL =================
+function getUserGroup(interaction) {
+  const role = interaction.member.roles.cache.find(r =>
+    Object.keys(GROUP_CONFIG).includes(r.name)
+  )
+  return role ? role.name : null
+}
+
+// ================= GIST =================
+async function getUsers(gistId, fileName) {
   try {
-    const res = await fetch(`https://api.github.com/gists/${process.env.VIP_GIST_ID}?t=${Date.now()}`, {
-      headers: { Authorization: `Bearer ${GITHUB_TOKEN}` }
+    const res = await fetch(`https://api.github.com/gists/${gistId}?t=${Date.now()}`, {
+      headers: {
+        Authorization: `Bearer ${GITHUB_TOKEN}`
+      }
     })
 
     const data = await res.json()
-    let content = data.files["vip_ids.txt"]?.content || ""
+    return JSON.parse(data.files[fileName]?.content || "{}")
+  } catch {
+    return {}
+  }
+}
 
-    const ids = content.split("\n").filter(Boolean)
-    if (ids.includes(id)) return
+async function saveUsers(users, gistId, fileName) {
+  await fetch(`https://api.github.com/gists/${gistId}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${GITHUB_TOKEN}`
+    },
+    body: JSON.stringify({
+      files: {
+        [fileName]: {
+          content: JSON.stringify(users, null, 2)
+        }
+      }
+    })
+  })
+}
 
+// ================= VIP =================
+async function addVipID(id) {
+  const gistId = process.env.VIP_GIST_ID
+
+  const res = await fetch(`https://api.github.com/gists/${gistId}`)
+  const data = await res.json()
+
+  let content = data.files["vip_ids.txt"]?.content || ""
+  const ids = content.split("\n").filter(Boolean)
+
+  if (!ids.includes(id)) {
     ids.push(id)
 
-    await fetch(`https://api.github.com/gists/${process.env.VIP_GIST_ID}`, {
+    await fetch(`https://api.github.com/gists/${gistId}`, {
       method: "PATCH",
       headers: { Authorization: `Bearer ${GITHUB_TOKEN}` },
       body: JSON.stringify({
@@ -59,152 +114,198 @@ async function addVipID(id) {
         }
       })
     })
-
-    console.log("✅ VIP añadido:", id)
-
-  } catch (err) {
-    console.error("Error VIP:", err)
   }
 }
 
-// ===== READY =====
-client.once("clientReady", async () => {
+// ================= SCHEDULE =================
+function loadSchedules() {
+  if (!fs.existsSync(SCHEDULE_FILE)) return {}
+  return JSON.parse(fs.readFileSync(SCHEDULE_FILE))
+}
+
+function saveSchedules(data) {
+  fs.writeFileSync(SCHEDULE_FILE, JSON.stringify(data, null, 2))
+}
+
+function startDailyScheduler() {
+  setInterval(async () => {
+    const schedules = loadSchedules()
+    const now = new Date()
+
+    for (const userId in schedules) {
+      const s = schedules[userId]
+
+      if (
+        now.getUTCHours() === s.online_hour &&
+        now.getUTCMinutes() === s.online_minute &&
+        s.last_online !== now.toDateString()
+      ) {
+        await fetch(`${API_URL}?action=online&id=${s.main_id}&group=${s.group}`)
+        s.last_online = now.toDateString()
+      }
+
+      if (
+        now.getUTCHours() === s.offline_hour &&
+        now.getUTCMinutes() === s.offline_minute &&
+        s.last_offline !== now.toDateString()
+      ) {
+        await fetch(`${API_URL}?action=offline&id=${s.main_id}&group=${s.group}`)
+        s.last_offline = now.toDateString()
+      }
+    }
+
+    saveSchedules(schedules)
+  }, 60000)
+}
+
+// ================= PPM =================
+function loadHistory() {
+  if (!fs.existsSync(HISTORY_FILE)) return []
+  return JSON.parse(fs.readFileSync(HISTORY_FILE))
+}
+
+function saveHistory(data) {
+  fs.writeFileSync(HISTORY_FILE, JSON.stringify(data))
+}
+
+async function updateTotalPPM() {
+  try {
+    const heartbeatChannel = await client.channels.fetch(HEARTBEAT_CHANNEL_ID)
+    const totalChannel = await client.channels.fetch(TOTAL_CHANNEL_ID)
+
+    const messages = await heartbeatChannel.messages.fetch({ limit: 20 })
+
+    let totalPPM = 0
+
+    for (const msg of messages.values()) {
+      const match = msg.content.match(/Avg:\s*([\d.]+)/)
+      if (match) totalPPM += parseFloat(match[1])
+    }
+
+    let history = loadHistory()
+    const now = Date.now()
+
+    history.push({ timestamp: now, value: totalPPM })
+    history = history.filter(e => now - e.timestamp <= TWELVE_HOURS)
+
+    saveHistory(history)
+
+    const avg = history.reduce((a, b) => a + b.value, 0) / history.length
+
+    const text = `🔥 ${totalPPM.toFixed(2)} PPM\n📊 Avg 12H: ${avg.toFixed(2)}`
+
+    const msgs = await totalChannel.messages.fetch({ limit: 5 })
+    const botMsg = msgs.find(m => m.author.id === client.user.id)
+
+    if (botMsg) await botMsg.edit(text)
+    else await totalChannel.send(text)
+
+  } catch (err) {
+    console.error("PPM error:", err)
+  }
+}
+
+// ================= READY =================
+client.once("ready", async () => {
   console.log(`✅ Bot listo como ${client.user.tag}`)
 
-  const { REST, Routes, SlashCommandBuilder } = require("discord.js")
-  const rest = new REST({ version: "10" }).setToken(TOKEN)
-
-  console.log("🔥 Registrando comandos...")
-
-  // ===== TEST CONEXIÓN =====
-  try {
-    const test = await fetch("https://discord.com/api/v10/gateway")
-    console.log("🌐 Discord API status:", test.status)
-  } catch (err) {
-    console.error("❌ No hay conexión a Discord:", err)
-  }
+  startDailyScheduler()
+  updateTotalPPM()
+  setInterval(updateTotalPPM, 5 * 60 * 1000)
 
   const commands = [
-
     new SlashCommandBuilder()
       .setName("register")
-      .setDescription("Register your main game ID")
-      .addStringOption(o =>
-        o.setName("id")
-         .setDescription("Your 16 digit ID")
-         .setRequired(true)
-      ).toJSON(),
-
-    new SlashCommandBuilder()
-      .setName("add_sec")
-      .setDescription("Register secondary ID")
-      .addStringOption(o =>
-        o.setName("id")
-         .setDescription("Your secondary ID")
-         .setRequired(true)
-      ).toJSON(),
-
-    new SlashCommandBuilder()
-      .setName("change")
-      .setDescription("Change main ID")
-      .addStringOption(o =>
-        o.setName("id")
-         .setDescription("New ID")
-         .setRequired(true)
-      ).toJSON(),
+      .setDescription("Register ID")
+      .addStringOption(o => o.setName("id").setRequired(true)),
 
     new SlashCommandBuilder()
       .setName("online")
-      .setDescription("Set your main ID as online")
-      .toJSON(),
-
-    new SlashCommandBuilder()
-      .setName("online_sec")
-      .setDescription("Set your secondary ID as online")
-      .toJSON(),
+      .setDescription("Set online"),
 
     new SlashCommandBuilder()
       .setName("offline")
-      .setDescription("Set your ID as offline")
-      .toJSON(),
-
-    new SlashCommandBuilder()
-      .setName("list")
-      .setDescription("Show registered users")
-      .toJSON(),
-
-    new SlashCommandBuilder()
-      .setName("online_list")
-      .setDescription("Show online users")
-      .toJSON(),
+      .setDescription("Set offline"),
 
     new SlashCommandBuilder()
       .setName("gp")
       .setDescription("Add VIP ID")
-      .addStringOption(o =>
-        o.setName("id")
-         .setDescription("VIP ID")
-         .setRequired(true)
-      ).toJSON()
-  ]
+      .addStringOption(o => o.setName("id").setRequired(true))
+  ].map(c => c.toJSON())
 
-  console.log("CLIENT_ID:", process.env.CLIENT_ID)
-  console.log("GUILD_ID:", process.env.GUILD_ID)
-  console.log("TOKEN OK:", !!TOKEN)
+  const rest = new REST({ version: "10" }).setToken(TOKEN)
 
-  // ===== REGISTRO CON TIMEOUT =====
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 10000)
+  await rest.put(
+    Routes.applicationGuildCommands(
+      process.env.CLIENT_ID,
+      process.env.GUILD_ID
+    ),
+    { body: commands }
+  )
 
-  try {
-    const res = await rest.put(
-      Routes.applicationGuildCommands(
-        process.env.CLIENT_ID,
-        process.env.GUILD_ID
-      ),
-      { 
-        body: commands,
-        signal: controller.signal
-      }
-    )
+  console.log("🚀 Commands deployed")
+})
 
-    clearTimeout(timeout)
+// ================= INTERACTIONS =================
+client.on("interactionCreate", async interaction => {
+  if (!interaction.isChatInputCommand()) return
 
-    console.log("✅ Slash commands registrados correctamente")
-    console.log("📦 Respuesta Discord:", res)
+  const group = getUserGroup(interaction)
+  if (!group) return interaction.reply("❌ No group")
 
-  } catch (err) {
-    clearTimeout(timeout)
+  const config = GROUP_CONFIG[group]
 
-    if (err.name === "AbortError") {
-      console.error("❌ TIMEOUT: Discord no respondió (10s)")
-    } else {
-      console.error("❌ Error registrando comandos:", err)
+  if (interaction.commandName === "register") {
+    const id = interaction.options.getString("id")
+
+    let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+
+    users[interaction.user.id] = {
+      main_id: id,
+      name: interaction.member.displayName
     }
+
+    await saveUsers(users, config.USERS_GIST_ID, config.USERS_FILENAME)
+
+    return interaction.reply("✅ Registered")
+  }
+
+  if (interaction.commandName === "online") {
+    let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+
+    const u = users[interaction.user.id]
+    if (!u) return interaction.reply("❌ Register first")
+
+    await fetch(`${API_URL}?action=online&id=${u.main_id}&group=${group}`)
+
+    return interaction.reply("🟢 Online")
+  }
+
+  if (interaction.commandName === "offline") {
+    let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+
+    const u = users[interaction.user.id]
+    if (!u) return interaction.reply("❌ Register first")
+
+    await fetch(`${API_URL}?action=offline&id=${u.main_id}&group=${group}`)
+
+    return interaction.reply("🔴 Offline")
+  }
+
+  if (interaction.commandName === "gp") {
+    const id = interaction.options.getString("id")
+    await addVipID(id)
+    return interaction.reply("🔥 VIP added")
   }
 })
 
-// ===== HANDLERS =====
-require("./gpHandler")(client)
-
-// ===== DETECTOR =====
-client.on("messageCreate", async (message) => {
-  const match = message.content.match(/\b\d{16}\b/)
+// ================= GP DETECTOR =================
+client.on("messageCreate", async message => {
+  const match = message.content.match(/\((\d{16})\)/)
   if (!match) return
 
-  const id = match[0]
-  console.log("🔥 GP detectado:", id)
-  await addVipID(id)
+  await addVipID(match[1])
 })
 
-// ===== ERRORES =====
-client.on("error", (err) => {
-  console.error("❌ CLIENT ERROR:", err)
-})
-
-process.on("unhandledRejection", (err) => {
-  console.error("❌ UNHANDLED PROMISE:", err)
-})
-
-// ===== LOGIN =====
+// ================= LOGIN =================
 client.login(TOKEN)
