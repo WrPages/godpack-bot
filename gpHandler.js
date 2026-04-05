@@ -825,8 +825,12 @@ newRow.addComponents(
 // ===== ESTADO FINAL =====
 let status = null;
 
-if (aliveCount >= 1) status = "alive"; // 🔥 cambio a 1
-if (deadCount >= 4) status = "dead";
+if (aliveUsers.length >= 1) {
+  status = "alive";
+}
+else if (deadUsers.length >= 4) {
+  status = "dead";
+}
 
 // ===== SUMAR ALIVE AL GIST =====
 // ===== SUMAR ALIVE AL GIST =====
