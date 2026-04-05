@@ -653,24 +653,141 @@ await message.edit({
 // 3️⃣ BOTONES ALIVE / DEAD
 // =========================
 if (interaction.isButton()) {
+
   if (interaction.customId !== "gp_alive" && interaction.customId !== "gp_dead") return;
 
-  const message = interaction.message;
-  const embed = message.embeds[0];
-  let mainMessage = message;
-let threadMessage = null;
+  await interaction.deferUpdate();
 
-if (message.linkedMainMessageId) {
-  mainMessage = await interaction.channel.messages
-    .fetch(message.linkedMainMessageId)
-    .catch(() => null);
-}
+  let mainMessage = interaction.message;
+  let threadMessage = null;
 
-if (message.linkedThreadMessageId) {
-  const thread = interaction.channel;
-  threadMessage = await thread.messages
-    .fetch(message.linkedThreadMessageId)
-    .catch(() => null);
+  // =========================
+  // Detectar si estamos en hilo
+  // =========================
+
+  if (interaction.channel.isThread()) {
+
+    threadMessage = interaction.message;
+    const parentChannel = interaction.channel.parent;
+
+    try {
+      const parentMessages = await parentChannel.messages.fetch({ limit: 50 });
+
+      mainMessage = parentMessages.find(msg =>
+        msg.embeds.length &&
+        msg.embeds[0].description === threadMessage.embeds[0].description
+      );
+
+    } catch {
+      mainMessage = null;
+    }
+
+  } else {
+
+    mainMessage = interaction.message;
+
+    if (mainMessage.hasThread) {
+
+      const thread = mainMessage.thread;
+
+      try {
+        const threadMessages = await thread.messages.fetch({ limit: 20 });
+
+        threadMessage = threadMessages.find(msg =>
+          msg.embeds.length &&
+          msg.embeds[0].description === mainMessage.embeds[0].description
+        );
+
+      } catch {
+        threadMessage = null;
+      }
+    }
+  }
+
+  if (!mainMessage) return;
+
+  // =========================
+  // Obtener datos actuales
+  // =========================
+
+  const embed = mainMessage.embeds[0];
+  const footer = embed.footer?.text || "";
+
+  const aliveMatch = footer.match(/Alive: (\d+)/);
+  const deadMatch = footer.match(/Dead: (\d+)/);
+
+  let aliveCount = aliveMatch ? parseInt(aliveMatch[1]) : 0;
+  let deadCount = deadMatch ? parseInt(deadMatch[1]) : 0;
+
+  // =========================
+  // Sumar voto
+  // =========================
+
+  if (interaction.customId === "gp_alive") aliveCount++;
+  if (interaction.customId === "gp_dead") deadCount++;
+
+  let status = null;
+
+  if (aliveCount >= 2) status = "alive";
+  if (deadCount >= 4) status = "dead";
+
+  // =========================
+  // Crear nuevo embed
+  // =========================
+
+  const newEmbed = EmbedBuilder.from(embed)
+    .setFooter({ text: `Alive: ${aliveCount} | Dead: ${deadCount}` });
+
+  // =========================
+  // Crear botones
+  // =========================
+
+  let components = [];
+
+  if (!status) {
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("gp_alive")
+        .setLabel(`Alive (${aliveCount})`)
+        .setStyle(ButtonStyle.Success),
+
+      new ButtonBuilder()
+        .setCustomId("gp_dead")
+        .setLabel(`Dead (${deadCount})`)
+        .setStyle(ButtonStyle.Danger),
+
+      new ButtonBuilder()
+        .setCustomId(`edit_panel_${mainMessage.id}`)
+        .setEmoji("✏️")
+        .setStyle(ButtonStyle.Secondary)
+    );
+
+    components = [row];
+
+  } else {
+
+    // 🔥 Cuando se confirma, eliminamos todos los botones
+    components = [];
+
+  }
+
+  // =========================
+  // Actualizar ambos mensajes
+  // =========================
+
+  await mainMessage.edit({
+    embeds: [newEmbed],
+    components: components
+  }).catch(() => {});
+
+  if (threadMessage) {
+    await threadMessage.edit({
+      embeds: [newEmbed],
+      components: components
+    }).catch(() => {});
+  }
+
 }
 
   // ===== LEER FOOTER =====
