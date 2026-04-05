@@ -186,6 +186,10 @@ client.once("clientReady", async () => {
   ].map(c => c.toJSON())
 
   try {
+    console.log("CLIENT ID:", process.env.CLIENT_ID)
+console.log("GUILD ID:", process.env.GUILD_ID)
+console.log("TOKEN OK:", !!TOKEN)
+    
     await rest.put(
       Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
       { body: commands }
