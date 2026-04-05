@@ -329,13 +329,172 @@ module.exports = async (client) => {
         await loadLiveStats();
         
   
+
+client.once("clientReady", async () => {
+
+  const commands = [
+
+    new SlashCommandBuilder()
+      .setName("editpanel")
+      .setDescription("Editar un panel de GP")
+      .addStringOption(option =>
+        option
+          .setName("mensaje_id")
+          .setDescription("ID del mensaje del panel")
+          .setRequired(true)
+      ),
+
+    new SlashCommandBuilder()
+      .setName("register")
+      .setDescription("Register your main game ID")
+      .addStringOption(option =>
+        option.setName("id")
+          .setDescription("Your 16 digit main ID")
+          .setRequired(true)
+      ),
+
+    new SlashCommandBuilder()
+      .setName("add_sec")
+      .setDescription("Register your secondary game ID")
+      .addStringOption(option =>
+        option.setName("id")
+          .setDescription("Your 16 digit secondary ID")
+          .setRequired(true)
+      ),
+
+    new SlashCommandBuilder()
+      .setName("change")
+      .setDescription("Change your main game ID")
+      .addStringOption(option =>
+        option.setName("id")
+          .setDescription("New 16 digit ID")
+          .setRequired(true)
+      ),
+
+    new SlashCommandBuilder()
+      .setName("online")
+      .setDescription("Set your main account online"),
+
+    new SlashCommandBuilder()
+      .setName("online_sec")
+      .setDescription("Set your secondary account online"),
+
+    new SlashCommandBuilder()
+      .setName("offline")
+      .setDescription("Set your accounts offline"),
+
+    new SlashCommandBuilder()
+      .setName("list")
+      .setDescription("List registered users"),
+
+    new SlashCommandBuilder()
+      .setName("online_list")
+      .setDescription("List online users in your group"),
+
+    new SlashCommandBuilder()
+      .setName("gp")
+      .setDescription("Add VIP ID")
+      .addStringOption(option =>
+        option.setName("id")
+          .setDescription("16 digit VIP ID")
+          .setRequired(true)
+      ),
+
+    new SlashCommandBuilder()
+      .setName("schedule_events")
+      .setDescription("Daily online/offline scheduler (UTC)")
+      .addStringOption(opt =>
+        opt.setName("mode")
+          .setDescription("Start or Stop")
+          .setRequired(true)
+          .addChoices(
+            { name: "Start Daily Schedule", value: "start" },
+            { name: "Stop All Schedules", value: "stop" }
+          )
+      )
+      .addIntegerOption(opt =>
+        opt.setName("online_hour")
+          .setDescription("Online Hour (UTC 0-23)")
+      )
+      .addIntegerOption(opt =>
+        opt.setName("online_minute")
+          .setDescription("Online Minute (0-59)")
+      )
+      .addIntegerOption(opt =>
+        opt.setName("offline_hour")
+          .setDescription("Offline Hour (UTC 0-23)")
+      )
+      .addIntegerOption(opt =>
+        opt.setName("offline_minute")
+          .setDescription("Offline Minute (0-59)")
+      ),
+
+    new SlashCommandBuilder()
+      .setName("set_offline")
+      .setDescription("Force a user offline")
+
+  ].map(cmd => cmd.toJSON());
+
+  const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
+
+  try {
+    console.log("🚀 Registrando TODOS los comandos...");
+
+    await rest.put(
+      Routes.applicationGuildCommands(
+        client.user.id,
+        "1483615153743462571" // TU SERVER ID
+      ),
+      { body: commands }
+    );
+
+    console.log("✅ TODOS los comandos registrados");
+  } catch (error) {
+    console.error("❌ Error registrando comandos:", error);
+  }
+});
+
+  const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
+
+  try {
+    console.log("Registrando /editpanel...");
+
+    await rest.put(
+      Routes.applicationGuildCommands(
+        client.user.id,
+        "1483615153743462571" // TU SERVER ID
+      ),
+      { body: commands }
+    );
+
+    console.log("✅ /editpanel registrado");
+  } catch (error) {
+    console.error("❌ Error registrando comando:", error);
+  }
+});
+
+
+
   
   
   
   
 
 
+  // Crear/actualizar panel de estadísticas y mensaje de prueba
+  (async () => {
+    try {
+      console.log("Enviando/actualizando panel de estadísticas...");
+      await updateStats(client);
+      console.log("Panel de estadísticas OK");
+    } catch (err) {
+      console.error("Error inicializando bot:", err);
+    }
+  })();
 
+  setInterval(() => {
+    updateStats(client).catch(() => {});
+  }, 60 * 60 * 1000);
 
 
 client.on("messageCreate", async (message) => {
