@@ -447,9 +447,7 @@ try {
 
   // ... resto del código de menciones y mensajes
 
-} catch (err) {
-  console.error("THREAD ERROR:", err);
-}
+
 
   // Menciones online
   const onlineIDs = await getOnlineIDs();
