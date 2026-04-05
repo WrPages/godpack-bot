@@ -560,231 +560,118 @@ const threadMessage = await thread.send({
 
 
 client.on("interactionCreate", async (interaction) => {
+  // Si no es botón Alive/Dead o Edit/Modal, ignorar
+  if (!interaction.isButton() && !interaction.isModalSubmit()) return;
 
+  await interaction.deferUpdate().catch(() => {});
 
+  // ===== BOTONES ALIVE / DEAD =====
+  if (interaction.isButton() && (interaction.customId === "gp_alive" || interaction.customId === "gp_dead")) {
+    let mainMessage = interaction.message;
+    let threadMessage = null;
+    let threadChannel = null;
 
-  const friendId = message.friendId || "Unknown";
-  // =========================
-  // 1️⃣ BOTÓN EDIT
-  // =========================
-if (interaction.isButton() && interaction.customId.startsWith("edit_panel_")) {
+    // Estamos en un hilo
+    if (interaction.channel.isThread()) {
+      threadChannel = interaction.channel;
+      threadMessage = interaction.message;
 
-  const messageId = interaction.customId.replace("edit_panel_", "");
-  const message = await interaction.channel.messages.fetch(messageId).catch(() => null);
+      const panelMatch = threadMessage.content.match(/PANEL_ID:(\d+)/);
+      if (!panelMatch) return;
+      const mainId = panelMatch[1];
+      mainMessage = await threadChannel.parent.messages.fetch(mainId).catch(() => null);
+    } else {
+      // Estamos en el mensaje principal
+      const threadId = panelMapping[mainMessage.id];
+      if (threadId) threadChannel = await interaction.guild.channels.fetch(threadId).catch(() => null);
 
-  if (!message) {
-    return interaction.reply({ content: "❌ Mensaje no encontrado.", ephemeral: true });
+      if (threadChannel) {
+        const threadMsgs = await threadChannel.messages.fetch({ limit: 50 });
+        threadMessage = threadMsgs.find(m => m.content.includes(`PANEL_ID:${mainMessage.id}`));
+      }
+    }
+
+    if (!mainMessage || !threadMessage) return;
+
+    // ===== ACTUALIZAR CONTADORES =====
+    const embed = mainMessage.embeds[0];
+    const footer = embed.footer?.text || "";
+    let aliveMatch = footer.match(/Alive: (\d+)/);
+    let deadMatch = footer.match(/Dead: (\d+)/);
+
+    let aliveCount = aliveMatch ? parseInt(aliveMatch[1]) : 0;
+    let deadCount = deadMatch ? parseInt(deadMatch[1]) : 0;
+
+    if (interaction.customId === "gp_alive") aliveCount++;
+    if (interaction.customId === "gp_dead") deadCount++;
+
+    let status = null;
+    if (aliveCount >= 1) status = "alive";
+    if (deadCount >= 4) status = "dead";
+
+    const newEmbed = EmbedBuilder.from(embed)
+      .setFooter({ text: `Alive: ${aliveCount} | Dead: ${deadCount}` });
+
+    // ===== BOTONES ACTUALIZADOS =====
+    const row = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId("gp_alive")
+          .setLabel(`🟢 Alive (${aliveCount})`)
+          .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+          .setCustomId("gp_dead")
+          .setLabel(`🔴 Dead (${deadCount})`)
+          .setStyle(ButtonStyle.Danger),
+        new ButtonBuilder()
+          .setCustomId(`edit_panel_${mainMessage.id}`)
+          .setEmoji("✏️")
+          .setStyle(ButtonStyle.Secondary)
+      );
+
+    const components = [row];
+
+    // ===== EDITAR MENSAJES PRINCIPAL Y HILO =====
+    if (!status) {
+      await mainMessage.edit({ embeds: [newEmbed], components }).catch(() => {});
+      await threadMessage.edit({ embeds: [newEmbed], components }).catch(() => {});
+    } else {
+      await mainMessage.edit({ components }).catch(() => {});
+      await threadMessage.edit({ components }).catch(() => {});
+      // Cambiar nombre del hilo si corresponde
+      const desc = embed.description || "";
+      const rarity = (desc.match(/(\d)\/5/) || [])[1] || 0;
+      const pack = (desc.match(/• (\d+)P/) || [])[1] || 0;
+      const user = (desc.match(/\*\*(.*?)\*\*/) || [])[1] || "Unknown";
+      await updateThreadName(mainMessage, status, rarity, pack, user, "ID").catch(() => {});
+    }
+
+    // ===== QUIÉN VOTÓ SOLO AL HILO =====
+    if (threadChannel) {
+      await threadChannel.send({
+        content: `🗳️ **${interaction.user.username}** votó ${interaction.customId === "gp_alive" ? "🟢 Alive" : "🔴 Dead"}`,
+        allowedMentions: { parse: [] }
+      }).catch(() => {});
+    }
+
+    // ===== GUARDAR LIVE STATS EN GIST =====
+    await loadLiveStats();
+
+    // Crear arrays si no existen
+    if (!mainMessage.aliveCounted) mainMessage.aliveCounted = false;
+    if (!mainMessage.deadCounted) mainMessage.deadCounted = false;
+
+    if (aliveCount >= 1 && !mainMessage.aliveCounted) {
+      mainMessage.aliveCounted = true;
+      liveStats.totalAlive += 1;
+      liveStats.daily.alive += 1;
+    }
+
+    if (deadCount >= 4 && !mainMessage.deadCounted) {
+      mainMessage.deadCounted = true;
+      liveStats.totalDead = (liveStats.totalDead || 0) + 1;
+    }
+
+    await saveLiveStats();
   }
-
-  // 🔥 LEER DATOS DESDE EL EMBED (AQUÍ VA EL PASO 4)
-  const embed = message.embeds[0];
-  const desc = embed?.description || "";
-
-  const rarityMatch = desc.match(/(\d)\/5/);
-  const packMatch = desc.match(/• (\d+)P/);
-  const userMatch = desc.match(/\*\*(.*?)\*\*/);
-
-  const rarity = rarityMatch ? rarityMatch[1] : "1";
-  const packNumber = packMatch ? packMatch[1] : "1";
-  const username = userMatch ? userMatch[1] : "Unknown";
-
-  const modal = new ModalBuilder()
-    .setCustomId(`edit_panel_${message.id}`)
-    .setTitle("Editar GP Panel");
-
-  const rarityInput = new TextInputBuilder()
-    .setCustomId("rarity")
-    .setLabel("Rareza (1-5)")
-    .setStyle(TextInputStyle.Short)
-    .setValue(String(rarity));
-
-  const packInput = new TextInputBuilder()
-    .setCustomId("pack")
-    .setLabel("Packs")
-    .setStyle(TextInputStyle.Short)
-    .setValue(String(packNumber));
-
-  const userInput = new TextInputBuilder()
-    .setCustomId("username")
-    .setLabel("Usuario")
-    .setStyle(TextInputStyle.Short)
-    .setValue(username);
-
-  modal.addComponents(
-    new ActionRowBuilder().addComponents(rarityInput),
-    new ActionRowBuilder().addComponents(packInput),
-    new ActionRowBuilder().addComponents(userInput)
-  );
-
-  return interaction.showModal(modal);
-}
-
-// =========================
-// 2️⃣ MODAL SUBMIT
-// =========================
-if (interaction.isModalSubmit() && interaction.customId.startsWith("edit_panel_")) {
-
-  await interaction.deferReply({ ephemeral: true });
-
-  const messageId = interaction.customId.replace("edit_panel_", "");
-  const message = await interaction.channel.messages.fetch(messageId).catch(() => null);
-
-  if (!message) {
-    return interaction.editReply("❌ Mensaje no encontrado.");
-  }
-
-  const rarity = parseInt(interaction.fields.getTextInputValue("rarity"));
-  const packNumber = parseInt(interaction.fields.getTextInputValue("pack"));
-  const username = interaction.fields.getTextInputValue("username");
-
-  if (isNaN(rarity) || rarity < 1 || rarity > 5) {
-    return interaction.editReply("❌ Rareza inválida.");
-  }
-
-  let color = 0x808080;
-  if (rarity === 3) color = 0x3498db;
-  if (rarity === 4) color = 0x9b59b6;
-  if (rarity === 5) color = 0xFFD700;
-
-const oldEmbed = message.embeds[0];
-
-const newEmbed = EmbedBuilder.from(oldEmbed)
-  .setColor(color)
-  .setDescription(`## ✨ ${rarity}/5 • ${packNumber}P  |  **${username}**`)
-  .setImage(null); // ✅ solo quita imagen del embed
-
-await message.edit({
-  embeds: [newEmbed]
-  // 🚫 NO poner files: []
 });
-
-  await interaction.editReply("✅ Panel actualizado correctamente.");
-  return; // 🔥 IMPORTANTE
-}
-// =========================
-// 3️⃣ BOTONES ALIVE / DEAD
-// =========================
-if (interaction.isButton()) {
-  if (interaction.customId !== "gp_alive" && interaction.customId !== "gp_dead") return;
-
-  await interaction.deferUpdate();
-
-  let mainMessage = interaction.message;
-  let threadMessage = null;
-  let threadChannel = null;
-
-  // ===== SI ESTAMOS EN UN HILO =====
-  if (interaction.channel.isThread()) {
-    threadChannel = interaction.channel;
-    threadMessage = interaction.message;
-
-    const panelMatch = threadMessage.content.match(/PANEL_ID:(\d+)/);
-    if (!panelMatch) return;
-
-    const mainId = panelMatch[1];
-    mainMessage = await threadChannel.parent.messages.fetch(mainId).catch(() => null);
-
-  } 
-// ===== SI ESTAMOS EN EL MENSAJE PRINCIPAL =====
-else {
-  // Buscar el hilo usando nuestro mapping
-  const threadId = panelMapping[mainMessage.id];
-  if (threadId) {
-    threadChannel = await interaction.guild.channels.fetch(threadId).catch(() => null);
-  }
-
-  if (threadChannel) {
-    const threadMsgs = await threadChannel.messages.fetch({ limit: 50 });
-    threadMessage = threadMsgs.find(m => m.content.includes(`PANEL_ID:${mainMessage.id}`));
-  }
-}
-
-  if (!mainMessage || !threadMessage) return;
-
-  // ===== ACTUALIZAR CONTADORES =====
-  const embed = mainMessage.embeds[0];
-  const footer = embed.footer?.text || "";
-
-  let aliveMatch = footer.match(/Alive: (\d+)/);
-  let deadMatch = footer.match(/Dead: (\d+)/);
-
-  let aliveCount = aliveMatch ? parseInt(aliveMatch[1]) : 0;
-  let deadCount = deadMatch ? parseInt(deadMatch[1]) : 0;
-
-  if (interaction.customId === "gp_alive") aliveCount++;
-  if (interaction.customId === "gp_dead") deadCount++;
-
-  let status = null;
-  if (aliveCount >= 1) status = "alive";
-  if (deadCount >= 4) status = "dead";
-
-  const newEmbed = EmbedBuilder.from(embed)
-    .setFooter({ text: `Alive: ${aliveCount} | Dead: ${deadCount}` });
-
-  // ===== BOTONES =====
-  const row = new ActionRowBuilder();
-  if (!status) {
-    row.addComponents(
-      new ButtonBuilder()
-        .setCustomId("gp_alive")
-        .setLabel(`🟢 Alive (${aliveCount})`)
-        .setStyle(ButtonStyle.Success),
-      new ButtonBuilder()
-        .setCustomId("gp_dead")
-        .setLabel(`🔴 Dead (${deadCount})`)
-        .setStyle(ButtonStyle.Danger)
-    );
-  }
-  row.addComponents(
-    new ButtonBuilder()
-      .setCustomId(`edit_panel_${mainMessage.id}`)
-      .setEmoji("✏️")
-      .setStyle(ButtonStyle.Secondary)
-  );
-
-  const components = [row];
-
-  // ===== EDITAR MENSAJES PRINCIPAL Y HILO =====
-  if (!status) {
-    await mainMessage.edit({ embeds: [newEmbed], components }).catch(() => {});
-    await threadMessage.edit({ embeds: [newEmbed], components }).catch(() => {});
-  } else {
-    await mainMessage.edit({ components }).catch(() => {});
-    await threadMessage.edit({ components }).catch(() => {});
-    // Cambiar nombre del hilo si corresponde
-    const desc = embed.description || "";
-    const rarity = (desc.match(/(\d)\/5/) || [])[1] || 0;
-    const pack = (desc.match(/• (\d+)P/) || [])[1] || 0;
-    const user = (desc.match(/\*\*(.*?)\*\*/) || [])[1] || "Unknown";
-    await updateThreadName(mainMessage, status, rarity, pack, user, "ID").catch(() => {});
-  }
-
-// ===== QUIÉN VOTÓ SOLO AL HILO =====
-if (threadChannel) {
-  await threadChannel.send({
-    content: `🗳️ **${interaction.user.username}** votó ${interaction.customId === "gp_alive" ? "🟢 Alive" : "🔴 Dead"}`,
-    allowedMentions: { parse: [] }
-  }).catch(() => {});
-}
-
-// ===== GUARDAR LIVE STATS EN GIST =====
-await loadLiveStats();
-
-if (aliveUsers.length >= 1 && !message.aliveCounted) {
-  message.aliveCounted = true;
-  liveStats.totalAlive += 1;
-  liveStats.daily.alive += 1;
-}
-
-if (deadUsers.length >= 4 && !message.deadCounted) {
-  message.deadCounted = true;
-  liveStats.totalDead = (liveStats.totalDead || 0) + 1;
-}
-
-await saveLiveStats();
-
-// ===== ACTUALIZAR BOTONES Y THREAD =====
-// tu código para actualizar embed, botones y thread aquí
-
-}); // 👈 solo este cierra interactionCreate
-
