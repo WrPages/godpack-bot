@@ -787,3 +787,4 @@ await saveLiveStats();
 // tu código para actualizar embed, botones y thread aquí
 
 }); // 👈 solo este cierra interactionCreate
+  }; 
