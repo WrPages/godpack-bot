@@ -435,7 +435,7 @@ console.log("🔥 HANDLER READY");
 
   ].map(cmd => cmd.toJSON());
 
-  const rest = new REST({ version: "10" }).setToken(client.token);
+  const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
   try {
     console.log("🚀 Registrando comandos...");
