@@ -13,17 +13,13 @@ const {
 } = require("discord.js");
 
 const fetch = require("node-fetch");
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+
 // ===== SISTEMA DE MENCIONES ONLINE =====
 const USERS_GIST_ID = "bb18eda2ea748723d8fe0131dd740b70"; // tu gist users.json
 const IDS_GIST_RAW_URL = "https://gist.githubusercontent.com/WrPages/d9db3a72fed74c496fd6cc830f9ca6e9/raw/elite_ids.txt";
 
 
-const GIST_IDS = {
-  ELITE: "4773653072f4851e91958a333e503de9",
-  TRAINER: "4f35f34b50e142fd4c89ff7bb8e30190",
-  OTRO: "4773653072f4851e91958a333e503de9"
-};
+
 
 
 
@@ -64,15 +60,12 @@ const ALLOWED_CHANNELS = [
   "1487362022864588902"// canal 2
    // canal 3
 ];
-const ELITE_CHANNEL_ID = "1486277594629275770";
-const TRAINER_CHANNEL_ID = "1487362022864588902";
-const OTRO_CHANNEL_ID = "1484015417411244082";
 
 const STATS_CHANNEL_ID = "1484416376436424794"; // Mismo canal para estadísticas
 
 const GIST_ID = process.env.GIST_ID;
-
-
+const LIVE_GIST_ID = process.env.LIVE_GIST_ID;
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const FILE_NAME = "gp_record.txt";
 
 // ===== LIVE GP STATS =====
@@ -168,24 +161,23 @@ async function updateThreadName(message, status, rarity, packNumber, username) {
 // termina
 
 // ===== CARGAR LIVE STATS =====
-async function loadLiveStats(gistId) {
+async function loadLiveStats() {
   try {
-    const res = await fetch(`https://api.github.com/gists/${gistId}`);
+    const res = await fetch(`https://api.github.com/gists/${LIVE_GIST_ID}`);
     const data = await res.json();
 
-    if (!data.files[LIVE_STATS_FILE]) return liveStats;
+    if (!data.files[LIVE_STATS_FILE]) return;
 
-    return JSON.parse(data.files[LIVE_STATS_FILE].content);
+    liveStats = JSON.parse(data.files[LIVE_STATS_FILE].content);
   } catch (err) {
     console.error("LOAD LIVE STATS ERROR:", err);
-    return liveStats;
   }
 }
 
 // ===== GUARDAR LIVE STATS =====
-async function saveLiveStats(gistId, data) {
+async function saveLiveStats() {
   try {
-    await fetch(`https://api.github.com/gists/${gistId}`, {
+    await fetch(`https://api.github.com/gists/${LIVE_GIST_ID}`, {
       method: "PATCH",
       headers: {
         Authorization: `token ${GITHUB_TOKEN}`,
@@ -194,7 +186,7 @@ async function saveLiveStats(gistId, data) {
       body: JSON.stringify({
         files: {
           [LIVE_STATS_FILE]: {
-            content: JSON.stringify(data, null, 2)
+            content: JSON.stringify(liveStats, null, 2)
           }
         }
       })
@@ -205,12 +197,12 @@ async function saveLiveStats(gistId, data) {
 }
 
 // ===== RESET DIARIO UTC-6 =====
-async function checkDailyReset(gistId, liveStats) {
+async function checkDailyReset() {
   const today = getUTC6DateString();
 
   if (!liveStats.currentDay) {
     liveStats.currentDay = today;
-    return liveStats;
+    return;
   }
 
   if (today !== liveStats.currentDay) {
@@ -226,11 +218,12 @@ async function checkDailyReset(gistId, liveStats) {
     liveStats.currentDay = today;
     liveStats.daily = { gp: 0, alive: 0 };
 
-    await saveLiveStats(gistId, liveStats);
+    await saveLiveStats();
   }
-
-  return liveStats;
 }
+
+
+
 
 
 async function updateStats(client) {
@@ -333,7 +326,7 @@ async function createTestMessage(client) {
 
 module.exports = async (client) => {
     await loadData();
-        
+        await loadLiveStats();
         
   
 
@@ -400,24 +393,6 @@ if (!ALLOWED_CHANNELS.includes(message.channel.id)) return;
   if (!message.webhookId) return;
   if (!message.content.includes("God Pack found")) return;
 
-
-let currentGistId;
-
-if (message.channel.id === ELITE_CHANNEL_ID) {
-  currentGistId = GIST_IDS.ELITE;
-}
-else if (message.channel.id === TRAINER_CHANNEL_ID) {
-  currentGistId = GIST_IDS.TRAINER;
-}
-else if (message.channel.id === OTRO_CHANNEL_ID) {
-  currentGistId = GIST_IDS.OTRO;
-}
-else {
-  return; // si no es canal permitido
-}
-
-
-  
   try {
     // ===== IMAGEN =====
     const attachment = message.attachments.first();
@@ -502,13 +477,13 @@ const sentMessage = await message.channel.send({
 
 
 // ===== SUMAR GP TOTAL =====
-let liveStats = await loadLiveStats(currentGistId); // 🔥 SIEMPRE recargar primero
-liveStats = await checkDailyReset(currentGistId, liveStats);
+await loadLiveStats(); // 🔥 SIEMPRE recargar primero
+await checkDailyReset();
 
 liveStats.totalGP += 1;
 liveStats.daily.gp += 1;
 
-await saveLiveStats(currentGistId, liveStats);
+await saveLiveStats();
 
 
 
@@ -585,26 +560,6 @@ await thread.send({
 
 
 client.on("interactionCreate", async (interaction) => {
-
- const parentId = interaction.channel.isThread()
-  ? interaction.channel.parentId
-  : interaction.channel.id;
-
-let currentGistId;
-
-if (parentId === "1486277594629275770") {
-  currentGistId = GIST_IDS.ELITE;
-}
-else if (parentId === "1484015417411244082") {
-  currentGistId = GIST_IDS.TRAINER;
-}
-else if (parentId === "1487362022864588902") {
-  currentGistId = GIST_IDS.OTRO;
-}
-else {
-  console.log("No se encontró GIST para este canal");
-  return;
-}
 
   // =========================
   // 1️⃣ BOTÓN EDIT
@@ -825,43 +780,31 @@ newRow.addComponents(
     .setStyle(ButtonStyle.Secondary)
 );
 
+  // ===== ACTUALIZAR MENSAJE =====
+  await message.edit({
+    //embeds: [newEmbed],
+    components: [newRow]
+  });
 
  // ===== ESTADO FINAL =====
 // ===== ESTADO FINAL =====
 let status = null;
 
-if (aliveCount >= 1) {
-  status = "alive";
-}
-else if (deadUsers.length >= 4) {
-  status = "dead";
-}
+if (aliveCount >= 1) status = "alive"; // 🔥 cambio a 1
+if (deadCount >= 4) status = "dead";
 
 // ===== SUMAR ALIVE AL GIST =====
-// ===== SUMAR ALIVE AL GIST =====
-// ===== SUMAR ALIVE AL GIST (PROTEGIDO) =====
-if (status === "alive") {
+if (status === "alive" && !message.aliveCounted) {
+  message.aliveCounted = true; // evitar duplicados
 
-  const embed = message.embeds[0];
-  const alreadyCounted = embed?.footer?.text?.includes("ALIVE_COUNTED");
+  await loadLiveStats(); // siempre recargar antes
 
-  if (!alreadyCounted) {
+  liveStats.totalAlive += 1; // 🔥 importante (lo tenías comentado)
+  liveStats.daily.alive += 1;
 
-    await loadLiveStats();
-    await checkDailyReset();
-
-    liveStats.totalAlive += 1;
-    liveStats.daily.alive += 1;
-
-    await saveLiveStats();
-
-    const updatedEmbed = EmbedBuilder.from(embed)
-      .setFooter({ text: (embed.footer?.text || "") + " | ALIVE_COUNTED" });
-
-    await message.edit({ embeds: [updatedEmbed], components });
-  }
+  await saveLiveStats();
 }
-  
+
 // ===== BOTONES =====
 let components = [];
 
