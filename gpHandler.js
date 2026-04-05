@@ -830,7 +830,7 @@ newRow.addComponents(
 // ===== ESTADO FINAL =====
 let status = null;
 
-if (aliveUsers.length >= 1) {
+if (aliveCount >= 1) {
   status = "alive";
 }
 else if (deadUsers.length >= 4) {
@@ -839,14 +839,27 @@ else if (deadUsers.length >= 4) {
 
 // ===== SUMAR ALIVE AL GIST =====
 // ===== SUMAR ALIVE AL GIST =====
+// ===== SUMAR ALIVE AL GIST (PROTEGIDO) =====
 if (status === "alive") {
 
-  let liveStats = await loadLiveStats(currentGistId);
+  // 🔒 Evitar doble conteo usando footer como marca
+  const alreadyCounted = embed.footer?.text?.includes("ALIVE_COUNTED");
 
-  liveStats.totalAlive += 1;
-  liveStats.daily.alive += 1;
+  if (!alreadyCounted) {
 
-  await saveLiveStats(currentGistId, liveStats);
+    let liveStats = await loadLiveStats(currentGistId);
+    liveStats = await checkDailyReset(currentGistId, liveStats);
+
+    liveStats.totalAlive += 1;
+    liveStats.daily.alive += 1;
+
+    await saveLiveStats(currentGistId, liveStats);
+
+    const updatedEmbed = EmbedBuilder.from(embed)
+      .setFooter({ text: (embed.footer?.text || "") + " | ALIVE_COUNTED" });
+
+    await message.edit({ embeds: [updatedEmbed] });
+  }
 }
 
 // ===== BOTONES =====
