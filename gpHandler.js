@@ -506,16 +506,12 @@ await sentMessage.edit({
 // ===== MENSAJE GRANDE DE ACCESO AL VOTO =====
 const voteAccessRow = new ActionRowBuilder().addComponents(
   new ButtonBuilder()
-    
+    .setLabel("🗳️ VOTE ALIVE OR DEAD")
     .setStyle(ButtonStyle.Link)
     .setURL(`https://discord.com/channels/${message.guild.id}/${message.channel.id}/${sentMessage.id}`)
 );
 
 await thread.send({
-  content:
-    "# 🗳️ VOTING OPEN\n\n" +
-    "## Click below to vote Alive or Dead\n\n" +
-    "⬇️⬇️⬇️",
   components: [voteAccessRow]
 });
       // Menciones online
