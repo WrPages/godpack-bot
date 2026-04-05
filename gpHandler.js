@@ -473,6 +473,9 @@ const sentMessage = await message.channel.send({
   allowedMentions: { parse: ["users"] }
 });
 
+// Guardar friendId en el mensaje para usar después
+sentMessage.friendId = friendId;
+
 
 // ===== SUMAR GP TOTAL =====
 await loadLiveStats(); // 🔥 SIEMPRE recargar primero
@@ -558,6 +561,9 @@ const threadMessage = await thread.send({
 
 client.on("interactionCreate", async (interaction) => {
 
+
+
+  const friendId = message.friendId || "Unknown";
   // =========================
   // 1️⃣ BOTÓN EDIT
   // =========================
@@ -761,7 +767,27 @@ else {
     }).catch(() => {});
   }
 }
+// ===== GUARDAR EN GIST =====
+let status = null;
+if (aliveCount >= 1) status = "alive";
+if (deadCount >= 4) status = "dead";
 
+if (status) {
+  await loadLiveStats(); // recargar antes
+
+  if (status === "alive" && !message.aliveCounted) {
+    message.aliveCounted = true; // evitar duplicados
+    liveStats.totalAlive += 1;
+    liveStats.daily.alive += 1;
+  }
+
+  if (status === "dead" && !message.deadCounted) {
+    message.deadCounted = true; // evitar duplicados
+    liveStats.totalDead = (liveStats.totalDead || 0) + 1;
+  }
+
+  await saveLiveStats(); // guardar en GitHub
+}
   
 
 });
