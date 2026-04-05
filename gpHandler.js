@@ -745,6 +745,10 @@ if (interaction.isButton()) {
   }
 
   // ===== ACTUALIZAR AMBOS MENSAJES =====
+ // ===== ACTUALIZAR MENSAJES =====
+if (!status) {
+
+  // Solo actualizar embed si todavía está activo
   await mainMessage.edit({
     embeds: [newEmbed],
     components
@@ -756,6 +760,21 @@ if (interaction.isButton()) {
       components
     }).catch(() => {});
   }
+
+} else {
+
+  // Si ya es alive o dead → NO tocar embed, solo quitar botones
+  await mainMessage.edit({
+    components: []
+  }).catch(() => {});
+
+  if (threadMessage) {
+    await threadMessage.edit({
+      components: []
+    }).catch(() => {});
+  }
+
+}
 
   // ===== CAMBIAR NOMBRE DEL HILO =====
   if (status) {
