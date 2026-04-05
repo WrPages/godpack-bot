@@ -4,112 +4,155 @@ const {
   REST,
   Routes,
   SlashCommandBuilder
-} = require('discord.js')
+} = require("discord.js")
 
-const fetch = require('node-fetch')
+const fetch = require("node-fetch")
 
-// ❌ handler desactivado (como pediste)
-const gpHandler = require("./gpHandler")
+// ================= CONFIG =================
 
-// ✅ CREAR CLIENTE
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
-  ]
+  intents: [GatewayIntentBits.Guilds]
 })
 
 const TOKEN = process.env.TOKEN
-const API_URL = "https://add-ids.netlify.app/.netlify/functions/api"
+const CLIENT_ID = process.env.CLIENT_ID
+const GUILD_ID = process.env.GUILD_ID
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
 
-// ================= DEBUG LOGIN =================
+// 🔥 GISTS (USA LOS TUYOS)
+const USERS_GIST_ID = "bb18eda2ea748723d8fe0131dd740b70" // users.json
+const ONLINE_GIST_ID = "d9db3a72fed74c496fd6cc830f9ca6e9" // elite_ids.txt
 
-console.log("🧪 TOKEN:", TOKEN ? "OK" : "❌ FALTA TOKEN")
+const USERS_FILE = "elite_users.json"
+const ONLINE_FILE = "elite_ids.txt"
+
+// ================= FUNCIONES =================
+
+// Obtener usuarios
+async function getUsers() {
+  try {
+    const res = await fetch(`https://api.github.com/gists/${USERS_GIST_ID}`, {
+      headers: { Authorization: `Bearer ${GITHUB_TOKEN}` }
+    })
+
+    const data = await res.json()
+    return JSON.parse(data.files[USERS_FILE].content || "{}")
+
+  } catch (err) {
+    console.error("❌ ERROR GET USERS:", err)
+    return {}
+  }
+}
+
+// Obtener lista online
+async function getOnlineList() {
+  try {
+    const res = await fetch(`https://api.github.com/gists/${ONLINE_GIST_ID}`, {
+      headers: { Authorization: `Bearer ${GITHUB_TOKEN}` }
+    })
+
+    const data = await res.json()
+    const content = data.files[ONLINE_FILE].content || ""
+
+    return content.split("\n").map(x => x.trim()).filter(Boolean)
+
+  } catch (err) {
+    console.error("❌ ERROR GET ONLINE:", err)
+    return []
+  }
+}
+
+// Guardar lista online
+async function saveOnlineList(list) {
+  try {
+    await fetch(`https://api.github.com/gists/${ONLINE_GIST_ID}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${GITHUB_TOKEN}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        files: {
+          [ONLINE_FILE]: {
+            content: list.join("\n")
+          }
+        }
+      })
+    })
+  } catch (err) {
+    console.error("❌ ERROR SAVE ONLINE:", err)
+  }
+}
+
+// ================= READY =================
 
 client.on("ready", async () => {
   console.log(`✅ Bot conectado como ${client.user.tag}`)
 
-  // ❌ HANDLER DESACTIVADO
-  // await gpHandler(client)
-
   const rest = new REST({ version: "10" }).setToken(TOKEN)
 
   const commands = [
-
-    new SlashCommandBuilder()
-      .setName("register")
-      .setDescription("Register your main game ID")
-      .addStringOption(o =>
-        o.setName("id").setDescription("16 digit ID").setRequired(true)
-      ),
-
-    new SlashCommandBuilder()
-      .setName("add_sec")
-      .setDescription("Register your secondary ID")
-      .addStringOption(o =>
-        o.setName("id").setDescription("16 digit ID").setRequired(true)
-      ),
-
-    new SlashCommandBuilder()
-      .setName("change")
-      .setDescription("Change main ID")
-      .addStringOption(o =>
-        o.setName("id").setDescription("New ID").setRequired(true)
-      ),
-
     new SlashCommandBuilder()
       .setName("online")
-      .setDescription("Set main online"),
+      .setDescription("Set yourself online"),
 
     new SlashCommandBuilder()
       .setName("offline")
-      .setDescription("Set offline")
-
+      .setDescription("Set yourself offline")
   ].map(c => c.toJSON())
 
-  try {
-    console.log("🧪 CLIENT ID:", process.env.CLIENT_ID)
-    console.log("🧪 GUILD ID:", process.env.GUILD_ID)
+  await rest.put(
+    Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
+    { body: commands }
+  )
 
-    await rest.put(
-      Routes.applicationGuildCommands(
-        process.env.CLIENT_ID,
-        process.env.GUILD_ID
-      ),
-      { body: commands }
-    )
-
-    console.log("🚀 Comandos registrados correctamente")
-  } catch (err) {
-    console.error("❌ ERROR REGISTRANDO:", err)
-  }
+  console.log("🚀 Comandos registrados")
 })
 
-// ================= INTERACTIONS =================
+// ================= COMANDOS =================
 
 client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return
 
-  console.log("📩 Comando recibido:", interaction.commandName)
+  const users = await getUsers()
+  const userData = users[interaction.user.id]
 
-  if (interaction.commandName === "register") {
-    return interaction.reply("✅ Funciona")
+  if (!userData) {
+    return interaction.reply({ content: "❌ No estás registrado", ephemeral: true })
   }
 
+  const mainId = userData.main_id
+  const secId = userData.sec_id
+
+  // ===== ONLINE =====
   if (interaction.commandName === "online") {
-    return interaction.reply("🟢 Online OK")
+    let onlineList = await getOnlineList()
+
+    if (mainId && !onlineList.includes(mainId))
+      onlineList.push(mainId)
+
+    if (secId && !onlineList.includes(secId))
+      onlineList.push(secId)
+
+    await saveOnlineList(onlineList)
+
+    return interaction.reply("🟢 Estás online")
   }
 
+  // ===== OFFLINE =====
   if (interaction.commandName === "offline") {
-    return interaction.reply("🔴 Offline OK")
+    let onlineList = await getOnlineList()
+
+    const newList = onlineList.filter(id =>
+      id !== mainId && id !== secId
+    )
+
+    await saveOnlineList(newList)
+
+    return interaction.reply("🔴 Estás offline")
   }
 })
 
 // ================= LOGIN =================
 
-client.login(TOKEN).catch(err => {
-  console.error("❌ ERROR LOGIN:", err)
-})
+client.login(TOKEN)
