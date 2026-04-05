@@ -680,9 +680,12 @@ else {
 
   mainMessage = interaction.message;
 
-  if (!mainMessage.hasThread) return;
+  // 🔥 Forzar fetch real del mensaje para asegurar thread
+  const fetchedMessage = await interaction.channel.messages.fetch(mainMessage.id).catch(() => null);
+  if (!fetchedMessage) return;
 
-  threadChannel = mainMessage.thread;
+  threadChannel = fetchedMessage.thread;
+  if (!threadChannel) return;
 
   const messages = await threadChannel.messages.fetch({ limit: 50 });
   threadMessage = messages.find(m => m.content.includes(`PANEL_ID:${mainMessage.id}`));
