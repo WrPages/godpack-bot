@@ -653,53 +653,53 @@ await message.edit({
 // 3️⃣ BOTONES ALIVE / DEAD
 // =========================
 if (interaction.isButton()) {
-
   if (interaction.customId !== "gp_alive" && interaction.customId !== "gp_dead") return;
 
   await interaction.deferUpdate();
 
-let mainMessage = null;
-let threadMessage = null;
-let threadChannel = null;
+  let mainMessage = interaction.message;
+  let threadMessage = null;
+  let threadChannel = null;
 
-// ===== SI SE PRESIONA EN HILO =====
-if (interaction.channel.isThread()) {
+  // ===== SI ESTAMOS EN UN HILO =====
+  if (interaction.channel.isThread()) {
+    threadChannel = interaction.channel;
+    threadMessage = interaction.message;
 
-  threadChannel = interaction.channel;
-  threadMessage = interaction.message;
+    const panelMatch = threadMessage.content.match(/PANEL_ID:(\d+)/);
+    if (!panelMatch) return;
 
-  const panelMatch = threadMessage.content.match(/PANEL_ID:(\d+)/);
-  if (!panelMatch) return;
+    const mainId = panelMatch[1];
+    mainMessage = await threadChannel.parent.messages.fetch(mainId).catch(() => null);
 
-  const mainId = panelMatch[1];
-  mainMessage = await threadChannel.parent.messages.fetch(mainId).catch(() => null);
+  } 
+  // ===== SI ESTAMOS EN EL MENSAJE PRINCIPAL =====
+  else {
+    // Buscar el hilo en el canal donde está el mensaje principal
+    const threads = await interaction.channel.threads.fetchActive();
+    threadChannel = threads.threads.find(t => t.name.includes(mainMessage.id)) || null;
 
-}
-// ===== SI SE PRESIONA EN EMBED PRINCIPAL =====
-else {
+    // Si no lo encontramos, tomar el hilo por mensaje que contenga PANEL_ID
+    if (!threadChannel) {
+      const allThreads = await interaction.channel.threads.fetch();
+      threadChannel = allThreads.threads.find(t => t.name.includes(mainMessage.id)) || null;
+    }
 
-  mainMessage = interaction.message;
+    // Obtener mensaje del hilo
+    if (threadChannel) {
+      const threadMsgs = await threadChannel.messages.fetch({ limit: 50 });
+      threadMessage = threadMsgs.find(m => m.content.includes(`PANEL_ID:${mainMessage.id}`));
+    }
+  }
 
-  // 🔥 Forzar fetch real del mensaje para asegurar thread
-  const fetchedMessage = await interaction.channel.messages.fetch(mainMessage.id).catch(() => null);
-  if (!fetchedMessage) return;
+  if (!mainMessage || !threadMessage) return;
 
-  threadChannel = fetchedMessage.thread;
-  if (!threadChannel) return;
-
-  const messages = await threadChannel.messages.fetch({ limit: 50 });
-  threadMessage = messages.find(m => m.content.includes(`PANEL_ID:${mainMessage.id}`));
-}
-
-if (!mainMessage || !threadMessage) return;
-
+  // ===== ACTUALIZAR CONTADORES =====
   const embed = mainMessage.embeds[0];
-  if (!embed) return;
-
   const footer = embed.footer?.text || "";
 
-  const aliveMatch = footer.match(/Alive: (\d+)/);
-  const deadMatch = footer.match(/Dead: (\d+)/);
+  let aliveMatch = footer.match(/Alive: (\d+)/);
+  let deadMatch = footer.match(/Dead: (\d+)/);
 
   let aliveCount = aliveMatch ? parseInt(aliveMatch[1]) : 0;
   let deadCount = deadMatch ? parseInt(deadMatch[1]) : 0;
@@ -714,24 +714,20 @@ if (!mainMessage || !threadMessage) return;
   const newEmbed = EmbedBuilder.from(embed)
     .setFooter({ text: `Alive: ${aliveCount} | Dead: ${deadCount}` });
 
-  // ===== CONSTRUIR BOTONES =====
-  let row = new ActionRowBuilder();
-
+  // ===== BOTONES =====
+  const row = new ActionRowBuilder();
   if (!status) {
     row.addComponents(
       new ButtonBuilder()
         .setCustomId("gp_alive")
         .setLabel(`🟢 Alive (${aliveCount})`)
         .setStyle(ButtonStyle.Success),
-
       new ButtonBuilder()
         .setCustomId("gp_dead")
         .setLabel(`🔴 Dead (${deadCount})`)
         .setStyle(ButtonStyle.Danger)
     );
   }
-
-  // 🔥 EDIT SIEMPRE
   row.addComponents(
     new ButtonBuilder()
       .setCustomId(`edit_panel_${mainMessage.id}`)
@@ -741,52 +737,28 @@ if (!mainMessage || !threadMessage) return;
 
   const components = [row];
 
-  // ===== ACTUALIZAR EMBED PRINCIPAL =====
+  // ===== EDITAR MENSAJES PRINCIPAL Y HILO =====
   if (!status) {
-    await mainMessage.edit({
-      embeds: [newEmbed],
-      components
-    }).catch(() => {});
+    await mainMessage.edit({ embeds: [newEmbed], components }).catch(() => {});
+    await threadMessage.edit({ embeds: [newEmbed], components }).catch(() => {});
   } else {
-    await mainMessage.edit({
-      components
-    }).catch(() => {});
+    await mainMessage.edit({ components }).catch(() => {});
+    await threadMessage.edit({ components }).catch(() => {});
+    // Cambiar nombre del hilo si corresponde
+    const desc = embed.description || "";
+    const rarity = (desc.match(/(\d)\/5/) || [])[1] || 0;
+    const pack = (desc.match(/• (\d+)P/) || [])[1] || 0;
+    const user = (desc.match(/\*\*(.*?)\*\*/) || [])[1] || "Unknown";
+    await updateThreadName(mainMessage, status, rarity, pack, user, "ID").catch(() => {});
   }
 
-  // ===== ACTUALIZAR MENSAJE EN HILO =====
-  if (threadMessage) {
-
-    if (!status) {
-      await threadMessage.edit({
-        embeds: [newEmbed],
-        components
-      }).catch(() => {});
-    } else {
-      await threadMessage.edit({
-        components
-      }).catch(() => {});
-    }
-  }
-
-  // ===== ENVIAR QUIÉN VOTÓ SOLO AL HILO =====
+  // ===== QUIÉN VOTÓ SOLO AL HILO =====
   if (threadChannel) {
     await threadChannel.send({
       content: `🗳️ **${interaction.user.username}** votó ${interaction.customId === "gp_alive" ? "🟢 Alive" : "🔴 Dead"}`,
       allowedMentions: { parse: [] }
     }).catch(() => {});
   }
-
-  // ===== CAMBIAR NOMBRE DEL HILO =====
-  if (status) {
-
-    const desc = embed.description || "";
-    const rarity = (desc.match(/(\d)\/5/) || [])[1] || 0;
-    const pack = (desc.match(/• (\d+)P/) || [])[1] || 0;
-    const user = (desc.match(/\*\*(.*?)\*\*/) || [])[1] || "Unknown";
-
-    await updateThreadName(mainMessage, status, rarity, pack, user, "ID").catch(() => {});
-  }
-
 }
 
   
