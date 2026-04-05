@@ -264,7 +264,7 @@ client.once("ready", async () => {
   console.log(`✅ Bot listo como ${client.user.tag}`);
 
   // 🔥 INICIAR SISTEMAS
-  startPanelSystem(client);
+ // startPanelSystem(client);
   startDailyScheduler();
 
   setInterval(updateTotalPPM, 5 * 60 * 1000);
