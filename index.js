@@ -264,11 +264,7 @@ client.once("ready", async () => {
   console.log(`✅ Bot listo como ${client.user.tag}`);
   
   
-  client.once("ready", () => {
-    console.log("Bot online");
 
-   // startPanelSystem(client); // 👈 AQUÍ ACTIVAS EL PANEL
-});
 
 
 
@@ -280,13 +276,13 @@ client.once("ready", async () => {
 
 
     // 🗑️ BORRAR COMANDOS ANTIGUOS DEL SERVIDOR
-   // await rest.put(
-   //   Routes.applicationGuildCommands(
-     //   process.env.CLIENT_ID,
-     //   process.env.GUILD_ID
-    //  ),
-    //  { body: [] }
- //  );
+   await rest.put(
+      Routes.applicationGuildCommands(
+       process.env.CLIENT_ID,
+       process.env.GUILD_ID
+      ),
+      { body: [] }
+   );
 
     console.log("🗑️ Comandos antiguos eliminados");
 
@@ -1235,4 +1231,3 @@ client.on("messageCreate", async (message) => {
   await addVipID(id)
 })
 
-client.login(TOKEN)
