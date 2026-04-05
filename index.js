@@ -137,84 +137,66 @@ client.once("clientReady", async () => {
   console.log(`✅ Bot listo como ${client.user.tag}`)
 
   const { REST, Routes, SlashCommandBuilder } = require("discord.js")
-  const rest = new REST({ version: "10" }).setToken(TOKEN)
+
+  const rest = new REST({ version: "10" })
+    .setToken(TOKEN)
+    .setHeaders({
+      "Content-Type": "application/json"
+    })
 
   console.log("🔥 Registrando comandos...")
 
   const commands = [
-
     new SlashCommandBuilder()
       .setName("register")
       .setDescription("Register your main game ID")
-      .addStringOption(o =>
-        o.setName("id")
-         .setDescription("Your 16 digit ID")
-         .setRequired(true)
-      ).toJSON(),
+      .addStringOption(o => o.setName("id").setDescription("Your 16 digit ID").setRequired(true))
+      .toJSON(),
 
     new SlashCommandBuilder()
       .setName("add_sec")
       .setDescription("Register secondary ID")
-      .addStringOption(o =>
-        o.setName("id")
-         .setDescription("Your secondary ID")
-         .setRequired(true)
-      ).toJSON(),
+      .addStringOption(o => o.setName("id").setDescription("Your secondary ID").setRequired(true))
+      .toJSON(),
 
     new SlashCommandBuilder()
       .setName("change")
       .setDescription("Change main ID")
-      .addStringOption(o =>
-        o.setName("id")
-         .setDescription("New ID")
-         .setRequired(true)
-      ).toJSON(),
-
-    new SlashCommandBuilder()
-      .setName("online")
-      .setDescription("Set your main ID as online")
+      .addStringOption(o => o.setName("id").setDescription("New ID").setRequired(true))
       .toJSON(),
 
-    new SlashCommandBuilder()
-      .setName("online_sec")
-      .setDescription("Set your secondary ID as online")
-      .toJSON(),
-
-    new SlashCommandBuilder()
-      .setName("offline")
-      .setDescription("Set your ID as offline")
-      .toJSON(),
-
-    new SlashCommandBuilder()
-      .setName("list")
-      .setDescription("Show registered users")
-      .toJSON(),
-
-    new SlashCommandBuilder()
-      .setName("online_list")
-      .setDescription("Show online users")
-      .toJSON(),
+    new SlashCommandBuilder().setName("online").setDescription("Set your main ID as online").toJSON(),
+    new SlashCommandBuilder().setName("online_sec").setDescription("Set your secondary ID as online").toJSON(),
+    new SlashCommandBuilder().setName("offline").setDescription("Set your ID as offline").toJSON(),
+    new SlashCommandBuilder().setName("list").setDescription("Show registered users").toJSON(),
+    new SlashCommandBuilder().setName("online_list").setDescription("Show online users").toJSON(),
 
     new SlashCommandBuilder()
       .setName("gp")
       .setDescription("Add VIP ID")
-      .addStringOption(o =>
-        o.setName("id")
-         .setDescription("VIP ID")
-         .setRequired(true)
-      ).toJSON()
+      .addStringOption(o => o.setName("id").setDescription("VIP ID").setRequired(true))
+      .toJSON()
   ]
 
+  console.log("Comandos:", commands.length)
   console.log("CLIENT_ID:", process.env.CLIENT_ID)
   console.log("GUILD_ID:", process.env.GUILD_ID)
   console.log("TOKEN OK:", !!TOKEN)
 
-  try {
-    await rest.put(
-      Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
-      { body: commands }
-    )
+  console.log("➡️ Enviando comandos a Discord...")
 
+  try {
+    await Promise.race([
+      rest.put(
+        Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
+        { body: commands }
+      ),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout registrando comandos")), 10000)
+      )
+    ])
+
+    console.log("⬅️ Discord respondió")
     console.log("✅ Slash commands registrados")
 
   } catch (err) {
