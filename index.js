@@ -69,11 +69,17 @@ function getUserGroup(interaction) {
 async function getUsers(gistId, fileName) {
   try {
     const res = await fetch(`https://api.github.com/gists/${gistId}?t=${Date.now()}`, {
-      headers: { Authorization: `Bearer ${GITHUB_TOKEN}` }
+      headers: {
+        Authorization: `Bearer ${GITHUB_TOKEN}`
+      }
     })
+
     const data = await res.json()
+
     if (!data.files || !data.files[fileName]) return {}
+
     return JSON.parse(data.files[fileName].content || "{}")
+
   } catch {
     return {}
   }
@@ -82,7 +88,9 @@ async function getUsers(gistId, fileName) {
 async function saveUsers(users, gistId, fileName) {
   await fetch(`https://api.github.com/gists/${gistId}`, {
     method: "PATCH",
-    headers: { Authorization: `Bearer ${GITHUB_TOKEN}` },
+    headers: {
+      Authorization: `Bearer ${GITHUB_TOKEN}`
+    },
     body: JSON.stringify({
       files: {
         [fileName]: {
@@ -93,17 +101,18 @@ async function saveUsers(users, gistId, fileName) {
   })
 }
 
-// ================= READY =================
+// ================= READY (ÚNICO) =================
 
 client.once("clientReady", async () => {
   console.log(`✅ Bot listo como ${client.user.tag}`)
 
-  // ✅ ACTIVAR TU HANDLER
+  // 🔥 ACTIVAR TU HANDLER (ESTO ERA CLAVE)
   await gpHandler(client)
 
   const rest = new REST({ version: "10" }).setToken(TOKEN)
 
   const commands = [
+
     new SlashCommandBuilder()
       .setName("register")
       .setDescription("Register your main game ID")
@@ -119,12 +128,60 @@ client.once("clientReady", async () => {
       ),
 
     new SlashCommandBuilder()
+      .setName("change")
+      .setDescription("Change main ID")
+      .addStringOption(o =>
+        o.setName("id").setDescription("New ID").setRequired(true)
+      ),
+
+    new SlashCommandBuilder()
+      .setName("schedule_events")
+      .setDescription("Daily scheduler UTC")
+      .addStringOption(o =>
+        o.setName("mode")
+          .setDescription("start or stop")
+          .setRequired(true)
+          .addChoices(
+            { name: "Start", value: "start" },
+            { name: "Stop", value: "stop" }
+          )
+      )
+      .addIntegerOption(o => o.setName("online_hour").setDescription("0-23"))
+      .addIntegerOption(o => o.setName("online_minute").setDescription("0-59"))
+      .addIntegerOption(o => o.setName("offline_hour").setDescription("0-23"))
+      .addIntegerOption(o => o.setName("offline_minute").setDescription("0-59")),
+
+    new SlashCommandBuilder()
+      .setName("set_offline")
+      .setDescription("Force user offline"),
+
+    new SlashCommandBuilder()
       .setName("online")
       .setDescription("Set main online"),
 
     new SlashCommandBuilder()
+      .setName("online_sec")
+      .setDescription("Set secondary online"),
+
+    new SlashCommandBuilder()
       .setName("offline")
-      .setDescription("Set offline")
+      .setDescription("Set offline"),
+
+    new SlashCommandBuilder()
+      .setName("list")
+      .setDescription("List users"),
+
+    new SlashCommandBuilder()
+      .setName("online_list")
+      .setDescription("List online users"),
+
+    new SlashCommandBuilder()
+      .setName("gp")
+      .setDescription("Add VIP ID")
+      .addStringOption(o =>
+        o.setName("id").setDescription("16 digit ID").setRequired(true)
+      )
+
   ].map(c => c.toJSON())
 
   await rest.put(
@@ -145,6 +202,7 @@ client.on("interactionCreate", async interaction => {
   if (!group) return interaction.reply("❌ No group")
 
   const config = GROUP_CONFIG[group]
+
   let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
 
   if (commandName === "register") {
@@ -161,11 +219,25 @@ client.on("interactionCreate", async interaction => {
     return interaction.reply("✅ Registered")
   }
 
+  if (commandName === "add_sec") {
+    const id = interaction.options.getString("id")
+
+    if (!users[interaction.user.id])
+      return interaction.reply("❌ Register first")
+
+    users[interaction.user.id].sec_id = id
+
+    await saveUsers(users, config.USERS_GIST_ID, config.USERS_FILENAME)
+
+    return interaction.reply("✅ Secondary added")
+  }
+
   if (commandName === "online") {
     const user = users[interaction.user.id]
     if (!user) return interaction.reply("❌ Register first")
 
     await fetch(`${API_URL}?action=online&id=${user.main_id}&group=${group}`)
+
     return interaction.reply("🟢 Online")
   }
 
@@ -175,6 +247,9 @@ client.on("interactionCreate", async interaction => {
 
     if (user.main_id)
       await fetch(`${API_URL}?action=offline&id=${user.main_id}&group=${group}`)
+
+    if (user.sec_id)
+      await fetch(`${API_URL}?action=offline&id=${user.sec_id}&group=${group}`)
 
     return interaction.reply("🔴 Offline")
   }
