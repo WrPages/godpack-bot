@@ -437,29 +437,22 @@ console.log("🔥 HANDLER READY");
   const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
   try {
-    console.log("🚀 Registrando comandos...");
+    console.log("🚀 Registrando comandos (handler)...");
 
-    const res = await Promise.race([
-      rest.put(
-        Routes.applicationGuildCommands(
-          client.user.id,
-          "1483615153743462571"
-        ),
-        { body: commands }
+    await rest.put(
+      Routes.applicationGuildCommands(
+        client.user.id,
+        "1483615153743462571"
       ),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Timeout al registrar comandos")), 10000)
-      )
-    ]);
+      { body: commands }
+    );
 
-    console.log("✅ RESPUESTA DISCORD:", res);
-    console.log("✅ Comandos registrados correctamente");
+    console.log("✅ Comandos registrados correctamente desde handler");
 
   } catch (error) {
     console.error("❌ ERROR REGISTRANDO:", error);
   }
 });
-
 
 
 
