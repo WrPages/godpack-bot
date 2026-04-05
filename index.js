@@ -223,54 +223,7 @@ client.once("clientReady", async () => {
   updateTotalPPM()
   setInterval(updateTotalPPM, 5 * 60 * 1000)
 
-  const commands = [
-    new SlashCommandBuilder()
-      .setName("register")
-      .setDescription("Register your main ID")
-      .addStringOption(o =>
-        o.setName("id")
-          .setDescription("Your 16 digit ID")
-          .setRequired(true)
-      ),
-
-    new SlashCommandBuilder()
-      .setName("online")
-      .setDescription("Set your account online"),
-
-    new SlashCommandBuilder()
-      .setName("offline")
-      .setDescription("Set your account offline"),
-
-    new SlashCommandBuilder()
-      .setName("gp")
-      .setDescription("Add VIP ID")
-      .addStringOption(o =>
-        o.setName("id")
-          .setDescription("16 digit ID")
-          .setRequired(true)
-      )
-  ]
-
-  // 🔥 DEBUG
-  commands.forEach(cmd => {
-    if (!cmd.description) {
-      console.log("❌ Comando sin descripción:", cmd.name)
-    }
-  })
-
-  const rest = new REST({ version: "10" }).setToken(TOKEN)
-
-  await rest.put(
-    Routes.applicationGuildCommands(
-      process.env.CLIENT_ID,
-      process.env.GUILD_ID
-    ),
-    { body: commands.map(c => c.toJSON()) }
-  )
-
-  console.log("🚀 Commands deployed")
-})
-
+ 
 // ================= INTERACTIONS =================
 client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return
