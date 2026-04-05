@@ -141,72 +141,69 @@ client.once("clientReady", async () => {
 
   console.log("🔥 Registrando comandos...")
 
-  const rawCommands = [
+  const commands = [
 
     new SlashCommandBuilder()
       .setName("register")
       .setDescription("Register your main game ID")
-      .addStringOption(o => 
+      .addStringOption(o =>
         o.setName("id")
          .setDescription("Your 16 digit ID")
          .setRequired(true)
-      ),
+      ).toJSON(),
 
     new SlashCommandBuilder()
       .setName("add_sec")
       .setDescription("Register secondary ID")
-      .addStringOption(o => 
+      .addStringOption(o =>
         o.setName("id")
          .setDescription("Your secondary ID")
          .setRequired(true)
-      ),
+      ).toJSON(),
 
     new SlashCommandBuilder()
       .setName("change")
       .setDescription("Change main ID")
-      .addStringOption(o => 
+      .addStringOption(o =>
         o.setName("id")
          .setDescription("New ID")
          .setRequired(true)
-      ),
+      ).toJSON(),
 
     new SlashCommandBuilder()
       .setName("online")
-      .setDescription("Set your main ID as online"),
+      .setDescription("Set your main ID as online")
+      .toJSON(),
 
     new SlashCommandBuilder()
       .setName("online_sec")
-      .setDescription("Set your secondary ID as online"),
+      .setDescription("Set your secondary ID as online")
+      .toJSON(),
 
     new SlashCommandBuilder()
       .setName("offline")
-      .setDescription("Set your ID as offline"),
+      .setDescription("Set your ID as offline")
+      .toJSON(),
 
     new SlashCommandBuilder()
       .setName("list")
-      .setDescription("Show registered users"),
+      .setDescription("Show registered users")
+      .toJSON(),
 
     new SlashCommandBuilder()
       .setName("online_list")
-      .setDescription("Show online users"),
+      .setDescription("Show online users")
+      .toJSON(),
 
     new SlashCommandBuilder()
       .setName("gp")
       .setDescription("Add VIP ID")
-      .addStringOption(o => 
+      .addStringOption(o =>
         o.setName("id")
          .setDescription("VIP ID")
          .setRequired(true)
-      )
-
+      ).toJSON()
   ]
-
-  // DEBUG
-  rawCommands.forEach(c => {
-    console.log("✔️ CMD:", c.name)
-  })
-
-  const commands = rawCommands.map(c => c.toJSON())
 
   console.log("CLIENT_ID:", process.env.CLIENT_ID)
   console.log("GUILD_ID:", process.env.GUILD_ID)
