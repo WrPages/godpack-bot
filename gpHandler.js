@@ -498,11 +498,10 @@ await sentMessage.edit({
 
     // ===== CREAR HILO =====
     try {
-    const thread = await message.channel.threads.create({
+const thread = await sentMessage.startThread({
   name: `[${rarity}/5][${packNumber}P] ${username} ${friendId}`,
   autoArchiveDuration: 1440,
-  type: ChannelType.PublicThread,
-  reason: "GP Thread"
+  type: ChannelType.PublicThread
 });
 
       // Menciones online
@@ -533,7 +532,7 @@ await sentMessage.edit({
         allowedMentions: { parse: [] }
       });
       
-      // ===== BOTONES EN EL HILO =====
+// ===== BOTONES EN EL HILO =====
 const threadButtons = new ActionRowBuilder().addComponents(
   new ButtonBuilder()
     .setCustomId("gp_alive")
@@ -547,7 +546,7 @@ const threadButtons = new ActionRowBuilder().addComponents(
 );
 
 await thread.send({
-  content: "🗳️ Vote this GP here:",
+
   components: [threadButtons]
 });
 
