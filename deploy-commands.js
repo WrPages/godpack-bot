@@ -94,33 +94,60 @@ const commands = [
 
 ].map(cmd => cmd.toJSON())
 
-// 🔥 DEBUG DE COMANDOS
+// ================= DEBUG COMMANDS =================
+console.log("🔍 Validando comandos...")
+
 commands.forEach(cmd => {
-  if (!cmd.description) {
-    console.log("❌ Comando sin descripción:", cmd.name)
+  if (!cmd.name) console.log("❌ Comando sin nombre")
+  if (!cmd.description) console.log("❌ Comando sin descripción:", cmd.name)
+
+  if (cmd.options) {
+    cmd.options.forEach(opt => {
+      if (!opt.description) {
+        console.log(`❌ Opción sin descripción en comando ${cmd.name}:`, opt.name)
+      }
+    })
   }
 })
 
+console.log(`📦 Total comandos: ${commands.length}`)
+
+// ================= REST =================
 const rest = new REST({ version: "10" }).setToken(process.env.TOKEN)
 
+// ================= DEPLOY =================
 ;(async () => {
   try {
     console.log("🚀 Registrando comandos...")
 
     // 🔎 DEBUG ENV
-    if (!process.env.TOKEN) {
-      throw new Error("TOKEN no definido")
-    }
-    if (!process.env.CLIENT_ID) {
-      throw new Error("CLIENT_ID no definido")
-    }
-    if (!process.env.GUILD_ID) {
-      throw new Error("GUILD_ID no definido")
-    }
+    console.log("TOKEN:", process.env.TOKEN ? "OK" : "❌ MISSING")
+    console.log("CLIENT_ID:", process.env.CLIENT_ID)
+    console.log("GUILD_ID:", process.env.GUILD_ID)
 
-    console.log("📡 Enviando request a Discord...")
+    if (!process.env.TOKEN) throw new Error("TOKEN no definido")
+    if (!process.env.CLIENT_ID) throw new Error("CLIENT_ID no definido")
+    if (!process.env.GUILD_ID) throw new Error("GUILD_ID no definido")
+
+    console.log("🧹 Borrando comandos antiguos...")
 
     await rest.put(
+      Routes.applicationGuildCommands(
+        process.env.CLIENT_ID,
+        process.env.GUILD_ID
+      ),
+      { body: [] }
+    )
+
+    console.log("✅ Comandos antiguos eliminados")
+    console.log("📡 Enviando request a Discord...")
+
+    // ⏱️ TIMEOUT PROTECTOR
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("⏰ Timeout Discord API")), 15000)
+    )
+
+    const request = rest.put(
       Routes.applicationGuildCommands(
         process.env.CLIENT_ID,
         process.env.GUILD_ID
@@ -128,11 +155,15 @@ const rest = new REST({ version: "10" }).setToken(process.env.TOKEN)
       { body: commands }
     )
 
+    const res = await Promise.race([request, timeout])
+
+    console.log("✅ RESPUESTA DE DISCORD:", res?.length || "OK")
     console.log("✅ Comandos registrados correctamente")
+
     process.exit(0)
 
   } catch (error) {
-    console.error("❌ Error registrando comandos:", error)
+    console.error("❌ ERROR COMPLETO:", error)
     process.exit(1)
   }
 })()
