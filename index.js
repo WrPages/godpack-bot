@@ -169,25 +169,25 @@ client.once("clientReady", async () => {
          .setRequired(true)
       ),
 
-    new SlashCommandBuilder()
-      .setName("online")
-      .setDescription("Set your main account online"),
+ new SlashCommandBuilder()
+  .setName("online")
+  .setDescription("Set your main ID as online"),
 
-    new SlashCommandBuilder()
-      .setName("online_sec")
-      .setDescription("Set your secondary account online"),
+new SlashCommandBuilder()
+  .setName("online_sec")
+  .setDescription("Set your secondary ID as online"),
 
-    new SlashCommandBuilder()
-      .setName("offline")
-      .setDescription("Set your accounts offline"),
+new SlashCommandBuilder()
+  .setName("offline")
+  .setDescription("Set your ID as offline"),
 
-    new SlashCommandBuilder()
-      .setName("list")
-      .setDescription("List registered users"),
+new SlashCommandBuilder()
+  .setName("list")
+  .setDescription("Show registered users"),
 
-    new SlashCommandBuilder()
-      .setName("online_list")
-      .setDescription("List online users"),
+new SlashCommandBuilder()
+  .setName("online_list")
+  .setDescription("Show online users"),
 
     new SlashCommandBuilder()
       .setName("gp")
