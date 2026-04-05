@@ -682,8 +682,8 @@ if (interaction.isButton()) {
     if (!mainMessage.hasThread) return;
 
     const thread = mainMessage.thread;
-
     const messages = await thread.messages.fetch({ limit: 10 });
+
     threadMessage = messages.find(m => m.content.includes(`PANEL_ID:${mainMessage.id}`));
   }
 
@@ -700,29 +700,20 @@ if (interaction.isButton()) {
 
   if (interaction.customId === "gp_alive") aliveCount++;
   if (interaction.customId === "gp_dead") deadCount++;
-  // ===== Enviar quién votó SOLO al hilo =====
 
-let voteText = interaction.customId === "gp_alive" ? "🟢 Alive" : "🔴 Dead";
+  // ===== ENVIAR QUIÉN VOTÓ SOLO AL HILO =====
+  const voteText = interaction.customId === "gp_alive" ? "🟢 Alive" : "🔴 Dead";
 
-if (interaction.channel.isThread()) {
-
-  // Si ya estamos en hilo
-  await interaction.channel.send(
-    `**${interaction.user.username}** votó ${voteText}`
-  ).catch(() => {});
-
-} else if (mainMessage.hasThread) {
-
-  // Si estamos en el embed principal
-  await mainMessage.thread.send(
-    `**${interaction.user.username}** vote ${voteText}`
-  ).catch(() => {});
-
-}
+  if (threadMessage) {
+    await threadMessage.channel.send({
+      content: `🗳️ **${interaction.user.username}** votó ${voteText}`,
+      allowedMentions: { parse: [] }
+    }).catch(() => {});
+  }
 
   let status = null;
 
-  if (aliveCount >= 1 ) status = "alive";
+  if (aliveCount >= 1) status = "alive";
   if (deadCount >= 4) status = "dead";
 
   const newEmbed = EmbedBuilder.from(embed)
@@ -735,12 +726,12 @@ if (interaction.channel.isThread()) {
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("gp_alive")
-        .setLabel(`Alive (${aliveCount})`)
+        .setLabel(`🟢 Alive (${aliveCount})`)
         .setStyle(ButtonStyle.Success),
 
       new ButtonBuilder()
         .setCustomId("gp_dead")
-        .setLabel(`Dead (${deadCount})`)
+        .setLabel(`🔴 Dead (${deadCount})`)
         .setStyle(ButtonStyle.Danger),
 
       new ButtonBuilder()
@@ -753,7 +744,7 @@ if (interaction.channel.isThread()) {
 
   }
 
-  // 🔥 ACTUALIZAR AMBOS MENSAJES
+  // ===== ACTUALIZAR AMBOS MENSAJES =====
   await mainMessage.edit({
     embeds: [newEmbed],
     components
@@ -766,34 +757,20 @@ if (interaction.channel.isThread()) {
     }).catch(() => {});
   }
 
+  // ===== CAMBIAR NOMBRE DEL HILO =====
+  if (status) {
+
+    const desc = embed.description || "";
+    const rarity = (desc.match(/(\d)\/5/) || [])[1] || 0;
+    const pack = (desc.match(/• (\d+)P/) || [])[1] || 0;
+    const user = (desc.match(/\*\*(.*?)\*\*/) || [])[1] || "Unknown";
+
+    await updateThreadName(mainMessage, status, rarity, pack, user, "ID");
+  }
+
 }
 
-  // ===== LEER FOOTER =====
-  let footer = embed.footer?.text || "VOTES:alive=|dead=";
 
-  // Extraer usuarios que ya votaron
-  let aliveUsers = [];
-  let deadUsers = [];
-
-  const matchAlive = footer.match(/alive=([^|]*)/);
-  const matchDead = footer.match(/dead=(.*)/);
-
-  if (matchAlive && matchAlive[1]) {
-    aliveUsers = matchAlive[1].split(",").map(u => u.trim()).filter(Boolean);
-  }
-
-  if (matchDead && matchDead[1]) {
-    deadUsers = matchDead[1].split(",").map(u => u.trim()).filter(Boolean);
-  }
-
-  const userId = interaction.user.id;
-
-  // 🚫 BLOQUEAR SI YA VOTÓ
-const votedUsers = message.votedUsers || [];
-if (votedUsers.includes(userId)) {
-  return interaction.reply({
-    content: "⚠️ You already voted for this GP.",
-    ephemeral: true
   });
 }
 
