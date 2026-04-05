@@ -78,9 +78,7 @@ async function getUsers(gistId, fileName) {
     })
 
     const data = await res.json()
-
     return JSON.parse(data.files[fileName]?.content || "{}")
-
   } catch (err) {
     console.error("Error loading users:", err)
     return {}
@@ -135,11 +133,13 @@ async function addVipID(id) {
 }
 
 // ===== READY =====
-client.once("ready", async () => {
+client.once("clientReady", async () => {
   console.log(`✅ Bot listo como ${client.user.tag}`)
 
   const { REST, Routes, SlashCommandBuilder } = require("discord.js")
   const rest = new REST({ version: "10" }).setToken(TOKEN)
+
+  console.log("🔥 Registrando comandos...")
 
   const commands = [
     new SlashCommandBuilder()
