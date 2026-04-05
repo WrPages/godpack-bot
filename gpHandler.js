@@ -772,7 +772,4 @@ if (interaction.isButton()) {
 
 
   });
-}
 
-
-};
