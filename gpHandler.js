@@ -498,11 +498,12 @@ await sentMessage.edit({
 
     // ===== CREAR HILO =====
     try {
-      const thread = await sentMessage.startThread({
-        name: `[${rarity}/5][${packNumber}P] [${username}P] [${friendId}P]`,
-        autoArchiveDuration: 1440,
-        type: ChannelType.PublicThread
-      });
+     const thread = await message.channel.threads.create({
+  name: `[${rarity}/5][${packNumber}P] ${username} ${friendId}`,
+  autoArchiveDuration: 1440,
+  type: ChannelType.PublicThread,
+  reason: "GP Thread"
+});
 
       // Menciones online
       const onlineIDs = await getOnlineIDs();
@@ -531,6 +532,24 @@ await sentMessage.edit({
         files: message.attachments.map(att => att.url),
         allowedMentions: { parse: [] }
       });
+      
+      // ===== BOTONES EN EL HILO =====
+const threadButtons = new ActionRowBuilder().addComponents(
+  new ButtonBuilder()
+    .setCustomId("gp_alive")
+    .setLabel("🟢 Alive (0)")
+    .setStyle(ButtonStyle.Success),
+
+  new ButtonBuilder()
+    .setCustomId("gp_dead")
+    .setLabel("🔴 Dead (0)")
+    .setStyle(ButtonStyle.Danger)
+);
+
+await thread.send({
+  content: "🗳️ Vote this GP here:",
+  components: [threadButtons]
+});
 
       await message.delete().catch(() => {});
     } catch (err) {
@@ -645,18 +664,39 @@ await message.edit({
 }
 
 // =========================
-// 3️⃣ BOTONES ALIVE / DEAD
+// 3️⃣ BOTONES ALIVE / DEAD (SINCRONIZADO EMBED + HILO)
 // =========================
 if (interaction.isButton()) {
+
   if (interaction.customId !== "gp_alive" && interaction.customId !== "gp_dead") return;
 
-  const message = interaction.message;
-  const embed = message.embeds[0];
+  let message = interaction.message;
+  let mainMessage = message;
+
+  // 🔥 Si el botón fue presionado dentro de un hilo
+  if (message.channel.isThread()) {
+
+    const parentChannel = message.channel.parent;
+
+    const messages = await parentChannel.messages.fetch({ limit: 20 });
+
+    const embedMessage = messages.find(m =>
+      m.embeds?.length &&
+      m.components?.[0]?.components?.some(b =>
+        b.customId === "gp_alive" || b.customId === "gp_dead"
+      )
+    );
+
+    if (embedMessage) {
+      mainMessage = embedMessage;
+    }
+  }
+
+  const embed = mainMessage.embeds[0];
 
   // ===== LEER FOOTER =====
   let footer = embed.footer?.text || "VOTES:alive=|dead=";
 
-  // Extraer usuarios que ya votaron
   let aliveUsers = [];
   let deadUsers = [];
 
@@ -674,174 +714,128 @@ if (interaction.isButton()) {
   const userId = interaction.user.id;
 
   // 🚫 BLOQUEAR SI YA VOTÓ
-const votedUsers = message.votedUsers || [];
-if (votedUsers.includes(userId)) {
-  return interaction.reply({
-    content: "⚠️ You already voted for this GP.",
-    ephemeral: true
-  });
-}
+  const votedUsers = mainMessage.votedUsers || [];
 
-// Registrar voto en memoria temporal del mensaje
-message.votedUsers = votedUsers.concat(userId);
+  if (votedUsers.includes(userId)) {
+    return interaction.reply({
+      content: "⚠️ You already voted for this GP.",
+      ephemeral: true
+    });
+  }
+
+  mainMessage.votedUsers = votedUsers.concat(userId);
 
   await interaction.deferUpdate();
 
   // ===== CONTADORES =====
-  const row = message.components[0];
-  const buttons = row.components;
-
-  let aliveCount = 0;
-  let deadCount = 0;
-
-  const aliveBtn = buttons.find(b => b.customId === "gp_alive");
-  const deadBtn = buttons.find(b => b.customId === "gp_dead");
-
-  if (aliveBtn) {
-    const m = aliveBtn.label.match(/\((\d+)\)/);
-    if (m) aliveCount = parseInt(m[1]);
-  }
-
-  if (deadBtn) {
-    const m = deadBtn.label.match(/\((\d+)\)/);
-    if (m) deadCount = parseInt(m[1]);
-  }
+  let aliveCount = aliveUsers.length;
+  let deadCount = deadUsers.length;
 
   // ===== VOTO =====
   if (interaction.customId === "gp_alive") {
     aliveCount++;
     aliveUsers.push(userId);
-  } else if (interaction.customId === "gp_dead") {
-    deadCount++;
-    deadUsers.push(userId);
   }
 
-  // ===== ENVIAR LOG AL HILO =====
-  try {
-    const thread = message.thread;
-    if (thread) {
-      await thread.send({
-        content: `🗳️ ${interaction.user.username} votó **${interaction.customId === "gp_alive" ? "Alive" : "Dead"}**`,
-        allowedMentions: { parse: [] }
-      });
-    }
-  } catch (err) {
-    console.error("THREAD LOG ERROR:", err);
+  if (interaction.customId === "gp_dead") {
+    deadCount++;
+    deadUsers.push(userId);
   }
 
   // ===== GUARDAR FOOTER =====
   const newFooter = `VOTES:alive=${aliveUsers.join(",")}|dead=${deadUsers.join(",")}`;
   const newEmbed = EmbedBuilder.from(embed).setFooter({ text: newFooter });
 
-  // ===== BOTONES ACTUALIZADOS =====
-// ===== BOTONES ACTUALIZADOS =====
-const newRow = new ActionRowBuilder();
+  // ===== ESTADO FINAL =====
+  let status = null;
 
-// Mostrar Alive solo si no alcanzó el límite
-if (aliveCount < 2) {
-  newRow.addComponents(
-    new ButtonBuilder()
-      .setCustomId("gp_alive")
-      .setLabel(`🟢 Alive (${aliveCount})`)
-      .setStyle(ButtonStyle.Success)
-  );
-}
+  if (aliveCount >= 1) status = "alive";
+  if (deadCount >= 4) status = "dead";
 
-// Mostrar Dead solo si no alcanzó el límite
-if (deadCount < 4) {
-  newRow.addComponents(
-    new ButtonBuilder()
-      .setCustomId("gp_dead")
-      .setLabel(`🔴 Dead (${deadCount})`)
-      .setStyle(ButtonStyle.Danger)
-  );
-}
+  // ===== SUMAR ALIVE AL GIST =====
+  if (status === "alive" && !mainMessage.aliveCounted) {
+    mainMessage.aliveCounted = true;
 
-// Agregar botón Edit
-newRow.addComponents(
-  new ButtonBuilder()
-    .setCustomId(`edit_panel_${message.id}`)
-    .setEmoji("✏️")
-    .setStyle(ButtonStyle.Secondary)
-);
+    await loadLiveStats();
+    liveStats.totalAlive += 1;
+    liveStats.daily.alive += 1;
+    await saveLiveStats();
+  }
 
-  // ===== ACTUALIZAR MENSAJE =====
-  await message.edit({
-    //embeds: [newEmbed],
-    components: [newRow]
+  // ===== CONSTRUIR BOTONES =====
+  let components = [];
+
+  if (status) {
+    // 🔒 Solo botón Edit
+    components = [
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`edit_panel_${mainMessage.id}`)
+          .setEmoji("✏️")
+          .setStyle(ButtonStyle.Secondary)
+      )
+    ];
+  } else {
+    components = [
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("gp_alive")
+          .setLabel(`🟢 Alive (${aliveCount})`)
+          .setStyle(ButtonStyle.Success),
+
+        new ButtonBuilder()
+          .setCustomId("gp_dead")
+          .setLabel(`🔴 Dead (${deadCount})`)
+          .setStyle(ButtonStyle.Danger),
+
+        new ButtonBuilder()
+          .setCustomId(`edit_panel_${mainMessage.id}`)
+          .setEmoji("✏️")
+          .setStyle(ButtonStyle.Secondary)
+      )
+    ];
+  }
+
+  // ===== ACTUALIZAR EMBED PRINCIPAL =====
+  await mainMessage.edit({
+    embeds: [newEmbed],
+    components: components
   });
 
- // ===== ESTADO FINAL =====
-// ===== ESTADO FINAL =====
-let status = null;
+  // ===== SINCRONIZAR BOTONES EN EL HILO =====
+  try {
+    const thread = mainMessage.thread;
 
-if (aliveCount >= 1) status = "alive"; // 🔥 cambio a 1
-if (deadCount >= 4) status = "dead";
+    if (thread) {
+      const threadMessages = await thread.messages.fetch({ limit: 20 });
 
-// ===== SUMAR ALIVE AL GIST =====
-if (status === "alive" && !message.aliveCounted) {
-  message.aliveCounted = true; // evitar duplicados
+      const voteMsg = threadMessages.find(m =>
+        m.components?.[0]?.components?.some(b =>
+          b.customId === "gp_alive" || b.customId === "gp_dead"
+        )
+      );
 
-  await loadLiveStats(); // siempre recargar antes
+      if (voteMsg) {
+        await voteMsg.edit({
+          components: components
+        });
+      }
+    }
+  } catch (err) {
+    console.error("THREAD SYNC ERROR:", err);
+  }
 
-  liveStats.totalAlive += 1; // 🔥 importante (lo tenías comentado)
-  liveStats.daily.alive += 1;
+  // ===== ACTUALIZAR NOMBRE DEL HILO SI TERMINA =====
+  if (status) {
+    const desc = embed.description || "";
+    const rarity = (desc.match(/(\d)\/5/) || [])[1] || 0;
+    const pack = (desc.match(/• (\d+)P/) || [])[1] || 0;
+    const user = (desc.match(/\*\*(.*?)\*\*/) || [])[1] || "Unknown";
 
-  await saveLiveStats();
-}
+    await updateThreadName(mainMessage, status, rarity, pack, user, "ID");
+  }
 
-// ===== BOTONES =====
-let components = [];
-
-if (status) {
-  // 🔒 SOLO EDIT (sin Alive/Dead)
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`edit_panel_${message.id}`)
-      .setEmoji("✏️")
-      .setStyle(ButtonStyle.Secondary)
-  );
-
-  components = [row];
-
-} else {
-  // 🟢 AÚN ACTIVO
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("gp_alive")
-      .setLabel(`🟢 Alive (${aliveCount})`)
-      .setStyle(ButtonStyle.Success),
-
-    new ButtonBuilder()
-      .setCustomId("gp_dead")
-      .setLabel(`🔴 Dead (${deadCount})`)
-      .setStyle(ButtonStyle.Danger),
-
-    new ButtonBuilder()
-      .setCustomId(`edit_panel_${message.id}`)
-      .setEmoji("✏️")
-      .setStyle(ButtonStyle.Secondary)
-  );
-
-  components = [row];
-}
-
-// ===== ACTUALIZAR MENSAJE =====
-await message.edit({
-  components: components
-});
-
-// ===== ACTUALIZAR THREAD NAME SI SE ALCANZA STATUS =====
-if (status) {
-  const desc = embed.description || "";
-  const rarity = (desc.match(/(\d)\/5/) || [])[1] || 0;
-  const pack = (desc.match(/• (\d+)P/) || [])[1] || 0;
-  const user = (desc.match(/\*\*(.*?)\*\*/) || [])[1] || "Unknown";
-
-  await updateThreadName(message, status, rarity, pack, user, "ID");
-}
-
-return;
+  return;
 }
 
 // 👇 cierre del interactionCreate
