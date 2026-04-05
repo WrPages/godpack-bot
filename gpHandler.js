@@ -496,7 +496,7 @@ await sentMessage.edit({
 });
     
 
- // ===== CREAR HILO =====
+  // ===== CREAR HILO CON BOTONES =====
 try {
   const thread = await sentMessage.startThread({
     name: `[${rarity}/5][${packNumber}P] [${username}P] [${friendId}P]`,
@@ -525,6 +525,7 @@ try {
     });
   }
 
+  // Mensajes dentro del hilo
   await thread.send("📂 Original webhook message:");
   await thread.send({
     content: message.content,
@@ -532,7 +533,7 @@ try {
     allowedMentions: { parse: [] }
   });
 
-  // ===== AÑADIR BOTONES AL HILO =====
+  // ===== AGREGAR BOTONES AL HILO =====
   const threadButtons = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("gp_alive")
@@ -548,16 +549,19 @@ try {
       .setStyle(ButtonStyle.Secondary)
   );
 
+  // Enviar un mensaje inicial en el hilo con botones
   await thread.send({
-    content: "🗳️ Vote using the buttons below:",
+    content: "🗳️ Vota tu estado:",
     components: [threadButtons]
   });
 
+  // Eliminar mensaje webhook original
   await message.delete().catch(() => {});
+
 } catch (err) {
   console.error("THREAD ERROR:", err);
 }
-//});
+});
 
 
 
