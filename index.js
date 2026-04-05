@@ -13,6 +13,7 @@ const {
 const fetch = require("node-fetch")
 const fs = require("fs")
 
+// ================= CLIENT =================
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -22,10 +23,18 @@ const client = new Client({
   ]
 })
 
+// ================= ENV =================
 const TOKEN = process.env.TOKEN
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
+
+if (!TOKEN) {
+  console.error("❌ TOKEN no definido en environment variables")
+  process.exit(1)
+}
+
 const API_URL = "https://add-ids.netlify.app/.netlify/functions/api"
 
+// ================= IDS =================
 const HEARTBEAT_CHANNEL_ID = "1483616146996465735"
 const TOTAL_CHANNEL_ID = "1484416376436424794"
 
@@ -95,6 +104,7 @@ async function saveUsers(users, gistId, fileName) {
 // ================= VIP =================
 async function addVipID(id) {
   const gistId = process.env.VIP_GIST_ID
+  if (!gistId) return
 
   const res = await fetch(`https://api.github.com/gists/${gistId}`)
   const data = await res.json()
@@ -206,7 +216,7 @@ async function updateTotalPPM() {
 }
 
 // ================= READY =================
-client.once("ready", async () => {
+client.once("clientReady", async () => {
   console.log(`✅ Bot listo como ${client.user.tag}`)
 
   startDailyScheduler()
@@ -216,22 +226,37 @@ client.once("ready", async () => {
   const commands = [
     new SlashCommandBuilder()
       .setName("register")
-      .setDescription("Register ID")
-      .addStringOption(o => o.setName("id").setRequired(true)),
+      .setDescription("Register your main ID")
+      .addStringOption(o =>
+        o.setName("id")
+          .setDescription("Your 16 digit ID")
+          .setRequired(true)
+      ),
 
     new SlashCommandBuilder()
       .setName("online")
-      .setDescription("Set online"),
+      .setDescription("Set your account online"),
 
     new SlashCommandBuilder()
       .setName("offline")
-      .setDescription("Set offline"),
+      .setDescription("Set your account offline"),
 
     new SlashCommandBuilder()
       .setName("gp")
       .setDescription("Add VIP ID")
-      .addStringOption(o => o.setName("id").setRequired(true))
-  ].map(c => c.toJSON())
+      .addStringOption(o =>
+        o.setName("id")
+          .setDescription("16 digit ID")
+          .setRequired(true)
+      )
+  ]
+
+  // 🔥 DEBUG
+  commands.forEach(cmd => {
+    if (!cmd.description) {
+      console.log("❌ Comando sin descripción:", cmd.name)
+    }
+  })
 
   const rest = new REST({ version: "10" }).setToken(TOKEN)
 
@@ -240,7 +265,7 @@ client.once("ready", async () => {
       process.env.CLIENT_ID,
       process.env.GUILD_ID
     ),
-    { body: commands }
+    { body: commands.map(c => c.toJSON()) }
   )
 
   console.log("🚀 Commands deployed")
