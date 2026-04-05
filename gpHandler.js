@@ -840,19 +840,28 @@ else if (deadUsers.length >= 4) {
 // ===== SUMAR ALIVE AL GIST =====
 // ===== SUMAR ALIVE AL GIST =====
 // ===== SUMAR ALIVE AL GIST (PROTEGIDO) =====
-if (status === "alive" && !message.aliveCounted) {
+if (status === "alive") {
 
-  message.aliveCounted = true; // evitar duplicados
+  const embed = message.embeds[0];
+  const alreadyCounted = embed?.footer?.text?.includes("ALIVE_COUNTED");
 
-  await loadLiveStats(); // 🔥 siempre recargar antes
-  await checkDailyReset();
+  if (!alreadyCounted) {
 
-  liveStats.totalAlive += 1;
-  liveStats.daily.alive += 1;
+    await loadLiveStats();
+    await checkDailyReset();
 
-  await saveLiveStats();
+    liveStats.totalAlive += 1;
+    liveStats.daily.alive += 1;
+
+    await saveLiveStats();
+
+    const updatedEmbed = EmbedBuilder.from(embed)
+      .setFooter({ text: (embed.footer?.text || "") + " | ALIVE_COUNTED" });
+
+    await message.edit({ embeds: [updatedEmbed], components });
+  }
 }
-
+  
 // ===== BOTONES =====
 let components = [];
 
