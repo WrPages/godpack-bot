@@ -9,7 +9,7 @@ const {
   ButtonBuilder,
   ButtonStyle
 } = require("discord.js")
-require("./handler")(client);
+
 const fetch = require("node-fetch")
 const fs = require("fs")
 
