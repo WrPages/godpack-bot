@@ -1,7 +1,14 @@
+const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } = require("discord.js")
+
+// ✅ CREAR CLIENTE PRIMERO
+const client = new Client({
+  intents: [GatewayIntentBits.Guilds]
+})
+
+// ================= READY =================
+
 client.on("ready", async () => {
   console.log("🔥 BOT FUNCIONA")
-
-  const { REST, Routes, SlashCommandBuilder } = require("discord.js")
 
   const commands = [
     new SlashCommandBuilder()
@@ -24,3 +31,23 @@ client.on("ready", async () => {
 
   console.log("✅ COMANDOS SUBIDOS")
 })
+
+// ================= INTERACTION =================
+
+client.on("interactionCreate", async interaction => {
+  console.log("📩 INTERACTION DETECTADA")
+
+  if (!interaction.isChatInputCommand()) return
+
+  if (interaction.commandName === "online") {
+    return interaction.reply("🟢 FUNCIONA")
+  }
+
+  if (interaction.commandName === "offline") {
+    return interaction.reply("🔴 FUNCIONA")
+  }
+})
+
+// ================= LOGIN =================
+
+client.login(process.env.TOKEN)
