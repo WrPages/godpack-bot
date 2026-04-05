@@ -655,24 +655,27 @@ client.on("interactionCreate", async (interaction) => {
     }
 
     // ===== GUARDAR LIVE STATS EN GIST =====
-    await loadLiveStats();
+   // ===== GUARDAR LIVE STATS EN GIST =====
+await loadLiveStats();
 
-    // Crear arrays si no existen
-    if (!mainMessage.aliveCounted) mainMessage.aliveCounted = false;
-    if (!mainMessage.deadCounted) mainMessage.deadCounted = false;
+// Inicializar contadores si no existen
+if (mainMessage.aliveCounted === undefined) mainMessage.aliveCounted = 0;
+if (mainMessage.deadCounted === undefined) mainMessage.deadCounted = 0;
 
-    if (aliveCount >= 1 && !mainMessage.aliveCounted) {
-      mainMessage.aliveCounted = true;
-      liveStats.totalAlive += 1;
-      liveStats.daily.alive += 1;
-    }
+// ✅ SUMA, NO RESTA NUNCA
+if (interaction.customId === "gp_alive") {
+  mainMessage.aliveCounted += 1;
+  liveStats.totalAlive += 1;
+  liveStats.daily.alive += 1;
+}
 
-    if (deadCount >= 4 && !mainMessage.deadCounted) {
-      mainMessage.deadCounted = true;
-      liveStats.totalDead = (liveStats.totalDead || 0) + 1;
-    }
+if (interaction.customId === "gp_dead") {
+  mainMessage.deadCounted += 1;
+  liveStats.totalDead = (liveStats.totalDead || 0) + 1;
+}
 
-    await saveLiveStats();
+// Guardar cambios en Gist
+await saveLiveStats();
   }
 });
 };
