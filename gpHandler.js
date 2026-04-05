@@ -503,22 +503,17 @@ await sentMessage.edit({
         autoArchiveDuration: 1440,
         type: ChannelType.PublicThread
       });
-      // ===== BOTONES DE ACCESO DESDE EL HILO =====
-const jumpRow = new ActionRowBuilder().addComponents(
+// ===== BOTÓN DE ACCESO AL VOTO =====
+const voteAccessRow = new ActionRowBuilder().addComponents(
   new ButtonBuilder()
-    .setLabel("🟢 Vote Alive")
-    .setStyle(ButtonStyle.Link)
-    .setURL(`https://discord.com/channels/${message.guild.id}/${message.channel.id}/${sentMessage.id}`),
-
-  new ButtonBuilder()
-    .setLabel("🔴 Vote Dead")
+    .setLabel("🗳️ Vote Alive or Dead")
     .setStyle(ButtonStyle.Link)
     .setURL(`https://discord.com/channels/${message.guild.id}/${message.channel.id}/${sentMessage.id}`)
 );
 
 await thread.send({
-  content: "🗳️ Vote here:",
-  components: [jumpRow]
+  content: "Click below to vote:",
+  components: [voteAccessRow]
 });
 
       // Menciones online
