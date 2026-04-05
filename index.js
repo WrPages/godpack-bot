@@ -223,7 +223,7 @@ client.once("clientReady", async () => {
   updateTotalPPM()
   setInterval(updateTotalPPM, 5 * 60 * 1000)
 
- 
+});
 // ================= INTERACTIONS =================
 client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return
