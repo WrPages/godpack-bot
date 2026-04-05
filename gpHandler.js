@@ -503,16 +503,27 @@ await sentMessage.edit({
         autoArchiveDuration: 1440,
         type: ChannelType.PublicThread
       });
-// ===== BOTÓN DE ACCESO AL VOTO =====
+// ===== ACCESO VISTOSO AL VOTO =====
+const voteEmbed = new EmbedBuilder()
+  .setColor(0xFFD700) // dorado llamativo
+  .setTitle("🗳️ VOTING OPEN")
+  .setDescription(
+    "### ✨ Cast your vote now ✨\n\n" +
+    "Click the button below to vote **Alive** or **Dead**.\n\n" +
+    "⚠️ Voting affects the final GP status."
+  )
+  .setFooter({ text: "GP Voting System" })
+  .setTimestamp();
+
 const voteAccessRow = new ActionRowBuilder().addComponents(
   new ButtonBuilder()
-    .setLabel("🗳️ Vote Alive or Dead")
+    .setLabel("🚀 VOTE ALIVE OR DEAD")
     .setStyle(ButtonStyle.Link)
     .setURL(`https://discord.com/channels/${message.guild.id}/${message.channel.id}/${sentMessage.id}`)
 );
 
 await thread.send({
-  content: "Click below to vote:",
+  embeds: [voteEmbed],
   components: [voteAccessRow]
 });
 
