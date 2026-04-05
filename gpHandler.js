@@ -434,52 +434,29 @@ client.once("clientReady", async () => {
       .setDescription("Force a user offline")
 
   ].map(cmd => cmd.toJSON());
-console.log("Commands:", commands.length);
-console.log("First command:", commands[0]);
-  const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
-  try {
-    console.log("🚀 Registrando TODOS los comandos...");
-
-    const controller = new AbortController();
-const timeout = setTimeout(() => controller.abort(), 10000); // 10s
-
-try {
- await rest.put(
-  Routes.applicationCommands(client.user.id),
-  { body: commands }
-);
-
-  console.log("✅ TODOS los comandos registrados");
-} catch (err) {
-  console.error("❌ ERROR REAL:", err);
-} finally {
-  clearTimeout(timeout);
-}
-
-    console.log("✅ TODOS los comandos registrados");
-  } catch (error) {
-    console.error("❌ Error registrando comandos:", error);
-  }
-});
+  console.log("Commands:", commands.length);
+  console.log("First command:", commands[0]);
 
   const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
   try {
-    console.log("Registrando /editpanel...");
+    console.log("🚀 Registrando comandos...");
 
     await rest.put(
       Routes.applicationGuildCommands(
         client.user.id,
-        "1483615153743462571" // TU SERVER ID
+        "1483615153743462571" // TU GUILD ID
       ),
       { body: commands }
     );
 
-    console.log("✅ /editpanel registrado");
+    console.log("✅ Comandos registrados correctamente");
+
   } catch (error) {
-    console.error("❌ Error registrando comando:", error);
+    console.error("❌ Error registrando comandos:", error);
   }
+
 });
 
 
