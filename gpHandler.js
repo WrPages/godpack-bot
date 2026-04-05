@@ -501,11 +501,13 @@ await sentMessage.edit({
 
     // ===== CREAR HILO =====
     try {
+      
 const thread = await message.channel.threads.create({
   name: `[${rarity}/5][${packNumber}P] ${username} ${friendId}`,
   autoArchiveDuration: 1440,
   type: ChannelType.PublicThread
 });
+      panelMapping[sentMessage.id] = thread.id;
 const threadMessage = await thread.send({
   content: `PANEL_ID:${sentMessage.id}`,
   embeds: [embed],
@@ -551,7 +553,7 @@ const threadMessage = await thread.send({
   }
 });
 // Guardamos la relación mensaje principal → hilo
-panelMapping[sentMessage.id] = thread.id;
+//panelMapping[sentMessage.id] = thread.id;
 
 
 client.on("interactionCreate", async (interaction) => {
