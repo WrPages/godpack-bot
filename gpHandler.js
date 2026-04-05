@@ -498,11 +498,12 @@ await sentMessage.edit({
 
     // ===== CREAR HILO =====
     try {
-      const thread = await sentMessage.startThread({
-        name: `[${rarity}/5][${packNumber}P] [${username}P] [${friendId}P]`,
-        autoArchiveDuration: 1440,
-        type: ChannelType.PublicThread
-      });
+    const thread = await message.channel.threads.create({
+  name: `[${rarity}/5][${packNumber}P] ${username} ${friendId}`,
+  autoArchiveDuration: 1440,
+  type: ChannelType.PublicThread,
+  reason: "GP Thread"
+});
 
       // Menciones online
       const onlineIDs = await getOnlineIDs();
@@ -531,6 +532,24 @@ await sentMessage.edit({
         files: message.attachments.map(att => att.url),
         allowedMentions: { parse: [] }
       });
+      
+      // ===== BOTONES EN EL HILO =====
+const threadButtons = new ActionRowBuilder().addComponents(
+  new ButtonBuilder()
+    .setCustomId("gp_alive")
+    .setLabel("🟢 Alive (0)")
+    .setStyle(ButtonStyle.Success),
+
+  new ButtonBuilder()
+    .setCustomId("gp_dead")
+    .setLabel("🔴 Dead (0)")
+    .setStyle(ButtonStyle.Danger)
+);
+
+await thread.send({
+  content: "🗳️ Vote this GP here:",
+  components: [threadButtons]
+});
 
       await message.delete().catch(() => {});
     } catch (err) {
