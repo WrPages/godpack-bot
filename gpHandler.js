@@ -841,70 +841,40 @@ newRow.addComponents(
 );
 
   // ===== ACTUALIZAR MENSAJE =====
-  await message.edit({
-    //embeds: [newEmbed],
-    components: [newRow]
-  });
-
- // ===== ESTADO FINAL =====
-// ===== ESTADO FINAL =====
-let status = null;
-
-if (aliveCount >= 1) status = "alive"; // 🔥 cambio a 1
-if (deadCount >= 4) status = "dead";
-
-// ===== SUMAR ALIVE AL GIST =====
-if (status === "alive" && !message.aliveCounted) {
-  message.aliveCounted = true; // evitar duplicados
-
-  await loadLiveStats(); // siempre recargar antes
-
-  liveStats.totalAlive += 1; // 🔥 importante (lo tenías comentado)
-  liveStats.daily.alive += 1;
-
-  await saveLiveStats();
-}
-
-// ===== BOTONES =====
-let components = [];
-
-if (status) {
-  // 🔒 SOLO EDIT (sin Alive/Dead)
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`edit_panel_${message.id}`)
-      .setEmoji("✏️")
-      .setStyle(ButtonStyle.Secondary)
-  );
-
-  components = [row];
-
-} else {
-  // 🟢 AÚN ACTIVO
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("gp_alive")
-      .setLabel(`🟢 Alive (${aliveCount})`)
-      .setStyle(ButtonStyle.Success),
-
-    new ButtonBuilder()
-      .setCustomId("gp_dead")
-      .setLabel(`🔴 Dead (${deadCount})`)
-      .setStyle(ButtonStyle.Danger),
-
-    new ButtonBuilder()
-      .setCustomId(`edit_panel_${message.id}`)
-      .setEmoji("✏️")
-      .setStyle(ButtonStyle.Secondary)
-  );
-
-  components = [row];
-}
-
-// ===== ACTUALIZAR MENSAJE =====
+ // ===== ACTUALIZAR MENSAJE PRINCIPAL =====
 await message.edit({
   components: components
 });
+
+// ===== SI EL VOTO VIENE DEL HILO =====
+if (interaction.channel.isThread()) {
+
+  const threadMessage = interaction.message;
+
+  if (status) {
+    // 🔒 Si terminó → eliminar botones del hilo
+    await threadMessage.edit({
+      components: []
+    });
+  } else {
+    // 🔄 Si sigue activo → actualizar números visuales
+    const threadRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("gp_alive")
+        .setLabel(`🟢 Alive (${aliveCount})`)
+        .setStyle(ButtonStyle.Success),
+
+      new ButtonBuilder()
+        .setCustomId("gp_dead")
+        .setLabel(`🔴 Dead (${deadCount})`)
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    await threadMessage.edit({
+      components: [threadRow]
+    });
+  }
+}
 
 // ===== ELIMINAR BOTONES DEL HILO =====
 const thread = message.thread;
