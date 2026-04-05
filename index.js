@@ -145,27 +145,58 @@ client.once("ready", async () => {
     new SlashCommandBuilder()
       .setName("register")
       .setDescription("Register your main game ID")
-      .addStringOption(o => o.setName("id").setRequired(true)),
+      .addStringOption(o => 
+        o.setName("id")
+         .setDescription("Your 16 digit ID")
+         .setRequired(true)
+      ),
 
     new SlashCommandBuilder()
       .setName("add_sec")
       .setDescription("Register secondary ID")
-      .addStringOption(o => o.setName("id").setRequired(true)),
+      .addStringOption(o => 
+        o.setName("id")
+         .setDescription("Your secondary ID")
+         .setRequired(true)
+      ),
 
     new SlashCommandBuilder()
       .setName("change")
       .setDescription("Change main ID")
-      .addStringOption(o => o.setName("id").setRequired(true)),
+      .addStringOption(o => 
+        o.setName("id")
+         .setDescription("New ID")
+         .setRequired(true)
+      ),
 
-    new SlashCommandBuilder().setName("online"),
-    new SlashCommandBuilder().setName("online_sec"),
-    new SlashCommandBuilder().setName("offline"),
-    new SlashCommandBuilder().setName("list"),
-    new SlashCommandBuilder().setName("online_list"),
+    new SlashCommandBuilder()
+      .setName("online")
+      .setDescription("Set your main account online"),
+
+    new SlashCommandBuilder()
+      .setName("online_sec")
+      .setDescription("Set your secondary account online"),
+
+    new SlashCommandBuilder()
+      .setName("offline")
+      .setDescription("Set your accounts offline"),
+
+    new SlashCommandBuilder()
+      .setName("list")
+      .setDescription("List registered users"),
+
+    new SlashCommandBuilder()
+      .setName("online_list")
+      .setDescription("List online users"),
 
     new SlashCommandBuilder()
       .setName("gp")
-      .addStringOption(o => o.setName("id").setRequired(true))
+      .setDescription("Add VIP ID")
+      .addStringOption(o => 
+        o.setName("id")
+         .setDescription("VIP ID")
+         .setRequired(true)
+      )
 
   ].map(c => c.toJSON())
 
