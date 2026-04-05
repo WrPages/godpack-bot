@@ -13,7 +13,7 @@ const {
 } = require("discord.js");
 
 const fetch = require("node-fetch");
-
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 // ===== SISTEMA DE MENCIONES ONLINE =====
 const USERS_GIST_ID = "bb18eda2ea748723d8fe0131dd740b70"; // tu gist users.json
 const IDS_GIST_RAW_URL = "https://gist.githubusercontent.com/WrPages/d9db3a72fed74c496fd6cc830f9ca6e9/raw/elite_ids.txt";
@@ -64,12 +64,15 @@ const ALLOWED_CHANNELS = [
   "1487362022864588902"// canal 2
    // canal 3
 ];
+const ELITE_CHANNEL_ID = "1486277594629275770";
+const TRAINER_CHANNEL_ID = "1487362022864588902";
+const OTRO_CHANNEL_ID = "1484015417411244082";
 
 const STATS_CHANNEL_ID = "1484416376436424794"; // Mismo canal para estadísticas
 
 const GIST_ID = process.env.GIST_ID;
 
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+
 const FILE_NAME = "gp_record.txt";
 
 // ===== LIVE GP STATS =====
@@ -180,7 +183,7 @@ async function loadLiveStats(gistId) {
 }
 
 // ===== GUARDAR LIVE STATS =====
-aasync function saveLiveStats(gistId, data) {
+async function saveLiveStats(gistId, data) {
   try {
     await fetch(`https://api.github.com/gists/${gistId}`, {
       method: "PATCH",
@@ -202,12 +205,12 @@ aasync function saveLiveStats(gistId, data) {
 }
 
 // ===== RESET DIARIO UTC-6 =====
-async function checkDailyReset() {
+async function checkDailyReset(gistId, liveStats) {
   const today = getUTC6DateString();
 
   if (!liveStats.currentDay) {
     liveStats.currentDay = today;
-    return;
+    return liveStats;
   }
 
   if (today !== liveStats.currentDay) {
@@ -225,10 +228,9 @@ async function checkDailyReset() {
 
     await saveLiveStats(gistId, liveStats);
   }
+
+  return liveStats;
 }
-
-
-
 
 
 async function updateStats(client) {
@@ -501,7 +503,7 @@ const sentMessage = await message.channel.send({
 
 // ===== SUMAR GP TOTAL =====
 let liveStats = await loadLiveStats(currentGistId); // 🔥 SIEMPRE recargar primero
-await checkDailyReset();
+liveStats = await checkDailyReset(currentGistId, liveStats);
 
 liveStats.totalGP += 1;
 liveStats.daily.gp += 1;
@@ -818,11 +820,6 @@ newRow.addComponents(
     .setStyle(ButtonStyle.Secondary)
 );
 
-  // ===== ACTUALIZAR MENSAJE =====
-  await message.edit({
-    //embeds: [newEmbed],
-    components: [newRow]
-  });
 
  // ===== ESTADO FINAL =====
 // ===== ESTADO FINAL =====
