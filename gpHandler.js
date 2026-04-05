@@ -829,15 +829,24 @@ if (aliveCount >= 1) status = "alive"; // 🔥 cambio a 1
 if (deadCount >= 4) status = "dead";
 
 // ===== SUMAR ALIVE AL GIST =====
-if (status === "alive" && !message.aliveCounted) {
-  message.aliveCounted = true; // evitar duplicados
+if (status === "alive") {
 
-  let liveStats = await loadLiveStats(currentGistId); // siempre recargar antes
+  const alreadyCounted = embed.footer?.text?.includes("ALIVE_COUNTED");
 
-  liveStats.totalAlive += 1; // 🔥 importante (lo tenías comentado)
-  liveStats.daily.alive += 1;
+  if (!alreadyCounted) {
 
- await saveLiveStats(currentGistId, liveStats);
+    let liveStats = await loadLiveStats(currentGistId);
+
+    liveStats.totalAlive += 1;
+    liveStats.daily.alive += 1;
+
+    await saveLiveStats(currentGistId, liveStats);
+
+    const updatedEmbed = EmbedBuilder.from(embed)
+      .setFooter({ text: (embed.footer?.text || "") + " | ALIVE_COUNTED" });
+
+    await message.edit({ embeds: [updatedEmbed], components });
+  }
 }
 
 // ===== BOTONES =====
