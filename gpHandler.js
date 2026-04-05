@@ -700,10 +700,29 @@ if (interaction.isButton()) {
 
   if (interaction.customId === "gp_alive") aliveCount++;
   if (interaction.customId === "gp_dead") deadCount++;
+  // ===== Enviar quién votó SOLO al hilo =====
+
+let voteText = interaction.customId === "gp_alive" ? "🟢 Alive" : "🔴 Dead";
+
+if (interaction.channel.isThread()) {
+
+  // Si ya estamos en hilo
+  await interaction.channel.send(
+    `**${interaction.user.username}** votó ${voteText}`
+  ).catch(() => {});
+
+} else if (mainMessage.hasThread) {
+
+  // Si estamos en el embed principal
+  await mainMessage.thread.send(
+    `**${interaction.user.username}** vote ${voteText}`
+  ).catch(() => {});
+
+}
 
   let status = null;
 
-  if (aliveCount >= 2) status = "alive";
+  if (aliveCount >= 1 ) status = "alive";
   if (deadCount >= 4) status = "dead";
 
   const newEmbed = EmbedBuilder.from(embed)
