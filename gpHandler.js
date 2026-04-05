@@ -445,13 +445,10 @@ console.log("First command:", commands[0]);
 const timeout = setTimeout(() => controller.abort(), 10000); // 10s
 
 try {
-  await rest.put(
-    Routes.applicationGuildCommands(
-      client.user.id,
-      "1483615153743462571"
-    ),
-    { body: commands, signal: controller.signal }
-  );
+ await rest.put(
+  Routes.applicationCommands(client.user.id),
+  { body: commands }
+);
 
   console.log("✅ TODOS los comandos registrados");
 } catch (err) {
