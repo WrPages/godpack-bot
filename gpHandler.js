@@ -794,7 +794,7 @@ if (!status) {
     await updateThreadName(mainMessage, status, rarity, pack, user, "ID");
   }
 
-  }
+  
 
 });
 
