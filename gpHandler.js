@@ -19,7 +19,11 @@ const USERS_GIST_ID = "bb18eda2ea748723d8fe0131dd740b70"; // tu gist users.json
 const IDS_GIST_RAW_URL = "https://gist.githubusercontent.com/WrPages/d9db3a72fed74c496fd6cc830f9ca6e9/raw/elite_ids.txt";
 
 
-
+const GIST_IDS = {
+  ELITE: "4773653072f4851e91958a333e503de9",
+  TRAINER: "4f35f34b50e142fd4c89ff7bb8e30190",
+  OTRO: "4773653072f4851e91958a333e503de9"
+};
 
 
 
@@ -64,7 +68,7 @@ const ALLOWED_CHANNELS = [
 const STATS_CHANNEL_ID = "1484416376436424794"; // Mismo canal para estadísticas
 
 const GIST_ID = process.env.GIST_ID;
-const LIVE_GIST_ID = process.env.LIVE_GIST_ID;
+
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const FILE_NAME = "gp_record.txt";
 
@@ -161,23 +165,24 @@ async function updateThreadName(message, status, rarity, packNumber, username) {
 // termina
 
 // ===== CARGAR LIVE STATS =====
-async function loadLiveStats() {
+async function loadLiveStats(gistId) {
   try {
-    const res = await fetch(`https://api.github.com/gists/${LIVE_GIST_ID}`);
+    const res = await fetch(`https://api.github.com/gists/${gistId}`);
     const data = await res.json();
 
-    if (!data.files[LIVE_STATS_FILE]) return;
+    if (!data.files[LIVE_STATS_FILE]) return liveStats;
 
-    liveStats = JSON.parse(data.files[LIVE_STATS_FILE].content);
+    return JSON.parse(data.files[LIVE_STATS_FILE].content);
   } catch (err) {
     console.error("LOAD LIVE STATS ERROR:", err);
+    return liveStats;
   }
 }
 
 // ===== GUARDAR LIVE STATS =====
-async function saveLiveStats() {
+aasync function saveLiveStats(gistId, data) {
   try {
-    await fetch(`https://api.github.com/gists/${LIVE_GIST_ID}`, {
+    await fetch(`https://api.github.com/gists/${gistId}`, {
       method: "PATCH",
       headers: {
         Authorization: `token ${GITHUB_TOKEN}`,
@@ -186,7 +191,7 @@ async function saveLiveStats() {
       body: JSON.stringify({
         files: {
           [LIVE_STATS_FILE]: {
-            content: JSON.stringify(liveStats, null, 2)
+            content: JSON.stringify(data, null, 2)
           }
         }
       })
@@ -218,7 +223,7 @@ async function checkDailyReset() {
     liveStats.currentDay = today;
     liveStats.daily = { gp: 0, alive: 0 };
 
-    await saveLiveStats();
+    await saveLiveStats(gistId, liveStats);
   }
 }
 
@@ -326,7 +331,7 @@ async function createTestMessage(client) {
 
 module.exports = async (client) => {
     await loadData();
-        await loadLiveStats();
+        
         
   
 
@@ -393,6 +398,24 @@ if (!ALLOWED_CHANNELS.includes(message.channel.id)) return;
   if (!message.webhookId) return;
   if (!message.content.includes("God Pack found")) return;
 
+
+let currentGistId;
+
+if (message.channel.id === ELITE_CHANNEL_ID) {
+  currentGistId = GIST_IDS.ELITE;
+}
+else if (message.channel.id === TRAINER_CHANNEL_ID) {
+  currentGistId = GIST_IDS.TRAINER;
+}
+else if (message.channel.id === OTRO_CHANNEL_ID) {
+  currentGistId = GIST_IDS.OTRO;
+}
+else {
+  return; // si no es canal permitido
+}
+
+
+  
   try {
     // ===== IMAGEN =====
     const attachment = message.attachments.first();
@@ -477,13 +500,13 @@ const sentMessage = await message.channel.send({
 
 
 // ===== SUMAR GP TOTAL =====
-await loadLiveStats(); // 🔥 SIEMPRE recargar primero
+let liveStats = await loadLiveStats(currentGistId); // 🔥 SIEMPRE recargar primero
 await checkDailyReset();
 
 liveStats.totalGP += 1;
 liveStats.daily.gp += 1;
 
-await saveLiveStats();
+await saveLiveStats(currentGistId, liveStats);
 
 
 
@@ -560,6 +583,21 @@ await thread.send({
 
 
 client.on("interactionCreate", async (interaction) => {
+
+  let currentGistId;
+
+if (interaction.channel.id === "1486277594629275770") {
+  currentGistId = GIST_IDS.ELITE;
+}
+else if (interaction.channel.id === "1484015417411244082") {
+  currentGistId = GIST_IDS.TRAINER;
+}
+else if (interaction.channel.id === "1487362022864588902") {
+  currentGistId = GIST_IDS.OTRO;
+}
+else {
+  return;
+}
 
   // =========================
   // 1️⃣ BOTÓN EDIT
@@ -797,12 +835,12 @@ if (deadCount >= 4) status = "dead";
 if (status === "alive" && !message.aliveCounted) {
   message.aliveCounted = true; // evitar duplicados
 
-  await loadLiveStats(); // siempre recargar antes
+  let liveStats = await loadLiveStats(currentGistId); // siempre recargar antes
 
   liveStats.totalAlive += 1; // 🔥 importante (lo tenías comentado)
   liveStats.daily.alive += 1;
 
-  await saveLiveStats();
+ await saveLiveStats(currentGistId, liveStats);
 }
 
 // ===== BOTONES =====
