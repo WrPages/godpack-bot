@@ -372,20 +372,7 @@ client.once("clientReady", async () => {
   
 
 
-  // Crear/actualizar panel de estadísticas y mensaje de prueba
-  (async () => {
-    try {
-      console.log("Enviando/actualizando panel de estadísticas...");
-      await updateStats(client);
-      console.log("Panel de estadísticas OK");
-    } catch (err) {
-      console.error("Error inicializando bot:", err);
-    }
-  })();
 
-  setInterval(() => {
-    updateStats(client).catch(() => {});
-  }, 60 * 60 * 1000);
 
 
 client.on("messageCreate", async (message) => {
