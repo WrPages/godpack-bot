@@ -141,13 +141,77 @@ client.once("clientReady", async () => {
 
   console.log("🔥 Registrando comandos...")
 
-  const commands = [  new SlashCommandBuilder()
-    .setName("ping")
-    .setDescription("test command")
-    .toJSON()].map(c => c.toJSON())
-console.log("CLIENT_ID:", process.env.CLIENT_ID)
-console.log("GUILD_ID:", process.env.GUILD_ID)
-console.log("TOKEN OK:", !!TOKEN)
+  const rawCommands = [
+
+    new SlashCommandBuilder()
+      .setName("register")
+      .setDescription("Register your main game ID")
+      .addStringOption(o => 
+        o.setName("id")
+         .setDescription("Your 16 digit ID")
+         .setRequired(true)
+      ),
+
+    new SlashCommandBuilder()
+      .setName("add_sec")
+      .setDescription("Register secondary ID")
+      .addStringOption(o => 
+        o.setName("id")
+         .setDescription("Your secondary ID")
+         .setRequired(true)
+      ),
+
+    new SlashCommandBuilder()
+      .setName("change")
+      .setDescription("Change main ID")
+      .addStringOption(o => 
+        o.setName("id")
+         .setDescription("New ID")
+         .setRequired(true)
+      ),
+
+    new SlashCommandBuilder()
+      .setName("online")
+      .setDescription("Set your main ID as online"),
+
+    new SlashCommandBuilder()
+      .setName("online_sec")
+      .setDescription("Set your secondary ID as online"),
+
+    new SlashCommandBuilder()
+      .setName("offline")
+      .setDescription("Set your ID as offline"),
+
+    new SlashCommandBuilder()
+      .setName("list")
+      .setDescription("Show registered users"),
+
+    new SlashCommandBuilder()
+      .setName("online_list")
+      .setDescription("Show online users"),
+
+    new SlashCommandBuilder()
+      .setName("gp")
+      .setDescription("Add VIP ID")
+      .addStringOption(o => 
+        o.setName("id")
+         .setDescription("VIP ID")
+         .setRequired(true)
+      )
+
+  ]
+
+  // DEBUG
+  rawCommands.forEach(c => {
+    console.log("✔️ CMD:", c.name)
+  })
+
+  const commands = rawCommands.map(c => c.toJSON())
+
+  console.log("CLIENT_ID:", process.env.CLIENT_ID)
+  console.log("GUILD_ID:", process.env.GUILD_ID)
+  console.log("TOKEN OK:", !!TOKEN)
+
   try {
     await rest.put(
       Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
