@@ -586,18 +586,23 @@ await thread.send({
 
 client.on("interactionCreate", async (interaction) => {
 
-  let currentGistId;
+ const parentId = interaction.channel.isThread()
+  ? interaction.channel.parentId
+  : interaction.channel.id;
 
-if (interaction.channel.id === "1486277594629275770") {
+let currentGistId;
+
+if (parentId === "1486277594629275770") {
   currentGistId = GIST_IDS.ELITE;
 }
-else if (interaction.channel.id === "1484015417411244082") {
+else if (parentId === "1484015417411244082") {
   currentGistId = GIST_IDS.TRAINER;
 }
-else if (interaction.channel.id === "1487362022864588902") {
+else if (parentId === "1487362022864588902") {
   currentGistId = GIST_IDS.OTRO;
 }
 else {
+  console.log("No se encontró GIST para este canal");
   return;
 }
 
