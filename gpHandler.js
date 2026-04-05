@@ -79,6 +79,9 @@ let liveStats = {
   history: []
 };
 
+// Relación mensaje principal ↔ hilo
+const panelMapping = {};
+
 function getUTC6DateString() {
   const now = new Date();
   const utc6 = new Date(now.getTime() - (6 * 60 * 60 * 1000));
@@ -547,7 +550,8 @@ const threadMessage = await thread.send({
     console.error("GP Handler Error:", err);
   }
 });
-
+// Guardamos la relación mensaje principal → hilo
+panelMapping[sentMessage.id] = thread.id;
 
 
 client.on("interactionCreate", async (interaction) => {
@@ -673,24 +677,19 @@ if (interaction.isButton()) {
     mainMessage = await threadChannel.parent.messages.fetch(mainId).catch(() => null);
 
   } 
-  // ===== SI ESTAMOS EN EL MENSAJE PRINCIPAL =====
-  else {
-    // Buscar el hilo en el canal donde está el mensaje principal
-    const threads = await interaction.channel.threads.fetchActive();
-    threadChannel = threads.threads.find(t => t.name.includes(mainMessage.id)) || null;
-
-    // Si no lo encontramos, tomar el hilo por mensaje que contenga PANEL_ID
-    if (!threadChannel) {
-      const allThreads = await interaction.channel.threads.fetch();
-      threadChannel = allThreads.threads.find(t => t.name.includes(mainMessage.id)) || null;
-    }
-
-    // Obtener mensaje del hilo
-    if (threadChannel) {
-      const threadMsgs = await threadChannel.messages.fetch({ limit: 50 });
-      threadMessage = threadMsgs.find(m => m.content.includes(`PANEL_ID:${mainMessage.id}`));
-    }
+// ===== SI ESTAMOS EN EL MENSAJE PRINCIPAL =====
+else {
+  // Buscar el hilo usando nuestro mapping
+  const threadId = panelMapping[mainMessage.id];
+  if (threadId) {
+    threadChannel = await interaction.guild.channels.fetch(threadId).catch(() => null);
   }
+
+  if (threadChannel) {
+    const threadMsgs = await threadChannel.messages.fetch({ limit: 50 });
+    threadMessage = threadMsgs.find(m => m.content.includes(`PANEL_ID:${mainMessage.id}`));
+  }
+}
 
   if (!mainMessage || !threadMessage) return;
 
