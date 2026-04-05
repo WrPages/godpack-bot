@@ -496,7 +496,7 @@ await sentMessage.edit({
 });
     
 
-  // ===== CREAR HILO CON BOTONES =====
+ // ===== CREAR HILO CON BOTONES =====
 try {
   const thread = await sentMessage.startThread({
     name: `[${rarity}/5][${packNumber}P] [${username}P] [${friendId}P]`,
@@ -561,7 +561,6 @@ try {
 } catch (err) {
   console.error("THREAD ERROR:", err);
 }
-});
 
 
 
