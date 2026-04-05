@@ -982,7 +982,7 @@ if (status) {
 }
 
 return;
-}
+
 
 // 👇 cierre del interactionCreate
 });
