@@ -331,6 +331,6 @@ client.on("messageCreate", async message => {
 
   await addVipID(match[1])
 })
-require("./handler")(client);
+require("./gpHandler")(client);
 // ================= LOGIN =================
 client.login(TOKEN)
