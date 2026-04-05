@@ -146,7 +146,7 @@ async function updateThreadName(message, status, rarity, packNumber, username) {
     if (status === "dead") emoji = "❌";
 
     const name =
-      `${emoji} [${rarity}/5][${packNumber}P] ${username} ${friendId}`
+    `${emoji} [${rarity}/5][${packNumber}P] [${username}] [${friendId}]`
       .replace(/\s+/g, " ")
       .trim()
       .slice(0, 90);
