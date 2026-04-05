@@ -768,8 +768,9 @@ if (interaction.isButton()) {
     await updateThreadName(mainMessage, status, rarity, pack, user, "ID");
   }
 
-}
+  }
 
+});
 
-  });
+};
 
