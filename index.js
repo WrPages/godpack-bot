@@ -117,21 +117,21 @@ function startDailyScheduler() {
 
     const utcHour = now.getUTCHours()
     const utcMinute = now.getUTCMinutes()
-    const todayUTC = now.toISOString().slice(0,10)
 
     for (const userId in schedules) {
 
       const data = schedules[userId]
+
       if (!data.group || !data.main_id) continue
 
       // ONLINE
       if (
         data.online_hour === utcHour &&
         data.online_minute === utcMinute &&
-        data.last_online !== todayUTC
+        data.last_online !== now.toDateString()
       ) {
         await fetch(`${API_URL}?action=online&id=${data.main_id}&group=${data.group}`)
-        data.last_online = todayUTC
+        data.last_online = now.toDateString()
         console.log("🟢 Daily ONLINE ejecutado:", data.main_id)
       }
 
@@ -139,10 +139,10 @@ function startDailyScheduler() {
       if (
         data.offline_hour === utcHour &&
         data.offline_minute === utcMinute &&
-        data.last_offline !== todayUTC
+        data.last_offline !== now.toDateString()
       ) {
         await fetch(`${API_URL}?action=offline&id=${data.main_id}&group=${data.group}`)
-        data.last_offline = todayUTC
+        data.last_offline = now.toDateString()
         console.log("🔴 Daily OFFLINE ejecutado:", data.main_id)
       }
 
@@ -151,8 +151,8 @@ function startDailyScheduler() {
     saveSchedules(schedules)
 
   }, 60 * 1000)
-
 }
+
 
 
 function loadHistory() {
@@ -262,18 +262,39 @@ require("./gpHandler")(client);
 //Comandos
 client.once("ready", async () => {
   console.log(`✅ Bot listo como ${client.user.tag}`);
+  
+  
+  client.once("ready", () => {
+    console.log("Bot online");
 
-  // 🔥 INICIAR SISTEMAS
- // startPanelSystem(client);
-  startDailyScheduler();
+   // startPanelSystem(client); // 👈 AQUÍ ACTIVAS EL PANEL
+});
 
-  setInterval(updateTotalPPM, 5 * 60 * 1000);
-  updateTotalPPM();
+
 
   const { REST, Routes, SlashCommandBuilder } = require("discord.js");
+
   const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
-  // 🔥 DEFINIR COMANDOS
+  try {
+
+
+    // 🗑️ BORRAR COMANDOS ANTIGUOS DEL SERVIDOR
+   // await rest.put(
+   //   Routes.applicationGuildCommands(
+     //   process.env.CLIENT_ID,
+     //   process.env.GUILD_ID
+    //  ),
+    //  { body: [] }
+ //  );
+
+    console.log("🗑️ Comandos antiguos eliminados");
+
+  } catch (error) {
+    console.error("❌ Error borrando comandos:", error);
+  }
+
+  // 🔥 DEFINIR COMANDOS NUEVOS
   const commands = [
 
     new SlashCommandBuilder()
@@ -303,39 +324,49 @@ client.once("ready", async () => {
           .setRequired(true)
       ),
 
-    new SlashCommandBuilder()
-      .setName("schedule_events")
-      .setDescription("Daily online/offline scheduler (UTC)")
-      .addStringOption(opt =>
-        opt.setName("mode")
-          .setDescription("Start or Stop")
-          .setRequired(true)
-          .addChoices(
-            { name: "Start Daily Schedule", value: "start" },
-            { name: "Stop All Schedules", value: "stop" }
-          )
-      )
-      .addIntegerOption(opt =>
-        opt.setName("online_hour")
-          .setDescription("Online Hour (UTC 0-23)")
-      )
-      .addIntegerOption(opt =>
-        opt.setName("online_minute")
-          .setDescription("Online Minute (0-59)")
-      )
-      .addIntegerOption(opt =>
-        opt.setName("offline_hour")
-          .setDescription("Offline Hour (UTC 0-23)")
-      )
-      .addIntegerOption(opt =>
-        opt.setName("offline_minute")
-          .setDescription("Offline Minute (0-59)")
-      ),
+///////
 
-    new SlashCommandBuilder()
-      .setName("set_offline")
-      .setDescription("Force a user offline"),
+new SlashCommandBuilder()
+  .setName("schedule_events")
+  .setDescription("Daily online/offline scheduler (UTC)")
+  .addStringOption(opt =>
+    opt.setName("mode")
+      .setDescription("Start or Stop")
+      .setRequired(true)
+      .addChoices(
+        { name: "Start Daily Schedule", value: "start" },
+        { name: "Stop All Schedules", value: "stop" }
+      )
+  )
+  .addIntegerOption(opt =>
+    opt.setName("online_hour")
+      .setDescription("Online Hour (UTC 0-23)")
+      .setRequired(false)
+  )
+  .addIntegerOption(opt =>
+    opt.setName("online_minute")
+      .setDescription("Online Minute (0-59)")
+      .setRequired(false)
+  )
+  .addIntegerOption(opt =>
+    opt.setName("offline_hour")
+      .setDescription("Offline Hour (UTC 0-23)")
+      .setRequired(false)
+  )
+  .addIntegerOption(opt =>
+    opt.setName("offline_minute")
+      .setDescription("Offline Minute (0-59)")
+      .setRequired(false)
+  ),
 
+new SlashCommandBuilder()
+  .setName("set_offline")
+  .setDescription("Force a user offline"),
+
+
+
+   
+/////
     new SlashCommandBuilder()
       .setName("online")
       .setDescription("Set your main account online"),
@@ -364,10 +395,15 @@ client.once("ready", async () => {
           .setDescription("16 digit VIP ID")
           .setRequired(true)
       )
+  
+      
+      
 
   ].map(cmd => cmd.toJSON());
 
   try {
+
+    // 🚀 REGISTRAR NUEVOS COMANDOS
     await rest.put(
       Routes.applicationGuildCommands(
         process.env.CLIENT_ID,
@@ -376,7 +412,7 @@ client.once("ready", async () => {
       { body: commands }
     );
 
-    console.log("✅ Slash commands registrados correctamente");
+    console.log("✅ Slash commands registrados automáticamente");
 
   } catch (error) {
     console.error("❌ Error registrando comandos:", error);
@@ -538,9 +574,9 @@ if (interaction.commandName === "schedule_events") {
   const mode = interaction.options.getString("mode")
   const schedules = loadSchedules()
 
-const now = new Date()
+  const now = new Date()
+  const utcNow = `${now.getUTCHours().toString().padStart(2,"0")}:${now.getUTCMinutes().toString().padStart(2,"0")}`
 
-const utcNow = now.toISOString().slice(11,16) // HH:MM en UTC real 24h
   if (mode === "stop") {
 
     delete schedules[interaction.user.id]
