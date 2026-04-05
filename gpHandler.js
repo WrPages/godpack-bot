@@ -438,7 +438,7 @@ client.once("clientReady", async () => {
   console.log("Commands:", commands.length);
   console.log("First command:", commands[0]);
 
-  const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
+  const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
   try {
     console.log("🚀 Registrando comandos...");
