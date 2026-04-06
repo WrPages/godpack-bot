@@ -276,7 +276,7 @@ client.once("ready", async () => {
 
   const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
-  try {
+  //try {
 
 
     // 🗑️ BORRAR COMANDOS ANTIGUOS DEL SERVIDOR
