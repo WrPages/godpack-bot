@@ -327,15 +327,23 @@ client.once("clientReady", async () => {
   try {
     console.log("🚀 Registrando comandos...");
 
+
     await rest.put(
   Routes.applicationGuildCommands(
     client.user.id,
     process.env.GUILD_ID
   ),
-  { body: [] }
+  { body: commands }
 );
+    //await rest.put(
+ // Routes.applicationGuildCommands(
+  //  client.user.id,
+  //  process.env.GUILD_ID
+ // ),
+ // { body: [] }
+//);
 
-console.log("🧹 Comandos eliminados");
+//console.log("🧹 Comandos eliminados");
 
     console.log("✅ Comandos registrados correctamente");
 
