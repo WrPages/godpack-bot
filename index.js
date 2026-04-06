@@ -261,6 +261,9 @@ client.once("clientReady", async () => {
           .setDescription("New 16 digit ID")
           .setRequired(true)
       ),
+    new SlashCommandBuilder()
+  .setName("set_offline")
+  .setDescription("Force a user offline"),
 
     new SlashCommandBuilder()
       .setName("online")
@@ -411,6 +414,222 @@ client.on("interactionCreate", async interaction => {
   }
 })
 
+//List
+if (interaction.commandName === "list") {
+  await interaction.deferReply();
+
+  const group = getUserGroup(interaction);
+  if (!group) return interaction.editReply("❌ No group");
+
+  const config = GROUP_CONFIG[group];
+
+  const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME);
+
+  if (!users || Object.keys(users).length === 0) {
+    return interaction.editReply("📭 No registered users.");
+  }
+
+  const list = Object.values(users)
+    .map(u => `👤 **${u.name}** — \`${u.main_id}\``)
+    .join("\n");
+
+  await interaction.editReply({
+    content: `📋 **Registered Users:**\n\n${list}`
+  });
+}
+
+
+//onlinelist
+
+async function getOnlineIDs(gistId) {
+  try {
+    const res = await fetch(
+      `https://gist.githubusercontent.com/WrPages/${gistId}/raw/elite_ids.txt?t=${Date.now()}`
+    );
+    const text = await res.text();
+
+    return text
+      .split("\n")
+      .map(x => x.trim())
+      .filter(Boolean);
+
+  } catch (err) {
+    console.error("ONLINE IDS ERROR:", err);
+    return [];
+  }
+}
+
+//Change
+if (interaction.commandName === "change") {
+  await interaction.deferReply({ ephemeral: true });
+
+  const group = getUserGroup(interaction);
+  if (!group) return interaction.editReply("❌ No group");
+
+  const config = GROUP_CONFIG[group];
+  const newId = interaction.options.getString("id");
+
+  let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME);
+
+  if (!users[interaction.user.id]) {
+    return interaction.editReply("❌ You are not registered.");
+  }
+
+  users[interaction.user.id].main_id = newId;
+
+  await saveUsers(users, config.USERS_GIST_ID, config.USERS_FILENAME);
+
+  await interaction.editReply(`✅ Main ID updated to \`${newId}\``);
+}
+//adsec
+if (interaction.commandName === "add_sec") {
+  await interaction.deferReply({ ephemeral: true });
+
+  const group = getUserGroup(interaction);
+  if (!group) return interaction.editReply("❌ No group");
+
+  const config = GROUP_CONFIG[group];
+  const secId = interaction.options.getString("id");
+
+  let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME);
+
+  if (!users[interaction.user.id]) {
+    return interaction.editReply("❌ Register first.");
+  }
+
+  users[interaction.user.id].sec_id = secId;
+
+  await saveUsers(users, config.USERS_GIST_ID, config.USERS_FILENAME);
+
+  await interaction.editReply(`✅ Secondary ID added: \`${secId}\``);
+
+}
+//schendule
+if (interaction.commandName === "schedule_events") {
+  await interaction.deferReply({ ephemeral: true });
+
+  const mode = interaction.options.getString("mode");
+
+  let schedules = loadSchedules();
+
+  if (mode === "stop") {
+    delete schedules[interaction.user.id];
+    saveSchedules(schedules);
+    return interaction.editReply("🛑 Schedule stopped.");
+  }
+
+  const online_hour = interaction.options.getInteger("online_hour");
+  const online_minute = interaction.options.getInteger("online_minute");
+  const offline_hour = interaction.options.getInteger("offline_hour");
+  const offline_minute = interaction.options.getInteger("offline_minute");
+
+  const group = getUserGroup(interaction);
+  if (!group) return interaction.editReply("❌ No group");
+
+  const config = GROUP_CONFIG[group];
+  const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME);
+
+  const user = users[interaction.user.id];
+  if (!user) return interaction.editReply("❌ Register first.");
+
+  schedules[interaction.user.id] = {
+    main_id: user.main_id,
+    group: group,
+    online_hour,
+    online_minute,
+    offline_hour,
+    offline_minute,
+    last_online: null,
+    last_offline: null
+  };
+
+  saveSchedules(schedules);
+
+  await interaction.editReply("⏰ Daily schedule saved.");
+}
+//setoffline
+if (interaction.commandName === "set_offline") {
+  const hasRole = interaction.member.roles.cache.some(r => r.name === "Champion");
+  if (!hasRole) {
+    return interaction.reply({ content: "❌ No permission.", ephemeral: true });
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  const group = getUserGroup(interaction);
+  const config = GROUP_CONFIG[group];
+
+  const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME);
+
+  const options = Object.entries(users).map(([id, u]) => ({
+    label: u.name,
+    value: id
+  })).slice(0, 25); // límite discord
+
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId("select_user_offline")
+    .setPlaceholder("Select user")
+    .addOptions(options);
+
+  const row = new ActionRowBuilder().addComponents(menu);
+
+  await interaction.editReply({
+    content: "⚠️ Select user to force offline:",
+    components: [row]
+  });
+}
+// SELECT
+if (interaction.isStringSelectMenu() && interaction.customId === "offline_select") {
+
+  const userId = interaction.values[0]
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`confirm_${userId}`)
+      .setLabel("Confirmar")
+      .setStyle(ButtonStyle.Danger),
+
+    new ButtonBuilder()
+      .setCustomId("cancel")
+      .setLabel("Cancelar")
+      .setStyle(ButtonStyle.Secondary)
+  )
+
+  return interaction.update({
+    content: "¿Seguro?",
+    components: [row]
+  })
+}
+
+
+// BOTONES
+if (interaction.isButton()) {
+
+  if (interaction.customId.startsWith("confirm_")) {
+
+    const userId = interaction.customId.replace("confirm_", "")
+
+    const group = getUserGroup(interaction)
+    const config = GROUP_CONFIG[group]
+
+    let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+    const user = users[userId]
+
+    await fetch(`${API_URL}?action=offline&id=${user.main_id}&group=${group}`)
+
+    return interaction.update({
+      content: `🔴 ${user.name} offline`,
+      components: []
+    })
+  }
+
+  if (interaction.customId === "cancel") {
+    return interaction.update({
+      content: "Cancelado",
+      components: []
+    })
+  }
+}
 // ================= GP DETECTOR =================
 client.on("messageCreate", async message => {
   const match = message.content.match(/\((\d{16})\)/)
