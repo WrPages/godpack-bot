@@ -832,13 +832,16 @@ if (status === "alive" && !alreadyAlive) {
     stats.totalAlive += 1;
     stats.daily.alive += 1;
     return stats;
-  });
-}
 
-// ===== GUARDAR ESTADO EN FOOTER =====
+
+    // ===== GUARDAR ESTADO EN FOOTER =====
 const newFooter = `VOTES:alive=${aliveUsers.join(",")}|dead=${deadUsers.join(",")}|status=${status || "none"}`;
 
 const newEmbed = EmbedBuilder.from(embed).setFooter({ text: newFooter });
+  });
+}
+
+
 
   
 // ===== BOTONES =====
