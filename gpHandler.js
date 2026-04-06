@@ -183,25 +183,30 @@ async function updateThreadName(message, status, rarity, packNumber, username) {
 async function loadLiveStats(group) {
   try {
     const config = GROUP_CONFIG[group];
-    if (!config) return;
+    if (!config) return null;
 
     const res = await fetch(`https://api.github.com/gists/${config.LIVE_GIST_ID}`);
     const data = await res.json();
 
     if (!data.files[config.LIVE_FILE]) {
-      console.log("⚠️ Archivo no existe, creando nuevo...");
-      return;
+      return {
+        totalGP: 0,
+        totalAlive: 0,
+        currentDay: null,
+        daily: { gp: 0, alive: 0 },
+        history: []
+      };
     }
 
-    liveStats = JSON.parse(data.files[config.LIVE_FILE].content);
+    return JSON.parse(data.files[config.LIVE_FILE].content);
 
   } catch (err) {
     console.error("LOAD LIVE STATS ERROR:", err);
+    return null;
   }
 }
-
 // ===== GUARDAR LIVE STATS =====
-async function saveLiveStats(group) {
+async function saveLiveStats(group, stats) {
   try {
     const config = GROUP_CONFIG[group];
     if (!config) return;
@@ -214,8 +219,8 @@ async function saveLiveStats(group) {
       },
       body: JSON.stringify({
         files: {
-          [config.LIVE_FILE]: { // 🔥 CLAVE AQUÍ
-            content: JSON.stringify(liveStats, null, 2)
+          [config.LIVE_FILE]: {
+            content: JSON.stringify(stats, null, 2)
           }
         }
       })
@@ -477,13 +482,13 @@ const sentMessage = await message.channel.send({
 
 
 // ===== SUMAR GP TOTAL =====
-await loadLiveStats(group);
-await checkDailyReset();
+let stats = await loadLiveStats(group);
+await checkDailyReset(stats);
 
-liveStats.totalGP += 1;
-liveStats.daily.gp += 1;
+stats.totalGP += 1;
+stats.daily.gp += 1;
 
-await saveLiveStats(group);
+await saveLiveStats(group, stats);
 
 
 
@@ -801,12 +806,15 @@ if (status === "alive" && !message.aliveCounted) {
 
   message.aliveCounted = true;
 
-  await loadLiveStats(group);
+ let stats = await loadLiveStats(group);
 
-  liveStats.totalAlive += 1;
-  liveStats.daily.alive += 1;
+stats.totalAlive += 1;
+stats.daily.alive += 1;
 
-  await saveLiveStats(group);
+// 🚫 NUNCA TOCAR GP AQUÍ
+// stats.totalGP NO se modifica
+
+await saveLiveStats(group, stats);
 }
 
 // ===== BOTONES =====
