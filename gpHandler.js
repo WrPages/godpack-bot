@@ -210,7 +210,7 @@ async function saveLiveStats(group, stats) {
   try {
     const config = GROUP_CONFIG[group];
     if (!config) return;
-
+  await new Promise(res => setTimeout(res, 200));
     await fetch(`https://api.github.com/gists/${config.LIVE_GIST_ID}`, {
       method: "PATCH",
       headers: {
