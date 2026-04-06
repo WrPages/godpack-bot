@@ -48,7 +48,11 @@ const GROUP_CONFIG = {
     VIP_GIST_ID: "5f2f23e0391882ab4e255bd67e98334a"
   }
 }
-
+const CHANNEL_GROUP_MAP = {
+  "1486277594629275770": "Elite_Four",  // canal elite
+  "1487362022864588902": "Trainer",     // canal trainer
+  "1484015417411244082": "Gym_Leader"   // canal gym
+}
 
 
 
@@ -214,9 +218,13 @@ async function saveUsers(users, gistId, fileName) {
   })
 }
 
-async function addVipID(id) {
+//advio
+async function addVipID(id, group) {
   try {
-    const res = await fetch(`https://api.github.com/gists/${process.env.VIP_GIST_ID}?t=${Date.now()}`, {
+    const config = GROUP_CONFIG[group]
+    if (!config) return console.log("❌ Grupo inválido")
+
+    const res = await fetch(`https://api.github.com/gists/${config.VIP_GIST_ID}?t=${Date.now()}`, {
       headers: {
         Authorization: `Bearer ${GITHUB_TOKEN}`,
         Accept: "application/vnd.github+json",
@@ -226,7 +234,7 @@ async function addVipID(id) {
 
     const data = await res.json()
 
-    let content = data.files["VIP_FILENAME"]?.content || ""
+    let content = data.files[config.VIP_FILENAME]?.content || ""
 
     const ids = content.split("\n").filter(Boolean)
 
@@ -234,7 +242,7 @@ async function addVipID(id) {
 
     ids.push(id)
 
-    await fetch(`https://api.github.com/gists/${process.env.VIP_GIST_ID}`, {
+    await fetch(`https://api.github.com/gists/${config.VIP_GIST_ID}`, {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${GITHUB_TOKEN}`,
@@ -242,19 +250,21 @@ async function addVipID(id) {
       },
       body: JSON.stringify({
         files: {
-          "VIP_FILENAME": {
+          [config.VIP_FILENAME]: {
             content: ids.join("\n")
           }
         }
       })
     })
 
-    console.log("✅ VIP añadido:", id)
+    console.log(`✅ VIP añadido en ${group}:`, id)
 
   } catch (err) {
     console.error("Error VIP:", err)
   }
 }
+
+//tewmina
 
 client.on("ready", () => {
   setInterval(updateTotalPPM, 5 * 60 * 1000)
@@ -1221,24 +1231,27 @@ if (commandName === "editpanel") {
 
 client.on("messageCreate", async (message) => {
 
-  console.log("📩 MENSAJE DETECTADO")
-  console.log("Contenido:", message.content)
-  console.log("Webhook:", message.webhookId)
+  // evitar bots si quieres (opcional)
+  if (message.author.bot) return
 
   const text = message.content || ""
-
   const match = text.match(/\((\d{16})\)/)
 
-  if (!match) {
-    console.log("❌ No se encontró ID")
-    return
-  }
+  if (!match) return
 
   const id = match[1]
 
-  console.log("🔥 GP detectado:", id)
+  // 🔥 detectar grupo por ID del canal
+  const group = CHANNEL_GROUP_MAP[message.channel.id]
 
-  await addVipID(id)
+  if (!group) {
+    console.log("⚠️ Canal no configurado:", message.channel.id)
+    return
+  }
+
+  console.log(`🔥 GP detectado en ${group}:`, id)
+
+  await addVipID(id, group)
 })
 
 client.login(TOKEN)
