@@ -269,7 +269,7 @@ async function checkDailyReset(group, stats) {
     stats.currentDay = today;
     stats.daily = { gp: 0, alive: 0 };
 
-    await saveLiveStats(group, stats);
+  //  await saveLiveStats(group, stats);
   }
 
   return stats;
