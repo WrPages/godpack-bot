@@ -67,13 +67,16 @@ const CHANNEL_GROUP_MAP = {
 };
 const GROUP_CONFIG = {
   Trainer: {
-    LIVE_GIST_ID: "4f35f34b50e142fd4c89ff7bb8e30190"
+    LIVE_GIST_ID: "4f35f34b50e142fd4c89ff7bb8e30190",
+    LIVE_FILE: "trainer_gp_live_stats.json"
   },
   Gym_Leader: {
-    LIVE_GIST_ID: "931b1284bc6abffc6681f733ac4361ff"
+    LIVE_GIST_ID: "931b1284bc6abffc6681f733ac4361ff",
+    LIVE_FILE: "gym_gp_live_stats.json"
   },
   Elite_Four: {
-    LIVE_GIST_ID: "4773653072f4851e91958a333e503de9"
+    LIVE_GIST_ID: "4773653072f4851e91958a333e503de9",
+    LIVE_FILE: "gp_live_stats.json"
   }
 };
 
@@ -85,7 +88,7 @@ const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const FILE_NAME = "gp_record.txt";
 
 // ===== LIVE GP STATS =====
-const LIVE_STATS_FILE = "gp_live_stats.json";
+//const LIVE_STATS_FILE = "gp_live_stats.json";
 
 let liveStats = {
   totalGP: 0,
@@ -185,9 +188,13 @@ async function loadLiveStats(group) {
     const res = await fetch(`https://api.github.com/gists/${config.LIVE_GIST_ID}`);
     const data = await res.json();
 
-    if (!data.files[LIVE_STATS_FILE]) return;
+    if (!data.files[config.LIVE_FILE]) {
+      console.log("⚠️ Archivo no existe, creando nuevo...");
+      return;
+    }
 
-    liveStats = JSON.parse(data.files[LIVE_STATS_FILE].content);
+    liveStats = JSON.parse(data.files[config.LIVE_FILE].content);
+
   } catch (err) {
     console.error("LOAD LIVE STATS ERROR:", err);
   }
@@ -207,12 +214,13 @@ async function saveLiveStats(group) {
       },
       body: JSON.stringify({
         files: {
-          [LIVE_STATS_FILE]: {
+          [config.LIVE_FILE]: { // 🔥 CLAVE AQUÍ
             content: JSON.stringify(liveStats, null, 2)
           }
         }
       })
     });
+
   } catch (err) {
     console.error("SAVE LIVE STATS ERROR:", err);
   }
