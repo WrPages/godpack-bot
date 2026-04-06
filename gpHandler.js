@@ -824,7 +824,6 @@ if (deadCount >= 4) status = "dead";
 const alreadyAlive = footer.includes("status=alive");
 
 if (status === "alive" && !alreadyAlive) {
-
   const group = CHANNEL_GROUP_MAP[message.channel.id];
   if (!group) return;
 
@@ -832,15 +831,11 @@ if (status === "alive" && !alreadyAlive) {
     stats.totalAlive += 1;
     stats.daily.alive += 1;
     return stats;
-
-
-    // ===== GUARDAR ESTADO EN FOOTER =====
+  });
+}
 const newFooter = `VOTES:alive=${aliveUsers.join(",")}|dead=${deadUsers.join(",")}|status=${status || "none"}`;
 
 const newEmbed = EmbedBuilder.from(embed).setFooter({ text: newFooter });
-  });
-}
-
 
 
   
