@@ -13,6 +13,28 @@ const {
 } = require("discord.js");
 
 const fetch = require("node-fetch");
+const locks = new Map();
+
+async function updateStatsSafe(group, callback) {
+  while (locks.get(group)) {
+    await new Promise(res => setTimeout(res, 50));
+  }
+
+  locks.set(group, true);
+
+  try {
+    let stats = await loadLiveStats(group);
+
+    stats = await callback(stats);
+
+    await saveLiveStats(group, stats);
+
+    return stats;
+  } finally {
+    locks.set(group, false);
+  }
+}
+
 
 // ===== SISTEMA DE MENCIONES ONLINE =====
 const USERS_GIST_ID = "bb18eda2ea748723d8fe0131dd740b70"; // tu gist users.json
@@ -255,7 +277,6 @@ async function checkDailyReset(group, stats) {
 
 
 
-
 async function updateStats(client) {
   const channel = await client.channels.fetch(STATS_CHANNEL_ID);
   if (!channel) return;
@@ -476,13 +497,14 @@ const sentMessage = await message.channel.send({
 
 
 // ===== SUMAR GP TOTAL =====
-let stats = await loadLiveStats(group);
-stats = await checkDailyReset(group, stats);
+await updateStatsSafe(group, async (stats) => {
+  stats = await checkDailyReset(group, stats);
 
-stats.totalGP += 1;
-stats.daily.gp += 1;
+  stats.totalGP += 1;
+  stats.daily.gp += 1;
 
-await saveLiveStats(group, stats);
+  return stats;
+});
 
 
 
@@ -800,15 +822,11 @@ if (status === "alive" && !message.aliveCounted) {
 
   message.aliveCounted = true;
 
- let stats = await loadLiveStats(group);
-
-stats.totalAlive += 1;
-stats.daily.alive += 1;
-
-// 🚫 NUNCA TOCAR GP AQUÍ
-// stats.totalGP NO se modifica
-
-await saveLiveStats(group, stats);
+ await updateStatsSafe(group, async (stats) => {
+  stats.totalAlive += 1;
+  stats.daily.alive += 1;
+  return stats;
+});
 }
 
 // ===== BOTONES =====
