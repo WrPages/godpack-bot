@@ -500,8 +500,14 @@ const sentMessage = await message.channel.send({
 await updateStatsSafe(group, async (stats) => {
   stats = await checkDailyReset(group, stats);
 
-  stats.totalGP += 1;
-  stats.daily.gp += 1;
+  // 🔥 evitar doble conteo
+  if (!stats.processedMessages) stats.processedMessages = [];
+
+  if (!stats.processedMessages.includes(sentMessage.id)) {
+    stats.totalGP += 1;
+    stats.daily.gp += 1;
+    stats.processedMessages.push(sentMessage.id);
+  }
 
   return stats;
 });
@@ -815,18 +821,25 @@ if (aliveCount >= 1) status = "alive"; // 🔥 cambio a 1
 if (deadCount >= 4) status = "dead";
 
 // ===== SUMAR ALIVE AL GIST =====
-if (status === "alive" && !message.aliveCounted) {
+const alreadyAlive = footer.includes("status=alive");
+
+if (status === "alive" && !alreadyAlive) {
 
   const group = CHANNEL_GROUP_MAP[message.channel.id];
   if (!group) return;
 
-  message.aliveCounted = true;
+  await updateStatsSafe(group, async (stats) => {
+    stats.totalAlive += 1;
+    stats.daily.alive += 1;
+    return stats;
+  });
 
- await updateStatsSafe(group, async (stats) => {
-  stats.totalAlive += 1;
-  stats.daily.alive += 1;
-  return stats;
-});
+  // 🔥 Guardar estado en footer (persistente)
+  const newFooter = footer + "|status=alive";
+
+  const newEmbed = EmbedBuilder.from(embed).setFooter({ text: newFooter });
+
+  await message.edit({ embeds: [newEmbed] });
 }
 
 // ===== BOTONES =====
