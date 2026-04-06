@@ -215,12 +215,11 @@ client.once("clientReady", async () => {
   const rest = new REST({ version: "10" }).setToken(TOKEN)
 
   await rest.put(
-    Routes.applicationGuildCommands(client.user.id, process.env.GUILD_ID),
-    { body: commands }
-  )
+  Routes.applicationGuildCommands(client.user.id, process.env.GUILD_ID),
+  { body: [] }
+);
 
-  console.log("✅ Comandos registrados")
-})
+console.log("🧹 TODOS LOS COMANDOS BORRADOS");
 
 // ================= INTERACTIONS =================
 client.on("interactionCreate", async interaction => {
