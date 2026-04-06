@@ -60,6 +60,22 @@ const ALLOWED_CHANNELS = [
   "1487362022864588902"// canal 2
    // canal 3
 ];
+const CHANNEL_GROUP_MAP = {
+  "1486277594629275770": "Elite_Four",
+  "1487362022864588902": "Trainer",
+  "1484015417411244082": "Gym_Leader"
+};
+const GROUP_CONFIG = {
+  Trainer: {
+    LIVE_GIST_ID: "4f35f34b50e142fd4c89ff7bb8e30190"
+  },
+  Gym_Leader: {
+    LIVE_GIST_ID: "931b1284bc6abffc6681f733ac4361ff"
+  },
+  Elite_Four: {
+    LIVE_GIST_ID: "4773653072f4851e91958a333e503de9"
+  }
+};
 
 const STATS_CHANNEL_ID = "1484416376436424794"; // Mismo canal para estadísticas
 
@@ -161,9 +177,12 @@ async function updateThreadName(message, status, rarity, packNumber, username) {
 // termina
 
 // ===== CARGAR LIVE STATS =====
-async function loadLiveStats() {
+async function loadLiveStats(group) {
   try {
-    const res = await fetch(`https://api.github.com/gists/${LIVE_GIST_ID}`);
+    const config = GROUP_CONFIG[group];
+    if (!config) return;
+
+    const res = await fetch(`https://api.github.com/gists/${config.LIVE_GIST_ID}`);
     const data = await res.json();
 
     if (!data.files[LIVE_STATS_FILE]) return;
@@ -175,9 +194,12 @@ async function loadLiveStats() {
 }
 
 // ===== GUARDAR LIVE STATS =====
-async function saveLiveStats() {
+async function saveLiveStats(group) {
   try {
-    await fetch(`https://api.github.com/gists/${LIVE_GIST_ID}`, {
+    const config = GROUP_CONFIG[group];
+    if (!config) return;
+
+    await fetch(`https://api.github.com/gists/${config.LIVE_GIST_ID}`, {
       method: "PATCH",
       headers: {
         Authorization: `token ${GITHUB_TOKEN}`,
@@ -195,6 +217,7 @@ async function saveLiveStats() {
     console.error("SAVE LIVE STATS ERROR:", err);
   }
 }
+
 
 // ===== RESET DIARIO UTC-6 =====
 async function checkDailyReset() {
@@ -356,7 +379,12 @@ client.on("messageCreate", async (message) => {
 if (!ALLOWED_CHANNELS.includes(message.channel.id)) return;
   if (!message.webhookId) return;
   if (!message.content.includes("God Pack found")) return;
+const group = CHANNEL_GROUP_MAP[message.channel.id];
 
+if (!group) {
+  console.log("⚠️ Canal sin grupo");
+  return;
+}
   try {
     // ===== IMAGEN =====
     const attachment = message.attachments.first();
@@ -441,13 +469,13 @@ const sentMessage = await message.channel.send({
 
 
 // ===== SUMAR GP TOTAL =====
-await loadLiveStats(); // 🔥 SIEMPRE recargar primero
+await loadLiveStats(group);
 await checkDailyReset();
 
 liveStats.totalGP += 1;
 liveStats.daily.gp += 1;
 
-await saveLiveStats();
+await saveLiveStats(group);
 
 
 
@@ -759,14 +787,18 @@ if (deadCount >= 4) status = "dead";
 
 // ===== SUMAR ALIVE AL GIST =====
 if (status === "alive" && !message.aliveCounted) {
-  message.aliveCounted = true; // evitar duplicados
 
-  await loadLiveStats(); // siempre recargar antes
+  const group = CHANNEL_GROUP_MAP[message.channel.id];
+  if (!group) return;
 
-  liveStats.totalAlive += 1; // 🔥 importante (lo tenías comentado)
+  message.aliveCounted = true;
+
+  await loadLiveStats(group);
+
+  liveStats.totalAlive += 1;
   liveStats.daily.alive += 1;
 
-  await saveLiveStats();
+  await saveLiveStats(group);
 }
 
 // ===== BOTONES =====
