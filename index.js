@@ -26,7 +26,6 @@ const client = new Client({
 // ================= ENV =================
 const TOKEN = process.env.TOKEN
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
-const GUILD_ID = process.env.GUILD_ID
 
 if (!TOKEN) {
   console.error("❌ TOKEN no definido")
@@ -89,22 +88,12 @@ async function saveUsers(users, gistId, fileName) {
     headers: { Authorization: `Bearer ${GITHUB_TOKEN}` },
     body: JSON.stringify({
       files: {
-        [fileName]: { content: JSON.stringify(users, null, 2) }
+        [fileName]: {
+          content: JSON.stringify(users, null, 2)
+        }
       }
     })
   })
-}
-
-// ================= ONLINE IDS =================
-async function getOnlineIDs(gistId) {
-  try {
-    const res = await fetch(`https://gist.githubusercontent.com/WrPages/${gistId}/raw?t=${Date.now()}`)
-    const text = await res.text()
-
-    return text.split("\n").map(x => x.trim()).filter(Boolean)
-  } catch {
-    return []
-  }
 }
 
 // ================= VIP =================
@@ -133,6 +122,18 @@ async function addVipID(id) {
   }
 }
 
+// ================= ONLINE IDS =================
+async function getOnlineIDs(gistId) {
+  try {
+    const res = await fetch(`https://gist.githubusercontent.com/WrPages/${gistId}/raw/elite_ids.txt?t=${Date.now()}`)
+    const text = await res.text()
+
+    return text.split("\n").map(x => x.trim()).filter(Boolean)
+  } catch {
+    return []
+  }
+}
+
 // ================= SCHEDULE =================
 function loadSchedules() {
   if (!fs.existsSync(SCHEDULE_FILE)) return {}
@@ -151,20 +152,12 @@ function startDailyScheduler() {
     for (const userId in schedules) {
       const s = schedules[userId]
 
-      if (
-        now.getUTCHours() === s.online_hour &&
-        now.getUTCMinutes() === s.online_minute &&
-        s.last_online !== now.toDateString()
-      ) {
+      if (now.getUTCHours() === s.online_hour && now.getUTCMinutes() === s.online_minute && s.last_online !== now.toDateString()) {
         await fetch(`${API_URL}?action=online&id=${s.main_id}&group=${s.group}`)
         s.last_online = now.toDateString()
       }
 
-      if (
-        now.getUTCHours() === s.offline_hour &&
-        now.getUTCMinutes() === s.offline_minute &&
-        s.last_offline !== now.toDateString()
-      ) {
+      if (now.getUTCHours() === s.offline_hour && now.getUTCMinutes() === s.offline_minute && s.last_offline !== now.toDateString()) {
         await fetch(`${API_URL}?action=offline&id=${s.main_id}&group=${s.group}`)
         s.last_offline = now.toDateString()
       }
@@ -174,81 +167,55 @@ function startDailyScheduler() {
   }, 60000)
 }
 
-// ================= PPM =================
-function loadHistory() {
-  if (!fs.existsSync(HISTORY_FILE)) return []
-  return JSON.parse(fs.readFileSync(HISTORY_FILE))
-}
-
-function saveHistory(data) {
-  fs.writeFileSync(HISTORY_FILE, JSON.stringify(data))
-}
-
-async function updateTotalPPM() {
-  try {
-    const heartbeatChannel = await client.channels.fetch(HEARTBEAT_CHANNEL_ID)
-    const totalChannel = await client.channels.fetch(TOTAL_CHANNEL_ID)
-
-    const messages = await heartbeatChannel.messages.fetch({ limit: 20 })
-
-    let totalPPM = 0
-
-    for (const msg of messages.values()) {
-      const match = msg.content.match(/Avg:\s*([\d.]+)/)
-      if (match) totalPPM += parseFloat(match[1])
-    }
-
-    let history = loadHistory()
-    const now = Date.now()
-
-    history.push({ timestamp: now, value: totalPPM })
-    history = history.filter(e => now - e.timestamp <= TWELVE_HOURS)
-
-    saveHistory(history)
-
-    const avg = history.reduce((a, b) => a + b.value, 0) / history.length
-
-    const text = `🔥 ${totalPPM.toFixed(2)} PPM\n📊 Avg 12H: ${avg.toFixed(2)}`
-
-    const msgs = await totalChannel.messages.fetch({ limit: 5 })
-    const botMsg = msgs.find(m => m.author.id === client.user.id)
-
-    if (botMsg) await botMsg.edit(text)
-    else await totalChannel.send(text)
-
-  } catch (err) {
-    console.error("PPM error:", err)
-  }
-}
-
 // ================= READY =================
 client.once("clientReady", async () => {
   console.log(`✅ Bot listo como ${client.user.tag}`)
 
   startDailyScheduler()
-  updateTotalPPM()
-  setInterval(updateTotalPPM, 5 * 60 * 1000)
 
+  // ===== COMMANDS =====
   const commands = [
-    new SlashCommandBuilder().setName("register").addStringOption(o => o.setName("id").setRequired(true)),
-    new SlashCommandBuilder().setName("add_sec").addStringOption(o => o.setName("id").setRequired(true)),
-    new SlashCommandBuilder().setName("change").addStringOption(o => o.setName("id").setRequired(true)),
+
+    new SlashCommandBuilder().setName("register").setDescription("Register ID")
+      .addStringOption(o => o.setName("id").setRequired(true)),
+
+    new SlashCommandBuilder().setName("add_sec").setDescription("Add secondary ID")
+      .addStringOption(o => o.setName("id").setRequired(true)),
+
+    new SlashCommandBuilder().setName("change").setDescription("Change main ID")
+      .addStringOption(o => o.setName("id").setRequired(true)),
+
     new SlashCommandBuilder().setName("online"),
     new SlashCommandBuilder().setName("online_sec"),
     new SlashCommandBuilder().setName("offline"),
+
     new SlashCommandBuilder().setName("list"),
     new SlashCommandBuilder().setName("online_list"),
-    new SlashCommandBuilder().setName("gp").addStringOption(o => o.setName("id").setRequired(true)),
+
+    new SlashCommandBuilder().setName("gp")
+      .addStringOption(o => o.setName("id").setRequired(true)),
+
     new SlashCommandBuilder().setName("schedule_events")
-      .addStringOption(o => o.setName("mode").setRequired(true)
-        .addChoices({ name: "Start", value: "start" }, { name: "Stop", value: "stop" })),
+      .addStringOption(o =>
+        o.setName("mode").setRequired(true)
+          .addChoices(
+            { name: "Start", value: "start" },
+            { name: "Stop", value: "stop" }
+          )
+      )
+      .addIntegerOption(o => o.setName("online_hour"))
+      .addIntegerOption(o => o.setName("online_minute"))
+      .addIntegerOption(o => o.setName("offline_hour"))
+      .addIntegerOption(o => o.setName("offline_minute")),
+
     new SlashCommandBuilder().setName("set_offline")
+
   ].map(c => c.toJSON())
 
   const rest = new REST({ version: "10" }).setToken(TOKEN)
 
   await rest.put(
-    Routes.applicationGuildCommands(client.user.id, GUILD_ID),
+    Routes.applicationGuildCommands(client.user.id, process.env.GUILD_ID),
     { body: commands }
   )
 
@@ -258,7 +225,7 @@ client.once("clientReady", async () => {
 // ================= INTERACTIONS =================
 client.on("interactionCreate", async interaction => {
 
-  // ===== SLASH =====
+  // ===== COMMANDS =====
   if (interaction.isChatInputCommand()) {
 
     const group = getUserGroup(interaction)
@@ -266,7 +233,6 @@ client.on("interactionCreate", async interaction => {
 
     const config = GROUP_CONFIG[group]
 
-    // REGISTER
     if (interaction.commandName === "register") {
       const id = interaction.options.getString("id")
       let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
@@ -280,121 +246,125 @@ client.on("interactionCreate", async interaction => {
       return interaction.reply("✅ Registered")
     }
 
-    // LIST
-    if (interaction.commandName === "list") {
-      await interaction.deferReply()
+    if (interaction.commandName === "add_sec") {
+      const id = interaction.options.getString("id")
+      let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
 
-      const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+      users[interaction.user.id].sec_id = id
+      await saveUsers(users, config.USERS_GIST_ID, config.USERS_FILENAME)
+
+      return interaction.reply("✅ Secondary added")
+    }
+
+    if (interaction.commandName === "change") {
+      const id = interaction.options.getString("id")
+      let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+
+      users[interaction.user.id].main_id = id
+      await saveUsers(users, config.USERS_GIST_ID, config.USERS_FILENAME)
+
+      return interaction.reply("✅ Updated")
+    }
+
+    if (interaction.commandName === "online") {
+      let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+      const u = users[interaction.user.id]
+
+      await fetch(`${API_URL}?action=online&id=${u.main_id}&group=${group}`)
+      return interaction.reply("🟢 Online")
+    }
+
+    if (interaction.commandName === "offline") {
+      let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+      const u = users[interaction.user.id]
+
+      await fetch(`${API_URL}?action=offline&id=${u.main_id}&group=${group}`)
+      return interaction.reply("🔴 Offline")
+    }
+
+    if (interaction.commandName === "list") {
+      let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
 
       const list = Object.values(users)
         .map(u => `👤 ${u.name} — ${u.main_id}`)
         .join("\n")
 
-      return interaction.editReply(list || "📭 Vacío")
+      return interaction.reply(`📋\n${list}`)
     }
 
-    // ONLINE LIST
     if (interaction.commandName === "online_list") {
-      await interaction.deferReply()
-
-      const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
-      const onlineIDs = await getOnlineIDs(config.IDS_GIST_ID)
+      let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+      let onlineIDs = await getOnlineIDs(config.IDS_GIST_ID)
 
       const online = Object.values(users).filter(u =>
         onlineIDs.includes(u.main_id) || onlineIDs.includes(u.sec_id)
       )
 
-      const text = online.map(u => `🟢 ${u.name}`).join("\n")
-
-      return interaction.editReply(text || "🔴 Nadie online")
+      const text = online.map(u => `🟢 ${u.name}`).join("\n") || "None"
+      return interaction.reply(text)
     }
 
-    // CHANGE
-    if (interaction.commandName === "change") {
-      await interaction.deferReply({ ephemeral: true })
-
-      let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
-      users[interaction.user.id].main_id = interaction.options.getString("id")
-
-      await saveUsers(users, config.USERS_GIST_ID, config.USERS_FILENAME)
-      return interaction.editReply("✅ Updated")
+    if (interaction.commandName === "gp") {
+      const id = interaction.options.getString("id")
+      await addVipID(id)
+      return interaction.reply("🔥 VIP added")
     }
 
-    // ADD SEC
-    if (interaction.commandName === "add_sec") {
-      await interaction.deferReply({ ephemeral: true })
-
-      let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
-      users[interaction.user.id].sec_id = interaction.options.getString("id")
-
-      await saveUsers(users, config.USERS_GIST_ID, config.USERS_FILENAME)
-      return interaction.editReply("✅ Secondary added")
-    }
-
-    // SCHEDULE
     if (interaction.commandName === "schedule_events") {
-      await interaction.deferReply({ ephemeral: true })
-
       const mode = interaction.options.getString("mode")
       let schedules = loadSchedules()
 
       if (mode === "stop") {
         delete schedules[interaction.user.id]
         saveSchedules(schedules)
-        return interaction.editReply("🛑 Stopped")
+        return interaction.reply("🛑 stopped")
       }
 
+      const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+
       schedules[interaction.user.id] = {
-        main_id: "temp",
+        main_id: users[interaction.user.id].main_id,
         group,
         online_hour: interaction.options.getInteger("online_hour"),
         online_minute: interaction.options.getInteger("online_minute"),
         offline_hour: interaction.options.getInteger("offline_hour"),
-        offline_minute: interaction.options.getInteger("offline_minute"),
-        last_online: null,
-        last_offline: null
+        offline_minute: interaction.options.getInteger("offline_minute")
       }
 
       saveSchedules(schedules)
-      return interaction.editReply("⏰ Saved")
+      return interaction.reply("⏰ Saved")
     }
 
-    // GP
-    if (interaction.commandName === "gp") {
-      await addVipID(interaction.options.getString("id"))
-      return interaction.reply("🔥 VIP added")
-    }
-
-    // SET OFFLINE
     if (interaction.commandName === "set_offline") {
       const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
 
+      const options = Object.entries(users).map(([id, u]) => ({
+        label: u.name,
+        value: id
+      })).slice(0, 25)
+
       const menu = new StringSelectMenuBuilder()
-        .setCustomId("select_user_offline")
-        .addOptions(Object.entries(users).slice(0, 25).map(([id, u]) => ({
-          label: u.name,
-          value: id
-        })))
+        .setCustomId("offline_select")
+        .addOptions(options)
 
       return interaction.reply({
-        content: "Selecciona usuario",
         components: [new ActionRowBuilder().addComponents(menu)]
       })
     }
   }
 
   // ===== SELECT =====
-  if (interaction.isStringSelectMenu() && interaction.customId === "select_user_offline") {
+  if (interaction.isStringSelectMenu() && interaction.customId === "offline_select") {
     const userId = interaction.values[0]
 
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId(`confirm_${userId}`).setLabel("Confirmar").setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId("cancel").setLabel("Cancelar").setStyle(ButtonStyle.Secondary)
-    )
-
     return interaction.update({
-      content: "¿Seguro?",
-      components: [row]
+      content: "¿Confirmar?",
+      components: [
+        new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId(`confirm_${userId}`).setLabel("Confirm").setStyle(ButtonStyle.Danger),
+          new ButtonBuilder().setCustomId("cancel").setLabel("Cancel").setStyle(ButtonStyle.Secondary)
+        )
+      ]
     })
   }
 
@@ -406,8 +376,8 @@ client.on("interactionCreate", async interaction => {
 
       const group = getUserGroup(interaction)
       const config = GROUP_CONFIG[group]
-
       const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+
       const user = users[userId]
 
       await fetch(`${API_URL}?action=offline&id=${user.main_id}&group=${group}`)
@@ -430,8 +400,7 @@ client.on("interactionCreate", async interaction => {
 // ================= GP DETECTOR =================
 client.on("messageCreate", async message => {
   const match = message.content.match(/\((\d{16})\)/)
-  if (!match) return
-  await addVipID(match[1])
+  if (match) await addVipID(match[1])
 })
 
 require("./gpHandler")(client)
