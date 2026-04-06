@@ -772,8 +772,7 @@ message.votedUsers = votedUsers.concat(userId);
   }
 
   // ===== GUARDAR FOOTER =====
-  const newFooter = `VOTES:alive=${aliveUsers.join(",")}|dead=${deadUsers.join(",")}`;
-  const newEmbed = EmbedBuilder.from(embed).setFooter({ text: newFooter });
+ // const newEmbed = EmbedBuilder.from(embed).setFooter({ text: newFooter });
 
   // ===== BOTONES ACTUALIZADOS =====
 // ===== BOTONES ACTUALIZADOS =====
