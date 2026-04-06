@@ -808,10 +808,10 @@ newRow.addComponents(
 );
 
   // ===== ACTUALIZAR MENSAJE =====
-  await message.edit({
+  //await message.edit({
     //embeds: [newEmbed],
-    components: [newRow]
-  });
+  //  components: [newRow]
+//  });
 
  // ===== ESTADO FINAL =====
 // ===== ESTADO FINAL =====
@@ -833,15 +833,14 @@ if (status === "alive" && !alreadyAlive) {
     stats.daily.alive += 1;
     return stats;
   });
-
-  // 🔥 Guardar estado en footer (persistente)
-  const newFooter = footer + "|status=alive";
-
-  const newEmbed = EmbedBuilder.from(embed).setFooter({ text: newFooter });
-
-  await message.edit({ embeds: [newEmbed] });
 }
 
+// ===== GUARDAR ESTADO EN FOOTER =====
+const newFooter = `VOTES:alive=${aliveUsers.join(",")}|dead=${deadUsers.join(",")}|status=${status || "none"}`;
+
+const newEmbed = EmbedBuilder.from(embed).setFooter({ text: newFooter });
+
+  
 // ===== BOTONES =====
 let components = [];
 
