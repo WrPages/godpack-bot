@@ -24,18 +24,21 @@ const GITHUB_TOKEN = process.env.GITHUB_TOKEN
 //detecta onlineppm
 const GROUP_CONFIG = {
   Trainer: {
+   IDS_FILENAME:"trainer_ids.txt",
     USERS_FILENAME: "trainer_users.json",
     USERS_GIST_ID: "1c066922bc39ac136b6f234fad6d9420",
     IDS_GIST_ID: "4edcf4d341cd4f7d5d0fb8a50f8b8c3c",
     VIP_GIST_ID: "16541fd83785a49ad4a0f22bbeb06000"
   },
   Gym_Leader: {
+   IDS_FILENAME:"gym_ids.txt",
     USERS_FILENAME: "gym_users.json",
     USERS_GIST_ID: "a3f5f3d8a2e6ddf2378fb3481dff49f6",
     IDS_GIST_ID: "e110c37b3e0b8de83a33a1b0a5eb64e8",
     VIP_GIST_ID: "79a0e30c401cfd63e78d9ec5a9210091"
   },
   Elite_Four: {
+   IDS_FILENAME:"elite_ids.txt",
     USERS_FILENAME: "elite_users.json",
     USERS_GIST_ID: "bb18eda2ea748723d8fe0131dd740b70",
     IDS_GIST_ID: "d9db3a72fed74c496fd6cc830f9ca6e9",
@@ -1049,13 +1052,12 @@ if (interaction.commandName === "online_list") {
     await interaction.deferReply();
 
     const group = getUserGroup(interaction);
-    if (!group) {
+    if (!group)
       return interaction.editReply("❌ You don't belong to any reroll group");
-    }
 
     const config = GROUP_CONFIG[group];
 
-    // 🔹 Obtener IDs online del grupo correcto
+    // 🔹 Obtener IDs online del gist correcto
     const resOnline = await fetch(
       `https://api.github.com/gists/${config.IDS_GIST_ID}?t=${Date.now()}`,
       {
@@ -1067,12 +1069,12 @@ if (interaction.commandName === "online_list") {
       }
     );
 
-    if (!resOnline.ok) {
+    if (!resOnline.ok)
       return interaction.editReply("❌ Error fetching online IDs");
-    }
 
     const gistOnline = await resOnline.json();
 
+    // 🔥 AQUÍ usamos el nombre correcto por grupo
     const contentOnline =
       gistOnline.files[config.IDS_FILENAME]?.content || "";
 
@@ -1081,9 +1083,8 @@ if (interaction.commandName === "online_list") {
       .map(x => x.trim())
       .filter(x => /^\d{16}$/.test(x));
 
-    if (onlineIds.length === 0) {
+    if (onlineIds.length === 0)
       return interaction.editReply(`⚫ No users online in ${group}`);
-    }
 
     // 🔹 Obtener usuarios registrados del grupo
     const registeredUsers = await getUsers(
@@ -1094,22 +1095,21 @@ if (interaction.commandName === "online_list") {
     let msg = `🟢 **Online users in ${group}:**\n\n`;
     let found = false;
 
-    for (const id of onlineIds) {
+    // 🔥 Optimizado (sin doble loop innecesario)
+    for (const uid in registeredUsers) {
+      const user = registeredUsers[uid];
 
-      for (const uid in registeredUsers) {
-        const user = registeredUsers[uid];
+      const mainId = (user.main_id || "").trim();
+      const secId = (user.sec_id || "").trim();
 
-        if (user.main_id === id || user.sec_id === id) {
-          msg += `👤 ${user.name} → ${id}\n`;
-          found = true;
-          break;
-        }
+      if (onlineIds.includes(mainId) || onlineIds.includes(secId)) {
+        msg += `👤 ${user.name} → ${mainId}\n`;
+        found = true;
       }
     }
 
-    if (!found) {
+    if (!found)
       msg += "⚫ No registered users online\n";
-    }
 
     return interaction.editReply(msg);
 
@@ -1118,7 +1118,6 @@ if (interaction.commandName === "online_list") {
     return interaction.editReply("❌ Something went wrong");
   }
 }
-
 
  
 
