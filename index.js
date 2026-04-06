@@ -220,7 +220,7 @@ client.once("clientReady", async () => {
 );
 
 console.log("🧹 TODOS LOS COMANDOS BORRADOS");
-
+})
 // ================= INTERACTIONS =================
 client.on("interactionCreate", async interaction => {
 
