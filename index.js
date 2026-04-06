@@ -24,6 +24,7 @@ const GITHUB_TOKEN = process.env.GITHUB_TOKEN
 //detecta onlineppm
 const GROUP_CONFIG = {
   Trainer: {
+   VIP_FILENAME:"trainer_vip.txt",
    IDS_FILENAME:"trainer_ids.txt",
     USERS_FILENAME: "trainer_users.json",
     USERS_GIST_ID: "1c066922bc39ac136b6f234fad6d9420",
@@ -31,6 +32,7 @@ const GROUP_CONFIG = {
     VIP_GIST_ID: "16541fd83785a49ad4a0f22bbeb06000"
   },
   Gym_Leader: {
+   VIP_FILENAME:"gym_vip.txt",
    IDS_FILENAME:"gym_ids.txt",
     USERS_FILENAME: "gym_users.json",
     USERS_GIST_ID: "a3f5f3d8a2e6ddf2378fb3481dff49f6",
@@ -38,6 +40,7 @@ const GROUP_CONFIG = {
     VIP_GIST_ID: "79a0e30c401cfd63e78d9ec5a9210091"
   },
   Elite_Four: {
+   VIP_FILENAME:"elite_vip.txt",
    IDS_FILENAME:"elite_ids.txt",
     USERS_FILENAME: "elite_users.json",
     USERS_GIST_ID: "bb18eda2ea748723d8fe0131dd740b70",
@@ -223,7 +226,7 @@ async function addVipID(id) {
 
     const data = await res.json()
 
-    let content = data.files["vip_ids.txt"]?.content || ""
+    let content = data.files["VIP_FILENAME"]?.content || ""
 
     const ids = content.split("\n").filter(Boolean)
 
@@ -239,7 +242,7 @@ async function addVipID(id) {
       },
       body: JSON.stringify({
         files: {
-          "vip_ids.txt": {
+          "VIP_FILENAME": {
             content: ids.join("\n")
           }
         }
