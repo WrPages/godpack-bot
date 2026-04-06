@@ -90,13 +90,6 @@ const FILE_NAME = "gp_record.txt";
 // ===== LIVE GP STATS =====
 //const LIVE_STATS_FILE = "gp_live_stats.json";
 
-let liveStats = {
-  totalGP: 0,
-  totalAlive: 0,
-  currentDay: null,
-  daily: { gp: 0, alive: 0 },
-  history: []
-};
 
 function getUTC6DateString() {
   const now = new Date();
@@ -233,31 +226,32 @@ async function saveLiveStats(group, stats) {
 
 
 // ===== RESET DIARIO UTC-6 =====
-async function checkDailyReset() {
+async function checkDailyReset(group, stats) {
   const today = getUTC6DateString();
 
-  if (!liveStats.currentDay) {
-    liveStats.currentDay = today;
-    return;
+  if (!stats.currentDay) {
+    stats.currentDay = today;
+    return stats;
   }
 
-  if (today !== liveStats.currentDay) {
+  if (today !== stats.currentDay) {
 
-    liveStats.history.unshift({
-      date: liveStats.currentDay,
-      gp: liveStats.daily.gp,
-      alive: liveStats.daily.alive
+    stats.history.unshift({
+      date: stats.currentDay,
+      gp: stats.daily.gp,
+      alive: stats.daily.alive
     });
 
-    liveStats.history = liveStats.history.slice(0, 5);
+    stats.history = stats.history.slice(0, 5);
 
-    liveStats.currentDay = today;
-    liveStats.daily = { gp: 0, alive: 0 };
+    stats.currentDay = today;
+    stats.daily = { gp: 0, alive: 0 };
 
-    await saveLiveStats();
+    await saveLiveStats(group, stats);
   }
-}
 
+  return stats;
+}
 
 
 
@@ -483,7 +477,7 @@ const sentMessage = await message.channel.send({
 
 // ===== SUMAR GP TOTAL =====
 let stats = await loadLiveStats(group);
-await checkDailyReset(stats);
+stats = await checkDailyReset(group, stats);
 
 stats.totalGP += 1;
 stats.daily.gp += 1;
