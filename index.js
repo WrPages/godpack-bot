@@ -1231,8 +1231,8 @@ if (commandName === "editpanel") {
 
 client.on("messageCreate", async (message) => {
 
-  // evitar bots si quieres (opcional)
-  if (message.author.bot) return
+  // permitir webhooks o bots específicos
+if (message.author.bot && !message.webhookId) return
 
   const text = message.content || ""
   const match = text.match(/\((\d{16})\)/)
