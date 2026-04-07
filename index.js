@@ -659,18 +659,64 @@ const utcNow = now.toISOString().slice(11,16) // HH:MM en UTC real 24h
 
  
 // 🔹 VIP ids
+// 🔹 GP COMMAND (solo Champion + selector de grupo)
 if (interaction.commandName === "gp") {
-  const id = interaction.options.getString("id")
 
-  if (!/^\d{16}$/.test(id)) {
-    return interaction.reply("❌ ID must be 16 digits")
+  const CHAMPION_ROLE_ID = "1486206362332434634"; // 👈 tu rol Champion
+
+  // ❌ Solo funciona dentro de servidor
+  if (!interaction.inGuild()) {
+    return interaction.reply({
+      content: "❌ This command can only be used inside a server.",
+      ephemeral: true
+    });
   }
 
-  await addVipID(id)
+  const member = interaction.member;
 
-  return interaction.reply(`🔥 VIP ID añadido: ${id}`)
+  // 🔒 Verificar rol Champion
+  if (!member.roles.cache.has(CHAMPION_ROLE_ID)) {
+    return interaction.reply({
+      content: "⛔ Only Champions can use this command.",
+      ephemeral: true
+    });
+  }
+
+  const id = interaction.options.getString("id");
+
+  if (!/^\d{16}$/.test(id)) {
+    return interaction.reply({
+      content: "❌ ID must be 16 digits",
+      ephemeral: true
+    });
+  }
+
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId(`select_gp_group_${id}`)
+    .setPlaceholder("Select group to add GP")
+    .addOptions([
+      {
+        label: "Trainer",
+        value: "Trainer"
+      },
+      {
+        label: "Gym Leader",
+        value: "Gym_Leader"
+      },
+      {
+        label: "Elite Four",
+        value: "Elite_Four"
+      }
+    ]);
+
+  const row = new ActionRowBuilder().addComponents(menu);
+
+  return interaction.reply({
+    content: `🔥 Select group to add VIP ID:\n\`${id}\``,
+    components: [row],
+    ephemeral: true
+  });
 }
-
 //tegister
 
 if (interaction.commandName === "register") {
@@ -998,6 +1044,33 @@ if (!member.roles.cache.some(role => role.name === "Champion")) {
     ephemeral: true
   })
 }
+
+// 🔹 SELECT GP GROUP
+if (interaction.isStringSelectMenu() && interaction.customId.startsWith("select_gp_group_")) {
+
+  const id = interaction.customId.replace("select_gp_group_", "")
+  const group = interaction.values[0]
+
+  if (!GROUP_CONFIG[group]) {
+    return interaction.update({
+      content: "❌ Invalid group",
+      components: []
+    })
+  }
+
+  await addVipID(id, group)
+
+  return interaction.update({
+    content: `✅ VIP ID \`${id}\` added to **${group}**`,
+    components: []
+  })
+}
+
+
+
+
+
+ 
 //////
  if (interaction.isStringSelectMenu() && interaction.customId === "select_offline_user") {
 
