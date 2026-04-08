@@ -60,15 +60,17 @@ const CHANNEL_ONLINE_GIST_MAP = {
 async function getOnlineMentions(channelId) {
   try {
     const onlineGistId = CHANNEL_ONLINE_GIST_MAP[channelId];
-    if (!onlineGistId) return "";
+    if (!onlineGistId) return [];
 
+    // IDs que están online
     const res = await fetch(`https://gist.githubusercontent.com/WrPages/${onlineGistId}/raw?t=${Date.now()}`);
     const text = await res.text();
     const onlineIDs = text.split("\n").map(x => x.trim()).filter(Boolean);
 
     const userGistId = CHANNEL_USER_GIST_MAP[channelId];
-    if (!userGistId) return "";
+    if (!userGistId) return [];
 
+    // Traer usuarios del gist
     const userRes = await fetch(`https://api.github.com/gists/${userGistId}?t=${Date.now()}`, {
       headers: { Authorization: `token ${GITHUB_TOKEN}` }
     });
@@ -77,19 +79,20 @@ async function getOnlineMentions(channelId) {
       ? JSON.parse(userData.files["elite_users.json"].content)
       : {};
 
-    const mentionList = [];
+    // Array de menciones
+    const mentions = [];
     for (const discordId in users) {
       const mainId = users[discordId].main_id?.trim();
       const secId = users[discordId].sec_id?.trim();
       if (onlineIDs.includes(mainId) || (secId && onlineIDs.includes(secId))) {
-        mentionList.push(`<@${discordId}>`);
+        mentions.push(`<@${discordId}>`);
       }
     }
 
-    return mentionList.join(" ");
+    return mentions; // devuelve array de menciones
   } catch (err) {
     console.error("GET ONLINE MENTIONS ERROR:", err);
-    return "";
+    return [];
   }
 }
 
@@ -599,11 +602,11 @@ await thread.send({
 });
       
 // Menciones online directas
-const onlineIDs = await getOnlineMentions(message.channel.id); // devolver array de <@discordId>
-if (onlineIDs && onlineIDs.length > 0) {
+const onlineMentions = await getOnlineMentions(message.channel.id);
+if (onlineMentions.length > 0) {
   await thread.send({
-    content: onlineIDs.join(" "), // unir en string separado por espacios
-    allowedMentions: { users: onlineIDs.map(id => id.replace(/[<@>]/g, "")) }
+    content: onlineMentions.join(" "),
+    allowedMentions: { users: onlineMentions.map(m => m.replace(/[<@>]/g, "")) }
   });
 }
 
