@@ -41,7 +41,41 @@ const USERS_GIST_ID = "bb18eda2ea748723d8fe0131dd740b70"; // tu gist users.json
 const IDS_GIST_RAW_URL = "https://gist.githubusercontent.com/WrPages/d9db3a72fed74c496fd6cc830f9ca6e9/raw/elite_ids.txt";
 
 
+async function getOnlineMentions(channelId) {
+  try {
+    const onlineGistId = CHANNEL_ONLINE_GIST_MAP[channelId];
+    if (!onlineGistId) return "";
 
+    const res = await fetch(`https://gist.githubusercontent.com/WrPages/${onlineGistId}/raw?t=${Date.now()}`);
+    const text = await res.text();
+    const onlineIDs = text.split("\n").map(x => x.trim()).filter(Boolean);
+
+    const userGistId = CHANNEL_USER_GIST_MAP[channelId];
+    if (!userGistId) return "";
+
+    const userRes = await fetch(`https://api.github.com/gists/${userGistId}?t=${Date.now()}`, {
+      headers: { Authorization: `token ${GITHUB_TOKEN}` }
+    });
+    const userData = await userRes.json();
+    const users = userData.files?.["elite_users.json"]?.content
+      ? JSON.parse(userData.files["elite_users.json"].content)
+      : {};
+
+    const mentionList = [];
+    for (const discordId in users) {
+      const mainId = users[discordId].main_id?.trim();
+      const secId = users[discordId].sec_id?.trim();
+      if (onlineIDs.includes(mainId) || (secId && onlineIDs.includes(secId))) {
+        mentionList.push(`<@${discordId}>`);
+      }
+    }
+
+    return mentionList.join(" ");
+  } catch (err) {
+    console.error("GET ONLINE MENTIONS ERROR:", err);
+    return "";
+  }
+}
 
 
 
@@ -75,6 +109,19 @@ async function getUsers() {
   }
 }
 
+
+
+const CHANNEL_USER_GIST_MAP = {
+  "bb18eda2ea748723d8fe0131dd740b70": "GIST_USERS_ELITE_FOUR", // reemplaza con IDs reales
+  "1c066922bc39ac136b6f234fad6d9420": "GIST_USERS_TRAINER",
+  "a3f5f3d8a2e6ddf2378fb3481dff49f6": "GIST_USERS_GYM_LEADER"
+};
+
+const CHANNEL_ONLINE_GIST_MAP = {
+  "d9db3a72fed74c496fd6cc830f9ca6e9": "GIST_ONLINE_ELITE_FOUR",
+  "4edcf4d341cd4f7d5d0fb8a50f8b8c3c": "GIST_ONLINE_TRAINER",
+  "e110c37b3e0b8de83a33a1b0a5eb64e8": "GIST_ONLINE_GYM_LEADER"
+};
 
 const ALLOWED_CHANNELS = [
   "1486277594629275770", // canal 1
@@ -547,25 +594,13 @@ await thread.send({
   components: [voteAccessRow]
 });
       // Menciones online
-      const onlineIDs = await getOnlineIDs();
-      const users = await getUsers();
-      const onlineClean = onlineIDs.map(id => id.trim());
-      const mentionList = [];
-      for (const discordId in users) {
-        const userData = users[discordId];
-        const mainId = userData.main_id?.trim();
-        const secId = userData.sec_id?.trim();
-        if (onlineClean.includes(mainId) || (secId && onlineClean.includes(secId))) {
-          mentionList.push(`<@${discordId}>`);
-        }
-      }
-      const onlineMention = mentionList.join(" ");
-      if (onlineMention) {
-        await thread.send({
-          content: onlineMention,
-          allowedMentions: { parse: ["users"] }
-        });
-      }
+     const onlineMention = await getOnlineMentions(message.channel.id);
+if (onlineMention) {
+  await thread.send({
+    content: onlineMention,
+    allowedMentions: { parse: ["users"] }
+  });
+}
 
       await thread.send("📂 Original webhook message:");
       await thread.send({
