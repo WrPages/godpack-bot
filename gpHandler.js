@@ -41,6 +41,22 @@ const USERS_GIST_ID = "bb18eda2ea748723d8fe0131dd740b70"; // tu gist users.json
 const IDS_GIST_RAW_URL = "https://gist.githubusercontent.com/WrPages/d9db3a72fed74c496fd6cc830f9ca6e9/raw/elite_ids.txt";
 
 
+
+// Mapa canal → Gist de usuarios
+const CHANNEL_USER_GIST_MAP = {
+  "1486277594629275770": "bb18eda2ea748723d8fe0131dd740b70", // Elite Four
+  "1487362022864588902": "1c066922bc39ac136b6f234fad6d9420", // Trainer
+  "1484015417411244082": "a3f5f3d8a2e6ddf2378fb3481dff49f6"  // Gym Leader
+};
+
+// Mapa canal → Gist con IDs online
+const CHANNEL_ONLINE_GIST_MAP = {
+  "1486277594629275770": "d9db3a72fed74c496fd6cc830f9ca6e9", // Elite Four
+  "1487362022864588902": "4edcf4d341cd4f7d5d0fb8a50f8b8c3c", // Trainer
+  "1484015417411244082": "e110c37b3e0b8de83a33a1b0a5eb64e8"  // Gym Leader
+};
+
+
 async function getOnlineMentions(channelId) {
   try {
     const onlineGistId = CHANNEL_ONLINE_GIST_MAP[channelId];
