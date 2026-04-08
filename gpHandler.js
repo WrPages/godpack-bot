@@ -597,12 +597,13 @@ const voteAccessRow = new ActionRowBuilder().addComponents(
 await thread.send({
   components: [voteAccessRow]
 });
-      // Menciones online
-     const onlineMention = await getOnlineMentions(message.channel.id);
-if (onlineMention) {
+      
+// Menciones online directas
+const onlineIDs = await getOnlineMentions(message.channel.id); // devolver array de <@discordId>
+if (onlineIDs && onlineIDs.length > 0) {
   await thread.send({
-    content: onlineMention,
-    allowedMentions: { parse: ["users"] }
+    content: onlineIDs.join(" "), // unir en string separado por espacios
+    allowedMentions: { users: onlineIDs.map(id => id.replace(/[<@>]/g, "")) }
   });
 }
 
