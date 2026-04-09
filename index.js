@@ -322,6 +322,10 @@ client.once("ready", async () => {
           .setRequired(true)
       ),
 
+   new SlashCommandBuilder()
+  .setName("change_rol")
+  .setDescription("Select your active group"),
+
     new SlashCommandBuilder()
       .setName("add_sec")
       .setDescription("Register your secondary game ID")
