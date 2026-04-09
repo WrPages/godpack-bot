@@ -503,6 +503,8 @@ client.on("interactionCreate", async (interaction) => {
 // ✅ SOLO REGISTER MENU
 if (interaction.isStringSelectMenu() && interaction.customId.startsWith("register_")) {
 
+
+
   const id = interaction.customId.replace("register_", "");
   const group = interaction.values[0];
 
@@ -523,7 +525,8 @@ if (interaction.isStringSelectMenu() && interaction.customId.startsWith("registe
     components: []
   });
 }
-
+ // 🚨 FILTRO CRÍTICO
+if (!interaction.isChatInputCommand()) return;
  // if (!interaction.isChatInputCommand()) return
   const { commandName } = interaction;
 
