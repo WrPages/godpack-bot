@@ -55,27 +55,18 @@ const CHANNEL_GROUP_MAP = {
 }
 
 
-const ACTIVE_ROLE_GIST_ID = "49c42c0a844bbc4d2c0187fc254140d1";
-const ACTIVE_ROLE_FILENAME = "active_roles.json";
 
-async function getUserGroup(interaction) {
-
-  const activeRoles = await loadActiveRoles();
-  const savedRole = activeRoles[interaction.user.id];
-
-  if (savedRole && GROUP_CONFIG[savedRole]) {
-    return savedRole;
-  }
-
-  const member = interaction.member;
+function getUserGroup(interaction) {
+  const member = interaction.member
 
   const role = member.roles.cache.find(r =>
     Object.keys(GROUP_CONFIG).includes(r.name)
-  );
+  )
 
-  return role ? role.name : null;
+  if (!role) return null
+
+  return role.name
 }
-
 
 
 
@@ -110,55 +101,6 @@ const content = data.files[config.IDS_FILENAME]?.content || "";
 
 //termina
 const fs = require("fs")
-
-async function loadActiveRoles() {
-  try {
-    const res = await fetch(
-      `https://api.github.com/gists/${ACTIVE_ROLE_GIST_ID}?t=${Date.now()}`,
-      {
-        headers: {
-          Authorization: `Bearer ${GITHUB_TOKEN}`,
-          Accept: "application/vnd.github+json",
-          "Cache-Control": "no-cache"
-        }
-      }
-    );
-
-    const data = await res.json();
-
-    if (!data.files || !data.files[ACTIVE_ROLE_FILENAME]) {
-      return {};
-    }
-
-    return JSON.parse(data.files[ACTIVE_ROLE_FILENAME].content || "{}");
-
-  } catch (err) {
-    console.error("Error loading active roles:", err);
-    return {};
-  }
-}
-
-async function saveActiveRoles(data) {
-  try {
-    await fetch(`https://api.github.com/gists/${ACTIVE_ROLE_GIST_ID}`, {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${GITHUB_TOKEN}`,
-        Accept: "application/vnd.github+json"
-      },
-      body: JSON.stringify({
-        files: {
-          [ACTIVE_ROLE_FILENAME]: {
-            content: JSON.stringify(data, null, 2)
-          }
-        }
-      })
-    });
-  } catch (err) {
-    console.error("Error saving active roles:", err);
-  }
-}
-
 
 const HISTORY_FILE = "./ppm_history.json"
 const TWELVE_HOURS = 12 * 60 * 60 * 1000
@@ -350,19 +292,19 @@ client.once("ready", async () => {
 
   const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
+  //try {
 
 
- // 🗑️ BORRAR COMANDOS ANTIGUOS DEL SERVIDOR
- // try {
+    // 🗑️ BORRAR COMANDOS ANTIGUOS DEL SERVIDOR
    // await rest.put(
-    //  Routes.applicationGuildCommands(
-    //   process.env.CLIENT_ID,
-    //   process.env.GUILD_ID
-    //  ),
-    //  { body: [] }
- //  );
+     // Routes.applicationGuildCommands(
+      // process.env.CLIENT_ID,
+     //  process.env.GUILD_ID
+     // ),
+   //   { body: [] }
+  // );
 
-   // console.log("🗑️ Comandos antiguos eliminados");
+  //  console.log("🗑️ Comandos antiguos eliminados");
 
  // } catch (error) {
  //   console.error("❌ Error borrando comandos:", error);
@@ -379,11 +321,6 @@ client.once("ready", async () => {
           .setDescription("Your 16 digit main ID")
           .setRequired(true)
       ),
-
-   new SlashCommandBuilder()
-  .setName("change_rol")
-  .setDescription("Select which role/group you want to use"),
-   
 
     new SlashCommandBuilder()
       .setName("add_sec")
@@ -479,7 +416,6 @@ new SlashCommandBuilder()
       
 
   ].map(cmd => cmd.toJSON());
- 
 
   try {
 
@@ -492,7 +428,7 @@ new SlashCommandBuilder()
       { body: commands }
     );
 
-   console.log("📦 Commands:", commands.map(c => c.name));
+    console.log("✅ Slash commands registrados automáticamente");
 
   } catch (error) {
     console.error("❌ Error registrando comandos:", error);
@@ -614,47 +550,7 @@ const utcNow = now.toISOString().slice(11,16) // HH:MM en UTC real 24h
   )
 }
 
-///CHANGE_ROL
-if (interaction.commandName === "change_rol") {
 
-  const groups = getUserGroups(interaction);
-
-  // ❌ Si no tiene grupos
-  if (groups.length === 0) {
-    return interaction.reply({
-      content: "❌ You don't belong to any reroll group",
-      ephemeral: true
-    });
-  }
-
-  // ❌ Si solo tiene 1 grupo
-  if (groups.length === 1) {
-    return interaction.reply({
-      content: `⚠️ You only have one group: **${groups[0]}**`,
-      ephemeral: true
-    });
-  }
-
-  // 🔥 Crear menú dinámico
-  const options = groups.map(g => ({
-    label: g.replace("_", " "),
-    value: g
-  }));
-
-  const menu = new StringSelectMenuBuilder()
-    .setCustomId("select_active_role")
-    .setPlaceholder("Select active role")
-    .addOptions(options);
-
-  const row = new ActionRowBuilder().addComponents(menu);
-
-  return interaction.reply({
-    content: "🎯 Select which role you want to use:",
-    components: [row],
-    ephemeral: true
-  });
-}
- 
 
  
 // 🔹 VIP ids
@@ -1044,24 +940,6 @@ if (!member.roles.cache.some(role => role.name === "Champion")) {
   })
 }
 
-if (interaction.isStringSelectMenu() && interaction.customId === "select_active_role") {
-
-  const selectedRole = interaction.values[0];
-
-  const activeRoles = await loadActiveRoles();
-
-  activeRoles[interaction.user.id] = selectedRole;
-
-  await saveActiveRoles(activeRoles);
-
-  return interaction.update({
-    content: `✅ Active role set to **${selectedRole}**`,
-    components: []
-  });
-}
-
-
-
 // 🔹 SELECT GP GROUP
 if (interaction.isStringSelectMenu() && interaction.customId.startsWith("select_gp_group_")) {
 
@@ -1124,7 +1002,7 @@ if (interaction.isButton() && interaction.customId.startsWith("confirm_offline_"
 // 🔹 LIST
 if (interaction.commandName === "list") {
 
-  const group = await getUserGroup(interaction);
+  const group = getUserGroup(interaction);
   if (!group) {
     return interaction.reply("❌ No reroll group detected");
   }
@@ -1154,7 +1032,7 @@ if (interaction.commandName === "online_list") {
   try {
     await interaction.deferReply();
 
-    const group = await getUserGroup(interaction);
+    const group = getUserGroup(interaction);
     if (!group)
       return interaction.editReply("❌ You don't belong to any reroll group");
 
