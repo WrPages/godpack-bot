@@ -1174,25 +1174,41 @@ if (interaction.commandName === "online_list") {
 
 /////change_rol
 
- if (interaction.commandName === "change_rol") {
+if (interaction.commandName === "change_rol") {
+
+  const member = interaction.member;
+
+  // 🔍 obtener roles válidos que el usuario tiene
+  const userGroups = Object.keys(GROUP_CONFIG).filter(group =>
+    member.roles.cache.some(role => role.name === group)
+  );
+
+  // ❌ no tiene ningún grupo
+  if (userGroups.length === 0) {
+    return interaction.reply({
+      content: "❌ You don't have any valid reroll roles.",
+      ephemeral: true
+    });
+  }
+
+  // ❌ solo tiene uno → no necesita cambiar
+  if (userGroups.length === 1) {
+    return interaction.reply({
+      content: `⚠️ You only have one role (**${userGroups[0]}**).\nYou need at least 2 roles to switch.`,
+      ephemeral: true
+    });
+  }
+
+  // ✅ construir opciones dinámicamente
+  const options = userGroups.map(group => ({
+    label: group.replace("_", " "),
+    value: group
+  }));
 
   const menu = new StringSelectMenuBuilder()
     .setCustomId("select_active_role")
     .setPlaceholder("Select your active group")
-    .addOptions([
-      {
-        label: "Trainer",
-        value: "Trainer"
-      },
-      {
-        label: "Gym Leader",
-        value: "Gym_Leader"
-      },
-      {
-        label: "Elite Four",
-        value: "Elite_Four"
-      }
-    ]);
+    .addOptions(options);
 
   const row = new ActionRowBuilder().addComponents(menu);
 
