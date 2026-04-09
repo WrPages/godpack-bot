@@ -68,6 +68,32 @@ function getUserGroup(interaction) {
   return role.name
 }
 
+function getAllUserGroups(interaction) {
+  return interaction.member.roles.cache
+    .map(r => r.name)
+    .filter(r => Object.keys(GROUP_CONFIG).includes(r.name));
+}
+
+function canSelectGroup(groups) {
+  return (
+    groups.includes("Elite_Four") &&
+    (groups.includes("Trainer") || groups.includes("Gym_Leader"))
+  );
+}
+
+function createGroupMenu(customId) {
+  return new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId(customId)
+      .setPlaceholder("Select group")
+      .addOptions([
+        { label: "Trainer", value: "Trainer" },
+        { label: "Gym Leader", value: "Gym_Leader" },
+        { label: "Elite Four", value: "Elite_Four" }
+      ])
+  );
+}
+
 
 
 async function getOnlineIDs(gistId) {
@@ -273,6 +299,30 @@ client.on("ready", () => {
   console.log("Bot ready 🔥")
 })
 require("./gpHandler")(client);
+
+
+if (interaction.isStringSelectMenu() && interaction.customId.startsWith("register_")) {
+
+  const id = interaction.customId.replace("register_", "");
+  const group = interaction.values[0];
+
+  const config = GROUP_CONFIG[group];
+
+  let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME);
+
+  users[interaction.user.id] = {
+    main_id: id,
+    sec_id: null,
+    name: interaction.member.displayName
+  };
+
+  await saveUsers(users, config.USERS_GIST_ID, config.USERS_FILENAME);
+
+  return interaction.update({
+    content: `✅ Registered in ${group}`,
+    components: []
+  });
+}
 
 
 //Comandos
@@ -616,41 +666,43 @@ if (interaction.commandName === "gp") {
 
 if (interaction.commandName === "register") {
 
-  const group = getUserGroup(interaction)
-  if (!group) {
-    return interaction.reply("❌ You don't belong to any reroll group")
-  }
-
-  const config = GROUP_CONFIG[group]
-
-  const id = interaction.options.getString("id")
+  const id = interaction.options.getString("id");
 
   if (!/^\d{16}$/.test(id)) {
-    return interaction.reply("❌ ID must be 16 digits")
+    return interaction.reply("❌ ID must be 16 digits");
   }
 
-  // 🔥 Cargar archivo correcto del gist correcto
-  let users = await getUsers(
-    config.USERS_GIST_ID,
-    config.USERS_FILENAME
-  )
+  const groups = getAllUserGroups(interaction);
+
+  if (groups.length === 0) {
+    return interaction.reply("❌ You don't belong to any group");
+  }
+
+  // 🔥 SI ES ELITE + OTRO → selector
+  if (canSelectGroup(groups)) {
+    return interaction.reply({
+      content: `📌 Select group to register:\n\`${id}\``,
+      components: [createGroupMenu(`register_${id}`)],
+      ephemeral: true
+    });
+  }
+
+  // 🔹 NORMAL (tu código original)
+  const group = groups[0];
+  const config = GROUP_CONFIG[group];
+
+  let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME);
 
   users[interaction.user.id] = {
     main_id: id,
     sec_id: null,
     name: interaction.member.displayName
-  }
+  };
 
-  // 🔥 Guardar en archivo correcto del gist correcto
-  await saveUsers(
-    users,
-    config.USERS_GIST_ID,
-    config.USERS_FILENAME
-  )
+  await saveUsers(users, config.USERS_GIST_ID, config.USERS_FILENAME);
 
-  return interaction.reply(`✅ Main ID registered in ${group}`)
+  return interaction.reply(`✅ Main ID registered in ${group}`);
 }
-
 
 //adsec
 if (interaction.commandName === "add_sec") {
