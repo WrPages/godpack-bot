@@ -463,7 +463,7 @@ new SlashCommandBuilder()
 });
 //termina comandos
 
-client.login(process.env.TOKEN)
+//client.login(process.env.TOKEN)
 
 // StartPPMCounter
 
@@ -500,7 +500,8 @@ function saveHistory(data) {
 
 client.on("interactionCreate", async (interaction) => {
 
- if (interaction.isStringSelectMenu() ) {
+// ✅ SOLO REGISTER MENU
+if (interaction.isStringSelectMenu() && interaction.customId.startsWith("register_")) {
 
   const id = interaction.customId.replace("register_", "");
   const group = interaction.values[0];
