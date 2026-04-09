@@ -711,9 +711,11 @@ if (!group) {
 //adsec
 if (interaction.commandName === "add_sec") {
 
-const group = await getUserGroup(interaction)  if (!group) {
-    return interaction.reply("❌ No reroll group detected")
-  }
+const group = await getUserGroup(interaction);
+
+if (!group) {
+  return interaction.reply("❌ No group");
+}
 
   const config = GROUP_CONFIG[group]
 
@@ -820,9 +822,11 @@ const group = await getUserGroup(interaction)
   
   if (interaction.commandName === "online") {
 
-const group = await getUserGroup(interaction)  if (!group) {
-    return interaction.reply("❌ You don't belong to any reroll group")
-  }
+const group = await getUserGroup(interaction);
+
+if (!group) {
+  return interaction.reply("❌ No group");
+}
 
   const config = GROUP_CONFIG[group]
 
@@ -847,9 +851,11 @@ const group = await getUserGroup(interaction)  if (!group) {
 //online sec
 if (interaction.commandName === "online_sec") {
 
-const group = await getUserGroup(interaction)  if (!group) {
-    return interaction.reply("❌ You don't belong to any reroll group")
-  }
+const group = await getUserGroup(interaction);
+
+if (!group) {
+  return interaction.reply("❌ No group");
+}
 
   const config = GROUP_CONFIG[group]
 
