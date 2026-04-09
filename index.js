@@ -527,7 +527,7 @@ client.on("interactionCreate", async (interaction) => {
   const { commandName } = interaction;
 
   const userId = interaction.user.id
-  let users = await getUsers()
+ // let users = await getUsers()
 
 //SCHENDULE
 
