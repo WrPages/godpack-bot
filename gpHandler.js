@@ -604,10 +604,10 @@ await thread.send({
 // Menciones online directas
 const onlineMentions = await getOnlineMentions(message.channel.id);
 if (onlineMentions.length > 0) {
-  await thread.send({
-    content: onlineMentions.join(" "),
-    allowedMentions: { users: onlineMentions.map(m => m.replace(/[<@>]/g, "")) }
-  });
+ await thread.send({
+  content: onlineMentions.join(" "),
+  allowedMentions: { parse: ["users"] }
+});
 }
 
       await thread.send("📂 Original webhook message:");
