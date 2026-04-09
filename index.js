@@ -71,9 +71,8 @@ function getUserGroup(interaction) {
 function getAllUserGroups(interaction) {
   return interaction.member.roles.cache
     .map(r => r.name)
-    .filter(r => Object.keys(GROUP_CONFIG).includes(r.name));
+    .filter(name => Object.keys(GROUP_CONFIG).includes(name));
 }
-
 function canSelectGroup(groups) {
   return (
     groups.includes("Elite_Four") &&
