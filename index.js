@@ -500,7 +500,7 @@ function saveHistory(data) {
 
 client.on("interactionCreate", async (interaction) => {
 
- if (interaction.isStringSelectMenu() && interaction.customId.startsWith("register_")) {
+ if (interaction.isStringSelectMenu() ) {
 
   const id = interaction.customId.replace("register_", "");
   const group = interaction.values[0];
