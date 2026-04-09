@@ -608,22 +608,11 @@ const utcNow = now.toISOString().slice(11,16) // HH:MM en UTC real 24h
 // 🔹 GP COMMAND (solo Champion + selector de grupo)
 if (interaction.commandName === "gp") {
 
-  const CHAMPION_ROLE_ID = "1486206362332434634"; // 👈 tu rol Champion
+  const CHAMPION_ROLE_ID = "1486206362332434634";
 
-  // ❌ Solo funciona dentro de servidor
-  if (!interaction.inGuild()) {
+  if (!interaction.member.roles.cache.has(CHAMPION_ROLE_ID)) {
     return interaction.reply({
-      content: "❌ This command can only be used inside a server.",
-      ephemeral: true
-    });
-  }
-
-  const member = interaction.member;
-
-  // 🔒 Verificar rol Champion
-  if (!member.roles.cache.has(CHAMPION_ROLE_ID)) {
-    return interaction.reply({
-      content: "⛔ Only Champions can use this command.",
+      content: "⛔ Only Champions",
       ephemeral: true
     });
   }
@@ -631,34 +620,22 @@ if (interaction.commandName === "gp") {
   const id = interaction.options.getString("id");
 
   if (!/^\d{16}$/.test(id)) {
-    return interaction.reply({
-      content: "❌ ID must be 16 digits",
-      ephemeral: true
-    });
+    return interaction.reply("❌ Invalid ID");
   }
 
   const menu = new StringSelectMenuBuilder()
     .setCustomId(`select_gp_group_${id}`)
-    .setPlaceholder("Select group to add GP")
+    .setPlaceholder("Select group")
     .addOptions([
-      {
-        label: "Trainer",
-        value: "Trainer"
-      },
-      {
-        label: "Gym Leader",
-        value: "Gym_Leader"
-      },
-      {
-        label: "Elite Four",
-        value: "Elite_Four"
-      }
+      { label: "Trainer", value: "Trainer" },
+      { label: "Gym Leader", value: "Gym_Leader" },
+      { label: "Elite Four", value: "Elite_Four" }
     ]);
 
   const row = new ActionRowBuilder().addComponents(menu);
 
   return interaction.reply({
-    content: `🔥 Select group to add VIP ID:\n\`${id}\``,
+    content: `🔥 Select group for ID:\n\`${id}\``,
     components: [row],
     ephemeral: true
   });
@@ -708,166 +685,109 @@ if (interaction.commandName === "register") {
 //adsec
 if (interaction.commandName === "add_sec") {
 
-  const group = getUserGroup(interaction)
-  if (!group) {
-    return interaction.reply("❌ No reroll group detected")
-  }
+  const group = getUserGroup(interaction);
+  if (!group) return interaction.reply("❌ No reroll group detected");
 
-  const config = GROUP_CONFIG[group]
-
-  const secId = interaction.options.getString("id")
+  const config = GROUP_CONFIG[group];
+  const secId = interaction.options.getString("id");
 
   if (!/^\d{16}$/.test(secId)) {
-    return interaction.reply("❌ ID must be 16 digits")
+    return interaction.reply("❌ ID must be 16 digits");
   }
 
-  // 🔥 Cargar desde el archivo correcto
-  let users = await getUsers(
-    config.USERS_GIST_ID,
-    config.USERS_FILENAME
-  )
-
-  const userData = users[interaction.user.id]
+  let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME);
+  const userData = users[interaction.user.id];
 
   if (!userData) {
-    return interaction.reply("❌ You must register main ID first")
+    return interaction.reply("❌ You must register main ID first");
   }
 
-  userData.sec_id = secId
+  userData.sec_id = secId;
 
-  // 🔥 Guardar en el archivo correcto
-  await saveUsers(
-    users,
-    config.USERS_GIST_ID,
-    config.USERS_FILENAME
-  )
+  await saveUsers(users, config.USERS_GIST_ID, config.USERS_FILENAME);
 
-  return interaction.reply("✅ Secondary ID added")
+  return interaction.reply("✅ Secondary ID added");
 }
-
 
 //change
-
 if (interaction.commandName === "change") {
 
-  try {
+  await interaction.deferReply({ ephemeral: true });
 
-    await interaction.deferReply({ ephemeral: true })
+  const group = getUserGroup(interaction);
+  if (!group) return interaction.editReply("❌ No group");
 
-    const group = getUserGroup(interaction)
+  const config = GROUP_CONFIG[group];
+  const newId = interaction.options.getString("id");
 
-    if (!group) {
-      return interaction.editReply("❌ You don't belong to any reroll group")
-    }
-
-    const config = GROUP_CONFIG[group]
-
-    const newId = interaction.options.getString("id")
-
-    if (!/^\d{16}$/.test(newId)) {
-      return interaction.editReply("❌ ID must be exactly 16 digits (numbers only)")
-    }
-
-    // 🔥 Cargar correctamente el archivo del grupo
-    let users = await getUsers(
-      config.USERS_GIST_ID,
-      config.USERS_FILENAME
-    )
-
-    const userData = users[interaction.user.id]
-
-    if (!userData) {
-      return interaction.editReply("❌ You must register first")
-    }
-
-    // 🔴 Poner OFFLINE el main_id anterior
-    if (userData.main_id) {
-      try {
-        await fetch(`${API_URL}?action=offline&id=${userData.main_id}&group=${group}`)
-      } catch (e) {
-        console.error("Error putting old ID offline:", e)
-      }
-    }
-
-    // 🔄 Actualizar manteniendo sec_id
-    users[interaction.user.id] = {
-      main_id: newId,
-      sec_id: userData.sec_id || null,
-      name: interaction.member.displayName
-    }
-
-    await saveUsers(
-      users,
-      config.USERS_GIST_ID,
-      config.USERS_FILENAME
-    )
-
-    return interaction.editReply(`🔄 Main ID updated in ${group}`)
-
-  } catch (error) {
-
-    console.error("CHANGE ERROR:", error)
-
-    if (interaction.deferred || interaction.replied) {
-      return interaction.editReply("❌ Unexpected error updating ID")
-    } else {
-      return interaction.reply("❌ Unexpected error updating ID")
-    }
+  if (!/^\d{16}$/.test(newId)) {
+    return interaction.editReply("❌ ID must be 16 digits");
   }
+
+  let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME);
+  const userData = users[interaction.user.id];
+
+  if (!userData) {
+    return interaction.editReply("❌ You must register first");
+  }
+
+  // poner offline anterior
+  if (userData.main_id) {
+    await fetch(`${API_URL}?action=offline&id=${userData.main_id}&group=${group}`);
+  }
+
+  users[interaction.user.id] = {
+    main_id: newId,
+    sec_id: userData.sec_id || null,
+    name: interaction.member.displayName
+  };
+
+  await saveUsers(users, config.USERS_GIST_ID, config.USERS_FILENAME);
+
+  return interaction.editReply(`🔄 Main ID updated in ${group}`);
 }
 
-  
-  if (interaction.commandName === "online") {
 
-  const group = getUserGroup(interaction)
-  if (!group) {
-    return interaction.reply("❌ You don't belong to any reroll group")
+
+
+ ///////ONLINE
+ if (interaction.commandName === "online") {
+
+  const group = getUserGroup(interaction);
+  if (!group) return interaction.reply("❌ No group");
+
+  const config = GROUP_CONFIG[group];
+
+  let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME);
+  const userData = users[interaction.user.id];
+
+  if (!userData?.main_id) {
+    return interaction.reply("❌ Register first");
   }
 
-  const config = GROUP_CONFIG[group]
+  await fetch(`${API_URL}?action=online&id=${userData.main_id}&group=${group}`);
 
-  let users = await getUsers(
-    config.USERS_GIST_ID,
-    config.USERS_FILENAME
-  )
-
-  const userData = users[interaction.user.id]
-
-  // 🔥 CAMBIO IMPORTANTE
-  if (!userData || !userData.main_id) {
-    return interaction.reply("❌ You must register your main ID first")
-  }
-
-  await fetch(`${API_URL}?action=online&id=${userData.main_id}&group=${group}`)
-
-  return interaction.reply("🟢 Main account set online")
+  return interaction.reply("🟢 Main account set online");
 }
-
 
 //online sec
 if (interaction.commandName === "online_sec") {
 
-  const group = getUserGroup(interaction)
-  if (!group) {
-    return interaction.reply("❌ You don't belong to any reroll group")
+  const group = getUserGroup(interaction);
+  if (!group) return interaction.reply("❌ No group");
+
+  const config = GROUP_CONFIG[group];
+
+  let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME);
+  const userData = users[interaction.user.id];
+
+  if (!userData?.sec_id) {
+    return interaction.reply("❌ No secondary ID");
   }
 
-  const config = GROUP_CONFIG[group]
+  await fetch(`${API_URL}?action=online&id=${userData.sec_id}&group=${group}`);
 
-  let users = await getUsers(
-    config.USERS_GIST_ID,
-    config.USERS_FILENAME
-  )
-
-  const userData = users[interaction.user.id]
-
-  if (!userData || !userData.sec_id) {
-    return interaction.reply("❌ You must register your secondary ID first")
-  }
-
-  await fetch(`${API_URL}?action=online&id=${userData.sec_id}&group=${group}`)
-
-  return interaction.reply("🟢 Secondary account set online")
+  return interaction.reply("🟢 Secondary account set online");
 }
 
 
@@ -876,121 +796,62 @@ if (interaction.commandName === "online_sec") {
  
 
   // 🔹 OFFLINE
-  if (interaction.commandName === "offline") {
+ if (interaction.commandName === "offline") {
 
-  await interaction.deferReply()
+  await interaction.deferReply();
 
-  // 🔎 Detectar grupo por rol
-  const group = getUserGroup(interaction)
+  const group = getUserGroup(interaction);
+  if (!group) return interaction.editReply("❌ No group");
 
-  if (!group) {
-    return interaction.editReply("❌ You don't belong to any reroll group")
-  }
+  const config = GROUP_CONFIG[group];
 
-  const config = GROUP_CONFIG[group]
-
-  // 📂 Cargar users del grupo correcto
-let users = await getUsers(
-  config.USERS_GIST_ID,
-  config.USERS_FILENAME
-)
-
-  const userData = users[interaction.user.id]
+  let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME);
+  const userData = users[interaction.user.id];
 
   if (!userData) {
-    return interaction.editReply("❌ You are not registered in your group")
+    return interaction.editReply("❌ Not registered");
   }
 
-  // 🌐 Llamar API con grupo
-if (userData.main_id) {
-  await fetch(`${API_URL}?action=offline&id=${userData.main_id}&group=${group}`)
-}
+  if (userData.main_id) {
+    await fetch(`${API_URL}?action=offline&id=${userData.main_id}&group=${group}`);
+  }
 
-if (userData.sec_id) {
-  await fetch(`${API_URL}?action=offline&id=${userData.sec_id}&group=${group}`)
-}
+  if (userData.sec_id) {
+    await fetch(`${API_URL}?action=offline&id=${userData.sec_id}&group=${group}`);
+  }
 
-  return interaction.editReply(`🔴 ${userData.name} is now OFFLINE in ${group}`)
+  return interaction.editReply(`🔴 ${userData.name} is now OFFLINE`);
 }
  
 //SETOFFLINE
 
- if (interaction.commandName === "set_offline") {
+if (interaction.commandName === "set_offline") {
 
-const member = interaction.member;
+  const member = interaction.member;
 
-if (!member.roles.cache.some(role => role.name === "Champion")) {
-  return interaction.reply({
-    content: "❌ You need the **Champion** role to use this command.",
-    ephemeral: true
-  });
-}
-  
-  const group = getUserGroup(interaction)
-  if (!group) return interaction.reply("❌ No group")
-
-  const config = GROUP_CONFIG[group]
-
-  // 🔹 Obtener IDs online
-  const res = await fetch(
-    `https://api.github.com/gists/${config.IDS_GIST_ID}?t=${Date.now()}`,
-    {
-      headers: {
-        Authorization: `Bearer ${GITHUB_TOKEN}`
-      }
-    }
-  )
-
-  const data = await res.json()
-  const content = data.files["elite_ids.txt"]?.content || ""
-
-  const onlineIds = content
-    .split("\n")
-    .map(x => x.trim())
-    .filter(Boolean)
-
-  if (onlineIds.length === 0) {
-    return interaction.reply("⚫ No users online")
-  }
-
-  const users = await getUsers(
-    config.USERS_GIST_ID,
-    config.USERS_FILENAME
-  )
-
-  const options = []
-
-  for (const id of onlineIds) {
-    let name = "Unknown"
-
-    for (const uid in users) {
-      const u = users[uid]
-
-      if (u.main_id === id || u.sec_id === id) {
-        name = u.name
-        break
-      }
-    }
-
-    options.push({
-      label: `${name}`,
-      description: id,
-      value: id
-    })
+  if (!member.roles.cache.some(role => role.name === "Champion")) {
+    return interaction.reply({
+      content: "❌ You need the **Champion** role to use this command.",
+      ephemeral: true
+    });
   }
 
   const menu = new StringSelectMenuBuilder()
-    .setCustomId("select_offline_user")
-    .setPlaceholder("Select user")
-    .addOptions(options.slice(0, 25))
+    .setCustomId("select_group_offline")
+    .setPlaceholder("Select group")
+    .addOptions([
+      { label: "Trainer", value: "Trainer" },
+      { label: "Gym Leader", value: "Gym_Leader" },
+      { label: "Elite Four", value: "Elite_Four" }
+    ]);
 
-  const row = new ActionRowBuilder().addComponents(menu)
+  const row = new ActionRowBuilder().addComponents(menu);
 
-  await interaction.reply({
-    content: "Select user to set OFFLINE:",
+  return interaction.reply({
+    content: "📂 Select group to view ONLINE users:",
     components: [row],
     ephemeral: true
-  })
+  });
 }
 
 // 🔹 SELECT GP GROUP
@@ -1018,63 +879,139 @@ if (interaction.isStringSelectMenu() && interaction.customId.startsWith("select_
 
 
 
- 
+ //PONER OFFLINE
 //////
- if (interaction.isStringSelectMenu() && interaction.customId === "select_offline_user") {
+if (interaction.isStringSelectMenu() && interaction.customId === "select_group_offline") {
 
-  const id = interaction.values[0]
+  const group = interaction.values[0]
+  const config = GROUP_CONFIG[group]
+
+  try {
+
+    // 🔹 obtener IDs online
+    const res = await fetch(
+      `https://api.github.com/gists/${config.IDS_GIST_ID}?t=${Date.now()}`,
+      {
+        headers: {
+          Authorization: `Bearer ${GITHUB_TOKEN}`
+        }
+      }
+    )
+
+    const data = await res.json()
+
+    const content = data.files[config.IDS_FILENAME]?.content || ""
+
+    const onlineIds = content
+      .split("\n")
+      .map(x => x.trim())
+      .filter(Boolean)
+
+    if (onlineIds.length === 0) {
+      return interaction.update({
+        content: `⚫ No users online in ${group}`,
+        components: []
+      })
+    }
+
+    // 🔹 cargar users
+    const users = await getUsers(
+      config.USERS_GIST_ID,
+      config.USERS_FILENAME
+    )
+
+    const options = []
+
+    for (const id of onlineIds) {
+
+      let name = "Unknown"
+
+      for (const uid in users) {
+        const u = users[uid]
+
+        if (u.main_id === id || u.sec_id === id) {
+          name = u.name
+          break
+        }
+      }
+
+      options.push({
+        label: name,
+        description: id,
+        value: `${id}|${group}`
+      })
+    }
+
+    const menu = new StringSelectMenuBuilder()
+      .setCustomId("select_offline_user")
+      .setPlaceholder(`Users in ${group}`)
+      .addOptions(options.slice(0, 25))
+
+    const row = new ActionRowBuilder().addComponents(menu)
+
+    await interaction.update({
+      content: `👥 Online users in ${group}:`,
+      components: [row]
+    })
+
+  } catch (err) {
+    console.error(err)
+    return interaction.update({
+      content: "❌ Error loading users",
+      components: []
+    })
+  }
+}
+ //////////
+
+if (interaction.isStringSelectMenu() && interaction.customId === "select_offline_user") {
+
+  const [id, group] = interaction.values[0].split("|")
 
   const confirm = new ButtonBuilder()
-    .setCustomId(`confirm_offline_${id}`)
+    .setCustomId(`confirm_offline_${id}_${group}`)
     .setLabel("Confirm")
     .setStyle(ButtonStyle.Danger)
 
   const row = new ActionRowBuilder().addComponents(confirm)
 
   await interaction.update({
-    content: `⚠️ Confirm OFFLINE for ID: ${id}?`,
+    content: `⚠️ Confirm OFFLINE for ID: ${id} (${group})?`,
     components: [row]
   })
 }
 
-if (interaction.isButton() && interaction.customId.startsWith("confirm_offline_")) {
+ if (interaction.isButton() && interaction.customId.startsWith("confirm_offline_")) {
 
-  const id = interaction.customId.replace("confirm_offline_", "")
-
-  const group = getUserGroup(interaction)
+  const [, , id, group] = interaction.customId.split("_")
 
   await fetch(`${API_URL}?action=offline&id=${id}&group=${group}`)
 
   await interaction.update({
-    content: `🔴 ID ${id} set OFFLINE`,
+    content: `🔴 ID ${id} set OFFLINE in ${group}`,
     components: []
   })
 }
- //////////
 
 // 🔹 LIST
 if (interaction.commandName === "list") {
 
   const group = getUserGroup(interaction);
-  if (!group) {
-    return interaction.reply("❌ No reroll group detected");
-  }
+  if (!group) return interaction.reply("❌ No group");
 
   const config = GROUP_CONFIG[group];
-  const registeredUsers = await getUsers(
-    config.USERS_GIST_ID,
-    config.USERS_FILENAME
-  );
 
-  if (Object.keys(registeredUsers).length === 0) {
+  const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME);
+
+  if (Object.keys(users).length === 0) {
     return interaction.reply("📭 No users registered");
   }
 
-  let msg = `📋 **Registered users in ${group}:**\n\n`;
+  let msg = `📋 Users in ${group}:\n\n`;
 
-  for (const uid in registeredUsers) {
-    const user = registeredUsers[uid];
-    msg += `👤 ${user.name} → Main ID: ${user.main_id}\n`;
+  for (const uid in users) {
+    const u = users[uid];
+    msg += `👤 ${u.name} → ${u.main_id}\n`;
   }
 
   return interaction.reply(msg);
@@ -1082,75 +1019,51 @@ if (interaction.commandName === "list") {
 
  // 🔹 ONLINE LIST
 if (interaction.commandName === "online_list") {
-  try {
-    await interaction.deferReply();
 
-    const group = getUserGroup(interaction);
-    if (!group)
-      return interaction.editReply("❌ You don't belong to any reroll group");
+  await interaction.deferReply();
 
-    const config = GROUP_CONFIG[group];
+  const group = getUserGroup(interaction);
+  if (!group) return interaction.editReply("❌ No group");
 
-    // 🔹 Obtener IDs online del gist correcto
-    const resOnline = await fetch(
-      `https://api.github.com/gists/${config.IDS_GIST_ID}?t=${Date.now()}`,
-      {
-        headers: {
-          Authorization: `Bearer ${GITHUB_TOKEN}`,
-          Accept: "application/vnd.github+json",
-          "Cache-Control": "no-cache"
-        }
-      }
-    );
+  const config = GROUP_CONFIG[group];
 
-    if (!resOnline.ok)
-      return interaction.editReply("❌ Error fetching online IDs");
+  const res = await fetch(`https://api.github.com/gists/${config.IDS_GIST_ID}?t=${Date.now()}`, {
+    headers: { Authorization: `Bearer ${GITHUB_TOKEN}` }
+  });
 
-    const gistOnline = await resOnline.json();
+  const data = await res.json();
 
-    // 🔥 AQUÍ usamos el nombre correcto por grupo
-    const contentOnline =
-      gistOnline.files[config.IDS_FILENAME]?.content || "";
+  const content = data.files[config.IDS_FILENAME]?.content || "";
 
-    const onlineIds = contentOnline
-      .split(/\r?\n/)
-      .map(x => x.trim())
-      .filter(x => /^\d{16}$/.test(x));
+  const onlineIds = content
+    .split("\n")
+    .map(x => x.trim())
+    .filter(x => /^\d{16}$/.test(x));
 
-    if (onlineIds.length === 0)
-      return interaction.editReply(`⚫ No users online in ${group}`);
-
-    // 🔹 Obtener usuarios registrados del grupo
-    const registeredUsers = await getUsers(
-      config.USERS_GIST_ID,
-      config.USERS_FILENAME
-    );
-
-    let msg = `🟢 **Online users in ${group}:**\n\n`;
-    let found = false;
-
-    // 🔥 Optimizado (sin doble loop innecesario)
-    for (const uid in registeredUsers) {
-      const user = registeredUsers[uid];
-
-      const mainId = (user.main_id || "").trim();
-      const secId = (user.sec_id || "").trim();
-
-      if (onlineIds.includes(mainId) || onlineIds.includes(secId)) {
-        msg += `👤 ${user.name} → ${mainId}\n`;
-        found = true;
-      }
-    }
-
-    if (!found)
-      msg += "⚫ No registered users online\n";
-
-    return interaction.editReply(msg);
-
-  } catch (error) {
-    console.error("Online list error:", error);
-    return interaction.editReply("❌ Something went wrong");
+  if (onlineIds.length === 0) {
+    return interaction.editReply("⚫ No users online");
   }
+
+  const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME);
+
+  let msg = `🟢 Online in ${group}:\n\n`;
+  let found = false;
+
+  for (const uid in users) {
+    const u = users[uid];
+
+    if (
+      onlineIds.includes(u.main_id) ||
+      onlineIds.includes(u.sec_id)
+    ) {
+      msg += `👤 ${u.name}\n`;
+      found = true;
+    }
+  }
+
+  if (!found) msg += "⚫ None registered";
+
+  return interaction.editReply(msg);
 }
 
  
