@@ -671,9 +671,11 @@ if (interaction.commandName === "gp") {
 
 if (interaction.commandName === "register") {
 
-const group = await getUserGroup(interaction)  if (!group) {
-    return interaction.reply("❌ You don't belong to any reroll group")
-  }
+const group = await getUserGroup(interaction);
+
+if (!group) {
+  return interaction.reply("❌ No group");
+}
 
   const config = GROUP_CONFIG[group]
 
