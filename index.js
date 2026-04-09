@@ -350,10 +350,9 @@ client.once("ready", async () => {
 
   const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
-  //try {
 
-
-    // 🗑️ BORRAR COMANDOS ANTIGUOS DEL SERVIDOR
+ // 🗑️ BORRAR COMANDOS ANTIGUOS DEL SERVIDOR
+  try {
     await rest.put(
       Routes.applicationGuildCommands(
        process.env.CLIENT_ID,
