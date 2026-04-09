@@ -381,7 +381,7 @@ client.once("ready", async () => {
       ),
 
    new SlashCommandBuilder()
-  .setName("change_rol")
+  .setName("change_rol2")
   .setDescription("Select which role/group you want to use"),
    
 
@@ -479,6 +479,7 @@ new SlashCommandBuilder()
       
 
   ].map(cmd => cmd.toJSON());
+ 
 
   try {
 
@@ -491,7 +492,7 @@ new SlashCommandBuilder()
       { body: commands }
     );
 
-    console.log("✅ Slash commands registrados automáticamente");
+   console.log("📦 Commands:", commands.map(c => c.name));
 
   } catch (error) {
     console.error("❌ Error registrando comandos:", error);
