@@ -382,8 +382,8 @@ client.once("ready", async () => {
 
    new SlashCommandBuilder()
   .setName("change_rol")
-  .setDescription("Select which role/group you want to use")
-   ),
+  .setDescription("Select which role/group you want to use"),
+   
 
     new SlashCommandBuilder()
       .setName("add_sec")
