@@ -352,7 +352,7 @@ client.once("ready", async () => {
 
 
  // 🗑️ BORRAR COMANDOS ANTIGUOS DEL SERVIDOR
-  try {
+ // try {
     await rest.put(
       Routes.applicationGuildCommands(
        process.env.CLIENT_ID,
@@ -363,9 +363,9 @@ client.once("ready", async () => {
 
     console.log("🗑️ Comandos antiguos eliminados");
 
-  } catch (error) {
-    console.error("❌ Error borrando comandos:", error);
-  }
+ // } catch (error) {
+ //   console.error("❌ Error borrando comandos:", error);
+ // }
 
   // 🔥 DEFINIR COMANDOS NUEVOS
   const commands = [
