@@ -75,9 +75,10 @@ async function getOnlineMentions(channelId) {
       headers: { Authorization: `token ${GITHUB_TOKEN}` }
     });
     const userData = await userRes.json();
-    const users = userData.files?.["elite_users.json"]?.content
-      ? JSON.parse(userData.files["elite_users.json"].content)
-      : {};
+  const fileKeys = Object.keys(userData.files || {});
+if (fileKeys.length === 0) return [];
+
+const users = JSON.parse(userData.files[fileKeys[0]].content);
 
     // Array de menciones
     const mentions = [];
