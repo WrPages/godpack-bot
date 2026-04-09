@@ -300,28 +300,6 @@ client.on("ready", () => {
 require("./gpHandler")(client);
 
 
-if (interaction.isStringSelectMenu() && interaction.customId.startsWith("register_")) {
-
-  const id = interaction.customId.replace("register_", "");
-  const group = interaction.values[0];
-
-  const config = GROUP_CONFIG[group];
-
-  let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME);
-
-  users[interaction.user.id] = {
-    main_id: id,
-    sec_id: null,
-    name: interaction.member.displayName
-  };
-
-  await saveUsers(users, config.USERS_GIST_ID, config.USERS_FILENAME);
-
-  return interaction.update({
-    content: `✅ Registered in ${group}`,
-    components: []
-  });
-}
 
 
 //Comandos
@@ -521,6 +499,30 @@ function saveHistory(data) {
 
 
 client.on("interactionCreate", async (interaction) => {
+
+ if (interaction.isStringSelectMenu() && interaction.customId.startsWith("register_")) {
+
+  const id = interaction.customId.replace("register_", "");
+  const group = interaction.values[0];
+
+  const config = GROUP_CONFIG[group];
+
+  let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME);
+
+  users[interaction.user.id] = {
+    main_id: id,
+    sec_id: null,
+    name: interaction.member.displayName
+  };
+
+  await saveUsers(users, config.USERS_GIST_ID, config.USERS_FILENAME);
+
+  return interaction.update({
+    content: `✅ Registered in ${group}`,
+    components: []
+  });
+}
+
  // if (!interaction.isChatInputCommand()) return
   const { commandName } = interaction;
 
