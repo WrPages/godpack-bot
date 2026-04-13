@@ -40,7 +40,8 @@ async function updateStatsSafe(group, callback) {
 const USERS_GIST_ID = "bb18eda2ea748723d8fe0131dd740b70"; // tu gist users.json
 const IDS_GIST_RAW_URL = "https://gist.githubusercontent.com/WrPages/d9db3a72fed74c496fd6cc830f9ca6e9/raw/elite_ids.txt";
 
-
+const USERS_GP_GIST_ID = "5131a73fcee46b4a5c7b7faeea16efe9";
+const USERS_GP_FILE = "gp_user.json";
 
 // Mapa canal → Gist de usuarios
 const CHANNEL_USER_GIST_MAP = {
@@ -56,6 +57,79 @@ const CHANNEL_ONLINE_GIST_MAP = {
   "1484015417411244082": "e110c37b3e0b8de83a33a1b0a5eb64e8"  // Gym Leader
 };
 
+
+async function loadUsersGP() {
+  try {
+    const res = await fetch(`https://api.github.com/gists/${USERS_GP_GIST_ID}`, {
+      headers: { Authorization: `token ${GITHUB_TOKEN}` }
+    });
+
+    const data = await res.json();
+
+    if (!data.files || !data.files[USERS_GP_FILE]) return {};
+
+    return JSON.parse(data.files[USERS_GP_FILE].content || "{}");
+
+  } catch (err) {
+    console.error("LOAD USERS GP ERROR:", err);
+    return {};
+  }
+}
+
+async function saveUsersGP(data) {
+  try {
+    await fetch(`https://api.github.com/gists/${USERS_GP_GIST_ID}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `token ${GITHUB_TOKEN}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        files: {
+          [USERS_GP_FILE]: {
+            content: JSON.stringify(data, null, 2)
+          }
+        }
+      })
+    });
+  } catch (err) {
+    console.error("SAVE USERS GP ERROR:", err);
+  }
+}
+async function registerUserGP(message) {
+  try {
+    const mentionedUsers = message.mentions.users;
+
+    if (!mentionedUsers || mentionedUsers.size === 0) {
+      console.log("⚠️ No hay menciones en este GP");
+      return;
+    }
+
+    let usersGP = await loadUsersGP();
+
+    for (const [id, user] of mentionedUsers) {
+
+      if (!usersGP[id]) {
+        usersGP[id] = {
+          name: user.username,
+          gp: 0
+        };
+      }
+
+      usersGP[id].gp += 1;
+
+      // actualizar nombre por si cambia
+      usersGP[id].name = user.username;
+
+      console.log(`💾 GP SUMADO: ${user.username} -> ${usersGP[id].gp}`);
+    }
+
+    await saveUsersGP(usersGP);
+
+  } catch (err) {
+    console.error("REGISTER USER GP ERROR:", err);
+  }
+}
 
 async function getOnlineMentions(channelId) {
   try {
@@ -135,6 +209,7 @@ const ALLOWED_CHANNELS = [
   "1486277594629275770", // canal 1
   "1484015417411244082",
   "1487362022864588902"// canal 2
+
    // canal 3
 ];
 const CHANNEL_GROUP_MAP = {
@@ -462,6 +537,8 @@ client.on("messageCreate", async (message) => {
 if (!ALLOWED_CHANNELS.includes(message.channel.id)) return;
   if (!message.webhookId) return;
   if (!message.content.includes("God Pack found")) return;
+  // 🔥 REGISTRAR GP POR MENCIÓN
+await registerUserGP(message);
 const group = CHANNEL_GROUP_MAP[message.channel.id];
 
 if (!group) {
