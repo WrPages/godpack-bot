@@ -1076,8 +1076,9 @@ await interaction.deferReply();
 
  // 🔹 ONLINE LIST
 if (interaction.isChatInputCommand() && interaction.commandName === "online_list") {
+   await interaction.deferReply();
   try {
-    await interaction.deferReply();
+   
 
     const group = await getUserGroup(interaction);
     if (!group)
