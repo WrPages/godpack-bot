@@ -507,7 +507,7 @@ async function createTestMessage(client) {
 
 module.exports = async (client) => {
     await loadData();
-        await loadLiveStats();
+      //  await loadLiveStats();
     
 
 
