@@ -493,6 +493,13 @@ function saveHistory(data) {
 
 
 client.on("interactionCreate", async (interaction) => {
+
+  try {
+
+  // 🔥 AUTO-DEFER GLOBAL
+  if (interaction.isChatInputCommand()) {
+    await interaction.deferReply({ ephemeral: true });
+  }
  // if (!interaction.isChatInputCommand()) return
    if (!interaction.isChatInputCommand() 
     && !interaction.isStringSelectMenu() 
@@ -1196,6 +1203,18 @@ if (interaction.isChatInputCommand() && interaction.commandName === "change_rol"
   });
 }
 
+} catch (err) {
+  console.error("Interaction error:", err);
+
+  if (interaction.deferred || interaction.replied) {
+    await interaction.editReply("❌ Unexpected error.");
+  } else {
+    await interaction.reply({ content: "❌ Unexpected error.", ephemeral: true });
+  }
+}
+
+
+  
 });
     
   // 🔹 CIERRE CORRECTO DE client.on("interactionCreate")
