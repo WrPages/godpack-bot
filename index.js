@@ -497,7 +497,6 @@ client.on("interactionCreate", async (interaction) => {
    if (!interaction.isChatInputCommand() 
     && !interaction.isStringSelectMenu() 
     && !interaction.isButton()) return;
-  const { commandName } = interaction;
 
   const userId = interaction.user.id
 //  let users = await getUsers()
