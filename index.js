@@ -1,4 +1,11 @@
- const { Client, GatewayIntentBits, EmbedBuilder, ModalBuilder,
+process.on("unhandledRejection", (err) => {
+  console.error("Unhandled Rejection:", err);
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception:", err);
+});
+const { Client, GatewayIntentBits, EmbedBuilder, ModalBuilder,
   TextInputBuilder,TextInputStyle,ActionRowBuilder,StringSelectMenuBuilder, ButtonBuilder, ButtonStyle} = require('discord.js')
 const fetch = require('node-fetch')
 
@@ -715,11 +722,11 @@ if (!group) {
 //change
 
 if (interaction.commandName === "change") {
-  await interaction.deferReply();
+   await interaction.deferReply({ ephemeral: true })
 
   try {
 
-    await interaction.deferReply({ ephemeral: true })
+   
 
 const group = await getUserGroup(interaction)
     if (!group) {
@@ -1039,7 +1046,7 @@ if (interaction.isButton() && interaction.customId.startsWith("confirm_offline_"
 
 // 🔹 LIST
 if (interaction.commandName === "list") {
-
+await interaction.deferReply();
   const group = await getUserGroup(interaction);
   if (!group) {
     return interaction.editReply("❌ No reroll group detected");
