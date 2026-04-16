@@ -78,7 +78,8 @@ async function getUserGroup(interaction) {
   return role.name
 }
 
-
+console.log("GITHUB TOKEN START:", process.env.GITHUB_TOKEN?.slice(0,6))
+console.log("GITHUB TOKEN LENGTH:", process.env.GITHUB_TOKEN?.length)
 
 async function getOnlineIDs(gistId) {
   try {
