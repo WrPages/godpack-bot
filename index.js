@@ -504,7 +504,7 @@ client.on("interactionCreate", async (interaction) => {
 //SCHENDULE
 
 if (interaction.isChatInputCommand() && interaction.commandName === "schedule_events") {
-await interaction.deferReply();
+await interaction.deferReply({ ephemeral: true });
   const mode = interaction.options.getString("mode")
   const schedules = loadSchedules()
 
@@ -579,7 +579,7 @@ const utcNow = now.toISOString().slice(11,16) // HH:MM en UTC real 24h
 // 🔹 VIP ids
 // 🔹 GP COMMAND (solo Champion + selector de grupo)
 if (interaction.isChatInputCommand() && interaction.commandName === "gp") {
-  await interaction.deferReply();
+  await interaction.deferReply({ ephemeral: true });
 
   const CHAMPION_ROLE_ID = "1486206362332434634"; // 👈 tu rol Champion
 
@@ -639,7 +639,7 @@ if (interaction.isChatInputCommand() && interaction.commandName === "gp") {
 //tegister
 
 if (interaction.isChatInputCommand() && interaction.commandName === "register") {
-await interaction.deferReply();
+await interaction.deferReply({ ephemeral: true });
 
 const group = await getUserGroup(interaction);
 
@@ -680,7 +680,7 @@ if (!group) {
 
 //adsec
 if (interaction.isChatInputCommand() && interaction.commandName === "add_sec") {
-  await interaction.deferReply();
+  await interaction.deferReply({ ephemeral: true });
 
 const group = await getUserGroup(interaction);
 
@@ -793,7 +793,7 @@ const group = await getUserGroup(interaction)
 
   
   if (interaction.isChatInputCommand() && interaction.commandName === "online") {
-    await interaction.deferReply();
+    await interaction.deferReply({ ephemeral: true });
 
 const group = await getUserGroup(interaction);
 
@@ -823,7 +823,7 @@ if (!group) {
 
 //online sec
 if (interaction.isChatInputCommand() && interaction.commandName === "online_sec") {
-  await interaction.deferReply();
+  await interaction.deferReply({ ephemeral: true });
 
 const group = await getUserGroup(interaction);
 
@@ -895,7 +895,7 @@ if (userData.sec_id) {
 //SETOFFLINE
 
  if (interaction.isChatInputCommand() && interaction.commandName === "set_offline") {
-  await interaction.deferReply();
+  await interaction.deferReply({ ephemeral: true });
 
 const member = interaction.member;
 
@@ -1048,7 +1048,7 @@ if (interaction.isButton() && interaction.customId.startsWith("confirm_offline_"
 
 // 🔹 LIST
 if (interaction.isChatInputCommand() && interaction.commandName === "list") {
-await interaction.deferReply();
+await interaction.deferReply({ ephemeral: true });
   const group = await getUserGroup(interaction);
   if (!group) {
     return interaction.editReply("❌ No reroll group detected");
@@ -1076,7 +1076,7 @@ await interaction.deferReply();
 
  // 🔹 ONLINE LIST
 if (interaction.isChatInputCommand() && interaction.commandName === "online_list") {
-   await interaction.deferReply();
+   await interaction.deferReply({ ephemeral: true });
   try {
    
 
@@ -1151,7 +1151,7 @@ if (interaction.isChatInputCommand() && interaction.commandName === "online_list
 /////change_rol
 
 if (interaction.isChatInputCommand() && interaction.commandName === "change_rol") {
-  await interaction.deferReply();
+  await interaction.deferReply({ ephemeral: true });
 
   const member = interaction.member;
 
