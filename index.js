@@ -495,8 +495,8 @@ function saveHistory(data) {
 client.on("interactionCreate", async (interaction) => {
  // if (!interaction.isChatInputCommand()) return
    if (!interaction.isChatInputCommand() 
-      && !interaction.isStringSelectMenu() 
-      && !interaction.isButton()) return;
+    && !interaction.isStringSelectMenu() 
+    && !interaction.isButton()) return;
   const { commandName } = interaction;
 
   const userId = interaction.user.id
@@ -504,7 +504,7 @@ client.on("interactionCreate", async (interaction) => {
 
 //SCHENDULE
 
-if (interaction.commandName === "schedule_events") {
+if (interaction.isChatInputCommand() && interaction.commandName === "schedule_events") {
 await interaction.deferReply();
   const mode = interaction.options.getString("mode")
   const schedules = loadSchedules()
@@ -579,7 +579,7 @@ const utcNow = now.toISOString().slice(11,16) // HH:MM en UTC real 24h
  
 // 🔹 VIP ids
 // 🔹 GP COMMAND (solo Champion + selector de grupo)
-if (interaction.commandName === "gp") {
+if (interaction.isChatInputCommand() && interaction.commandName === "gp") {
   await interaction.deferReply();
 
   const CHAMPION_ROLE_ID = "1486206362332434634"; // 👈 tu rol Champion
@@ -639,7 +639,7 @@ if (interaction.commandName === "gp") {
 }
 //tegister
 
-if (interaction.commandName === "register") {
+if (interaction.isChatInputCommand() && interaction.commandName === "register") {
 await interaction.deferReply();
 
 const group = await getUserGroup(interaction);
@@ -680,7 +680,7 @@ if (!group) {
 
 
 //adsec
-if (interaction.commandName === "add_sec") {
+if (interaction.isChatInputCommand() && interaction.commandName === "add_sec") {
   await interaction.deferReply();
 
 const group = await getUserGroup(interaction);
@@ -724,7 +724,7 @@ if (!group) {
 
 //change
 
-if (interaction.commandName === "change") {
+if (interaction.isChatInputCommand() && interaction.commandName === "change") {
    await interaction.deferReply({ ephemeral: true })
 
   try {
@@ -793,7 +793,7 @@ const group = await getUserGroup(interaction)
 }
 
   
-  if (interaction.commandName === "online") {
+  if (interaction.isChatInputCommand() && interaction.commandName === "online") {
     await interaction.deferReply();
 
 const group = await getUserGroup(interaction);
@@ -823,7 +823,7 @@ if (!group) {
 
 
 //online sec
-if (interaction.commandName === "online_sec") {
+if (interaction.isChatInputCommand() && interaction.commandName === "online_sec") {
   await interaction.deferReply();
 
 const group = await getUserGroup(interaction);
@@ -856,7 +856,7 @@ if (!group) {
  
 
   // 🔹 OFFLINE
-  if (interaction.commandName === "offline") {
+  if (interaction.isChatInputCommand() && interaction.commandName === "offline") {
 
   await interaction.deferReply()
 
@@ -895,7 +895,7 @@ if (userData.sec_id) {
  
 //SETOFFLINE
 
- if (interaction.commandName === "set_offline") {
+ if (interaction.isChatInputCommand() && interaction.commandName === "set_offline") {
   await interaction.deferReply();
 
 const member = interaction.member;
@@ -1048,7 +1048,7 @@ if (interaction.isButton() && interaction.customId.startsWith("confirm_offline_"
  //////////
 
 // 🔹 LIST
-if (interaction.commandName === "list") {
+if (interaction.isChatInputCommand() && interaction.commandName === "list") {
 await interaction.deferReply();
   const group = await getUserGroup(interaction);
   if (!group) {
@@ -1076,7 +1076,7 @@ await interaction.deferReply();
 }
 
  // 🔹 ONLINE LIST
-if (interaction.commandName === "online_list") {
+if (interaction.isChatInputCommand() && interaction.commandName === "online_list") {
   try {
     await interaction.deferReply();
 
@@ -1150,7 +1150,7 @@ if (interaction.commandName === "online_list") {
 
 /////change_rol
 
-if (interaction.commandName === "change_rol") {
+if (interaction.isChatInputCommand() && interaction.commandName === "change_rol") {
   await interaction.deferReply();
 
   const member = interaction.member;
@@ -1196,98 +1196,6 @@ if (interaction.commandName === "change_rol") {
   });
 }
 
-
- 
-
-if (commandName === "editpanel") {
-  try {
-    // Verificar si el usuario tiene el rol Champion
-    const member = interaction.member; // miembro que ejecuta el comando
-    if (!member.roles.cache.some(role => role.name === "Champion")) {
-      return interaction.editReply({
-        content: "❌ You need the **Champion** role to use this command.",
-        ephemeral: true
-      });
-    }
-
-    // ----- Resto del comando aquí -----
-    await interaction.reply({
-      content: "📝 Please send the **Message ID** of the panel you want to edit:",
-      ephemeral: true
-    });
-
-    const filter = m => m.author.id === interaction.user.id;
-    const collectedId = await interaction.channel.awaitMessages({
-      filter,
-      max: 1,
-      time: 60000,
-      errors: ["time"]
-    });
-    const messageId = collectedId.first().content.trim();
-
-    const message = await interaction.channel.messages.fetch(messageId).catch(() => null);
-    if (!message) {
-      return interaction.followUp({ content: "❌ Message not found.", ephemeral: true });
-    }
-
-    if (!message.embeds.length) {
-      return interaction.followUp({ content: "❌ That message has no embed.", ephemeral: true });
-    }
-
-    await interaction.followUp({
-      content: "🔢 Now, please send the new **Rarity (1-5)**:",
-      ephemeral: true
-    });
-
-    const collectedRarity = await interaction.channel.awaitMessages({
-      filter,
-      max: 1,
-      time: 60000,
-      errors: ["time"]
-    });
-
-    const rarityInput = parseInt(collectedRarity.first().content.trim());
-    if (isNaN(rarityInput) || rarityInput < 1 || rarityInput > 5) {
-      return interaction.followUp({
-        content: "❌ Invalid rarity. Must be a number between 1 and 5.",
-        ephemeral: true
-      });
-    }
-
-    const oldEmbed = message.embeds[0];
-
-    let color = 0x999999;
-    if (rarityInput === 5) color = 0xFFD700;
-    if (rarityInput === 4) color = 0x00ffcc;
-    if (rarityInput === 3) color = 0x0099ff;
-
-    const descMatch = oldEmbed.description?.match(/• (\d+)P\s+\|\s+\*\*(.+)\*\*/i);
-    const pack = descMatch ? parseInt(descMatch[1]) : 1;
-    const username = descMatch ? descMatch[2] : "Unknown";
-
-    const newEmbed = new EmbedBuilder()
-      .setColor(color)
-      .setDescription(`## ✨ ${rarityInput}/5 • ${pack}P  |  **${username}**`);
-
-    if (oldEmbed.image?.url) newEmbed.setImage(oldEmbed.image.url);
-
-    await message.edit({ embeds: [newEmbed] });
-
-    await interaction.followUp({
-      content: `✅ Panel updated successfully to **${rarityInput}/5**!`,
-      ephemeral: true
-    });
-
-  } catch (err) {
-    console.error("EDIT PANEL ERROR:", err);
-    if (!interaction.replied) {
-      await interaction.reply({
-        content: "❌ Something went wrong.",
-        ephemeral: true
-      });
-    }
-  }
-}
 });
     
   // 🔹 CIERRE CORRECTO DE client.on("interactionCreate")
