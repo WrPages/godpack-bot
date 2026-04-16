@@ -857,7 +857,7 @@ if (!group) {
   // 🔹 OFFLINE
   if (interaction.isChatInputCommand() && interaction.commandName === "offline") {
 
-  await interaction.deferReply()
+  await interaction.deferReply({ ephemeral: true });
 
   // 🔎 Detectar grupo por rol
   const group = await getUserGroup(interaction)
