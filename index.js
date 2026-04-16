@@ -79,9 +79,8 @@ async function getUserGroup(interaction) {
 }
 
 
-async function getOnlineIDs(gistId) {
+async function getOnlineIDs(gistId, fileName) {
   try {
-
     const res = await fetch(
       `https://api.github.com/gists/${gistId}?t=${Date.now()}`,
       {
@@ -93,9 +92,14 @@ async function getOnlineIDs(gistId) {
       }
     )
 
+    if (!res.ok) {
+      console.log("GitHub read error:", res.status)
+      return []
+    }
+
     const data = await res.json()
 
-const content = data.files[config.IDS_FILENAME]?.content || "";
+    const content = data.files[fileName]?.content || ""
 
     return content
       .split("\n")
@@ -490,7 +494,7 @@ new SlashCommandBuilder()
 });
 //termina comandos
 
-client.login(process.env.TOKEN)
+//client.login(process.env.TOKEN)
 
 // StartPPMCounter
 
@@ -530,7 +534,7 @@ client.on("interactionCreate", async (interaction) => {
   const { commandName } = interaction;
 
   const userId = interaction.user.id
-  let users = await getUsers()
+//  let users = await getUsers()
 
 //SCHENDULE
 
@@ -946,7 +950,7 @@ if (!member.roles.cache.some(role => role.name === "Champion")) {
   )
 
   const data = await res.json()
-  const content = data.files["elite_ids.txt"]?.content || ""
+  const content = data.files[config.IDS_FILENAME]?.content || ""
 
   const onlineIds = content
     .split("\n")
