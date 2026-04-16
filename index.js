@@ -2,7 +2,6 @@
   TextInputBuilder,TextInputStyle,ActionRowBuilder,StringSelectMenuBuilder, ButtonBuilder, ButtonStyle} = require('discord.js')
 const fetch = require('node-fetch')
 
-const { startPanelSystem } = require("./statsPanel");
 
 
 
@@ -327,7 +326,6 @@ client.once("ready", async () => {
 
   // 🔥 iniciar sistemas
   startDailyScheduler();
-  startPanelSystem(client);
 
   const { REST, Routes, SlashCommandBuilder } = require("discord.js");
 
