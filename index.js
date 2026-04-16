@@ -345,7 +345,7 @@ client.once("ready", async () => {
   try {
 
 
-     🗑️ BORRAR COMANDOS ANTIGUOS DEL SERVIDOR
+    // 🗑️ BORRAR COMANDOS ANTIGUOS DEL SERVIDOR
     await rest.put(
       Routes.applicationGuildCommands(
        process.env.CLIENT_ID,
