@@ -237,7 +237,7 @@ async function saveActiveRoles(data) {
   await fetch(`https://api.github.com/gists/${ACTIVE_ROLE_GIST_ID}`, {
     method: "PATCH",
     headers: {
-      //Authorization: `Bearer ${GITHUB_TOKEN}`,
+      Authorization: `Bearer ${GITHUB_TOKEN}`,
       Accept: "application/vnd.github+json"
     },
     body: JSON.stringify({
@@ -254,7 +254,7 @@ async function saveUsers(users, gistId, fileName) {
   await fetch(`https://api.github.com/gists/${gistId}`, {
     method: "PATCH",
     headers: {
-      //Authorization: `Bearer ${GITHUB_TOKEN}`,
+      Authorization: `Bearer ${GITHUB_TOKEN}`,
       Accept: "application/vnd.github+json"
     },
     body: JSON.stringify({
@@ -280,7 +280,7 @@ async function addVipID(id, group) {
 
     const res = await fetch(`https://api.github.com/gists/${config.VIP_GIST_ID}?t=${Date.now()}`, {
       headers: {
-        //Authorization: `Bearer ${GITHUB_TOKEN}`,
+        Authorization: `Bearer ${GITHUB_TOKEN}`,
         Accept: "application/vnd.github+json",
         "Cache-Control": "no-cache"
       }
