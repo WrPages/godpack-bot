@@ -319,52 +319,21 @@ async function addVipID(id, group) {
 }
 
 //tewmina
-
-client.on("ready", () => {
- // setInterval(updateTotalPPM, 5 * 60 * 1000)
-  //updateTotalPPM()
- startDailyScheduler() 
-  console.log("Bot ready 🔥")
-})
 require("./gpHandler")(client);
 
-
-//Comandos
 client.once("ready", async () => {
+
   console.log(`✅ Bot listo como ${client.user.tag}`);
-  
-  
-  client.once("ready", () => {
-    console.log("Bot online");
 
-    startPanelSystem(client); // 👈 AQUÍ ACTIVAS EL PANEL
-});
-
-
+  // 🔥 iniciar sistemas
+  startDailyScheduler();
+  startPanelSystem(client);
 
   const { REST, Routes, SlashCommandBuilder } = require("discord.js");
 
   const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
-//  try {
-
-
-    // 🗑️ BORRAR COMANDOS ANTIGUOS DEL SERVIDOR
-   // await rest.put(
-    //  Routes.applicationGuildCommands(
-    //   process.env.CLIENT_ID,
-    //   process.env.GUILD_ID
-   //   ),
-   //   { body: [] }
-  //);
-
-   // console.log("🗑️ Comandos antiguos eliminados");
-
-  //} catch (error) {
-  //  console.error("❌ Error borrando comandos:", error);
- //}
-
-  // 🔥 DEFINIR COMANDOS NUEVOS
+  // 🔥 DEFINIR COMANDOS
   const commands = [
 
     new SlashCommandBuilder()
@@ -376,9 +345,9 @@ client.once("ready", async () => {
           .setRequired(true)
       ),
 
-   new SlashCommandBuilder()
-  .setName("change_rol")
-  .setDescription("Select your active group"),
+    new SlashCommandBuilder()
+      .setName("change_rol")
+      .setDescription("Select your active group"),
 
     new SlashCommandBuilder()
       .setName("add_sec")
@@ -398,49 +367,39 @@ client.once("ready", async () => {
           .setRequired(true)
       ),
 
-///////
-
-new SlashCommandBuilder()
-  .setName("schedule_events")
-  .setDescription("Daily online/offline scheduler (UTC)")
-  .addStringOption(opt =>
-    opt.setName("mode")
-      .setDescription("Start or Stop")
-      .setRequired(true)
-      .addChoices(
-        { name: "Start Daily Schedule", value: "start" },
-        { name: "Stop All Schedules", value: "stop" }
+    new SlashCommandBuilder()
+      .setName("schedule_events")
+      .setDescription("Daily online/offline scheduler (UTC)")
+      .addStringOption(opt =>
+        opt.setName("mode")
+          .setDescription("Start or Stop")
+          .setRequired(true)
+          .addChoices(
+            { name: "Start Daily Schedule", value: "start" },
+            { name: "Stop All Schedules", value: "stop" }
+          )
       )
-  )
-  .addIntegerOption(opt =>
-    opt.setName("online_hour")
-      .setDescription("Online Hour (UTC 0-23)")
-      .setRequired(false)
-  )
-  .addIntegerOption(opt =>
-    opt.setName("online_minute")
-      .setDescription("Online Minute (0-59)")
-      .setRequired(false)
-  )
-  .addIntegerOption(opt =>
-    opt.setName("offline_hour")
-      .setDescription("Offline Hour (UTC 0-23)")
-      .setRequired(false)
-  )
-  .addIntegerOption(opt =>
-    opt.setName("offline_minute")
-      .setDescription("Offline Minute (0-59)")
-      .setRequired(false)
-  ),
+      .addIntegerOption(opt =>
+        opt.setName("online_hour")
+          .setDescription("Online Hour (UTC 0-23)")
+      )
+      .addIntegerOption(opt =>
+        opt.setName("online_minute")
+          .setDescription("Online Minute (0-59)")
+      )
+      .addIntegerOption(opt =>
+        opt.setName("offline_hour")
+          .setDescription("Offline Hour (UTC 0-23)")
+      )
+      .addIntegerOption(opt =>
+        opt.setName("offline_minute")
+          .setDescription("Offline Minute (0-59)")
+      ),
 
-new SlashCommandBuilder()
-  .setName("set_offline")
-  .setDescription("Force a user offline"),
+    new SlashCommandBuilder()
+      .setName("set_offline")
+      .setDescription("Force a user offline"),
 
-
-
-   
-/////
     new SlashCommandBuilder()
       .setName("online")
       .setDescription("Set your main account online"),
@@ -469,15 +428,11 @@ new SlashCommandBuilder()
           .setDescription("16 digit VIP ID")
           .setRequired(true)
       )
-  
-      
-      
 
   ].map(cmd => cmd.toJSON());
 
   try {
 
-    // 🚀 REGISTRAR NUEVOS COMANDOS
     await rest.put(
       Routes.applicationGuildCommands(
         process.env.CLIENT_ID,
@@ -491,7 +446,10 @@ new SlashCommandBuilder()
   } catch (error) {
     console.error("❌ Error registrando comandos:", error);
   }
+
 });
+
+
 //termina comandos
 
 //client.login(process.env.TOKEN)
@@ -551,11 +509,11 @@ const utcNow = now.toISOString().slice(11,16) // HH:MM en UTC real 24h
     delete schedules[interaction.user.id]
     saveSchedules(schedules)
 
-    return interaction.reply(`🛑 All daily schedules stopped.\n🕒 Current UTC time: ${utcNow}`)
+    return interaction.editReply(`🛑 All daily schedules stopped.\n🕒 Current UTC time: ${utcNow}`)
   }
 
   const group = await getUserGroup(interaction)
-  if (!group) return interaction.reply("❌ No reroll group detected")
+  if (!group) return interaction.editReply("❌ No reroll group detected")
 
   const config = GROUP_CONFIG[group]
 
@@ -563,7 +521,7 @@ const utcNow = now.toISOString().slice(11,16) // HH:MM en UTC real 24h
   const userData = users[interaction.user.id]
 
   if (!userData?.main_id) {
-    return interaction.reply("❌ You must register first")
+    return interaction.editReply("❌ You must register first")
   }
 
   const onlineHour = interaction.options.getInteger("online_hour")
@@ -575,7 +533,7 @@ const utcNow = now.toISOString().slice(11,16) // HH:MM en UTC real 24h
     onlineHour == null || onlineMinute == null ||
     offlineHour == null || offlineMinute == null
   ) {
-    return interaction.reply("❌ You must provide all time values")
+    return interaction.editReply("❌ You must provide all time values")
   }
 
   if (
@@ -584,7 +542,7 @@ const utcNow = now.toISOString().slice(11,16) // HH:MM en UTC real 24h
     onlineMinute < 0 || onlineMinute > 59 ||
     offlineMinute < 0 || offlineMinute > 59
   ) {
-    return interaction.reply("❌ Invalid UTC time format")
+    return interaction.editReply("❌ Invalid UTC time format")
   }
 
   schedules[interaction.user.id] = {
@@ -620,7 +578,7 @@ if (interaction.commandName === "gp") {
 
   // ❌ Solo funciona dentro de servidor
   if (!interaction.inGuild()) {
-    return interaction.reply({
+    return interaction.editReply({
       content: "❌ This command can only be used inside a server.",
       ephemeral: true
     });
@@ -679,7 +637,7 @@ await interaction.deferReply();
 const group = await getUserGroup(interaction);
 
 if (!group) {
-  return interaction.reply("❌ No group");
+  return interaction.editReply("❌ No group");
 }
 
   const config = GROUP_CONFIG[group]
@@ -687,7 +645,7 @@ if (!group) {
   const id = interaction.options.getString("id")
 
   if (!/^\d{16}$/.test(id)) {
-    return interaction.reply("❌ ID must be 16 digits")
+    return interaction.editReply("❌ ID must be 16 digits")
   }
 
   // 🔥 Cargar archivo correcto del gist correcto
@@ -720,7 +678,7 @@ if (interaction.commandName === "add_sec") {
 const group = await getUserGroup(interaction);
 
 if (!group) {
-  return interaction.reply("❌ No group");
+  return interaction.editReply("❌ No group");
 }
 
   const config = GROUP_CONFIG[group]
@@ -728,7 +686,7 @@ if (!group) {
   const secId = interaction.options.getString("id")
 
   if (!/^\d{16}$/.test(secId)) {
-    return interaction.reply("❌ ID must be 16 digits")
+    return interaction.editReply("❌ ID must be 16 digits")
   }
 
   // 🔥 Cargar desde el archivo correcto
@@ -740,7 +698,7 @@ if (!group) {
   const userData = users[interaction.user.id]
 
   if (!userData) {
-    return interaction.reply("❌ You must register main ID first")
+    return interaction.editReply("❌ You must register main ID first")
   }
 
   userData.sec_id = secId
@@ -1086,7 +1044,7 @@ if (interaction.commandName === "list") {
 
   const group = await getUserGroup(interaction);
   if (!group) {
-    return interaction.reply("❌ No reroll group detected");
+    return interaction.editReply("❌ No reroll group detected");
   }
 
   const config = GROUP_CONFIG[group];
@@ -1096,7 +1054,7 @@ if (interaction.commandName === "list") {
   );
 
   if (Object.keys(registeredUsers).length === 0) {
-    return interaction.reply("📭 No users registered");
+    return interaction.editReply("📭 No users registered");
   }
 
   let msg = `📋 **Registered users in ${group}:**\n\n`;
@@ -1106,7 +1064,7 @@ if (interaction.commandName === "list") {
     msg += `👤 ${user.name} → Main ID: ${user.main_id}\n`;
   }
 
-  return interaction.reply(msg);
+  return interaction.editReply(msg);
 }
 
  // 🔹 ONLINE LIST
@@ -1196,7 +1154,7 @@ if (interaction.commandName === "change_rol") {
 
   // ❌ no tiene ningún grupo
   if (userGroups.length === 0) {
-    return interaction.reply({
+    return interaction.editReply({
       content: "❌ You don't have any valid reroll roles.",
       ephemeral: true
     });
@@ -1204,7 +1162,7 @@ if (interaction.commandName === "change_rol") {
 
   // ❌ solo tiene uno → no necesita cambiar
   if (userGroups.length === 1) {
-    return interaction.reply({
+    return interaction.editReply({
       content: `⚠️ You only have one role (**${userGroups[0]}**).\nYou need at least 2 roles to switch.`,
       ephemeral: true
     });
@@ -1223,7 +1181,7 @@ if (interaction.commandName === "change_rol") {
 
   const row = new ActionRowBuilder().addComponents(menu);
 
-  return interaction.reply({
+  return interaction.editReply({
     content: "🎯 Select your active group:",
     components: [row],
     ephemeral: true
@@ -1238,7 +1196,7 @@ if (commandName === "editpanel") {
     // Verificar si el usuario tiene el rol Champion
     const member = interaction.member; // miembro que ejecuta el comando
     if (!member.roles.cache.some(role => role.name === "Champion")) {
-      return interaction.reply({
+      return interaction.editReply({
         content: "❌ You need the **Champion** role to use this command.",
         ephemeral: true
       });
