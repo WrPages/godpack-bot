@@ -539,7 +539,7 @@ client.on("interactionCreate", async (interaction) => {
 //SCHENDULE
 
 if (interaction.commandName === "schedule_events") {
-
+await interaction.deferReply();
   const mode = interaction.options.getString("mode")
   const schedules = loadSchedules()
 
@@ -600,7 +600,7 @@ const utcNow = now.toISOString().slice(11,16) // HH:MM en UTC real 24h
 
   saveSchedules(schedules)
 
-  return interaction.reply(
+  return interaction.editReply(
     `✅ Daily schedule activated\n\n` +
     `🟢 Online: ${onlineHour.toString().padStart(2,"0")}:${onlineMinute.toString().padStart(2,"0")} UTC\n` +
     `🔴 Offline: ${offlineHour.toString().padStart(2,"0")}:${offlineMinute.toString().padStart(2,"0")} UTC\n\n` +
@@ -614,6 +614,7 @@ const utcNow = now.toISOString().slice(11,16) // HH:MM en UTC real 24h
 // 🔹 VIP ids
 // 🔹 GP COMMAND (solo Champion + selector de grupo)
 if (interaction.commandName === "gp") {
+  await interaction.deferReply();
 
   const CHAMPION_ROLE_ID = "1486206362332434634"; // 👈 tu rol Champion
 
@@ -629,7 +630,7 @@ if (interaction.commandName === "gp") {
 
   // 🔒 Verificar rol Champion
   if (!member.roles.cache.has(CHAMPION_ROLE_ID)) {
-    return interaction.reply({
+    return interaction.editReply({
       content: "⛔ Only Champions can use this command.",
       ephemeral: true
     });
@@ -638,7 +639,7 @@ if (interaction.commandName === "gp") {
   const id = interaction.options.getString("id");
 
   if (!/^\d{16}$/.test(id)) {
-    return interaction.reply({
+    return interaction.editReply({
       content: "❌ ID must be 16 digits",
       ephemeral: true
     });
@@ -664,7 +665,7 @@ if (interaction.commandName === "gp") {
 
   const row = new ActionRowBuilder().addComponents(menu);
 
-  return interaction.reply({
+  return interaction.editReply({
     content: `🔥 Select group to add VIP ID:\n\`${id}\``,
     components: [row],
     ephemeral: true
@@ -673,6 +674,7 @@ if (interaction.commandName === "gp") {
 //tegister
 
 if (interaction.commandName === "register") {
+await interaction.deferReply();
 
 const group = await getUserGroup(interaction);
 
@@ -707,12 +709,13 @@ if (!group) {
     config.USERS_FILENAME
   )
 
-  return interaction.reply(`✅ Main ID registered in ${group}`)
+  return interaction.editReply(`✅ Main ID registered in ${group}`)
 }
 
 
 //adsec
 if (interaction.commandName === "add_sec") {
+  await interaction.deferReply();
 
 const group = await getUserGroup(interaction);
 
@@ -749,13 +752,14 @@ if (!group) {
     config.USERS_FILENAME
   )
 
-  return interaction.reply("✅ Secondary ID added")
+  return interaction.editReply("✅ Secondary ID added")
 }
 
 
 //change
 
 if (interaction.commandName === "change") {
+  await interaction.deferReply();
 
   try {
 
@@ -817,18 +821,19 @@ const group = await getUserGroup(interaction)
     if (interaction.deferred || interaction.replied) {
       return interaction.editReply("❌ Unexpected error updating ID")
     } else {
-      return interaction.reply("❌ Unexpected error updating ID")
+      return interaction.editReply("❌ Unexpected error updating ID")
     }
   }
 }
 
   
   if (interaction.commandName === "online") {
+    await interaction.deferReply();
 
 const group = await getUserGroup(interaction);
 
 if (!group) {
-  return interaction.reply("❌ No group");
+  return interaction.editReply("❌ No group");
 }
 
   const config = GROUP_CONFIG[group]
@@ -842,22 +847,23 @@ if (!group) {
 
   // 🔥 CAMBIO IMPORTANTE
   if (!userData || !userData.main_id) {
-    return interaction.reply("❌ You must register your main ID first")
+    return interaction.editReply("❌ You must register your main ID first")
   }
 
   await fetch(`${API_URL}?action=online&id=${userData.main_id}&group=${group}`)
 
-  return interaction.reply("🟢 Main account set online")
+  return interaction.editReply("🟢 Main account set online")
 }
 
 
 //online sec
 if (interaction.commandName === "online_sec") {
+  await interaction.deferReply();
 
 const group = await getUserGroup(interaction);
 
 if (!group) {
-  return interaction.reply("❌ No group");
+  return interaction.editReply("❌ No group");
 }
 
   const config = GROUP_CONFIG[group]
@@ -870,12 +876,12 @@ if (!group) {
   const userData = users[interaction.user.id]
 
   if (!userData || !userData.sec_id) {
-    return interaction.reply("❌ You must register your secondary ID first")
+    return interaction.editReply("❌ You must register your secondary ID first")
   }
 
   await fetch(`${API_URL}?action=online&id=${userData.sec_id}&group=${group}`)
 
-  return interaction.reply("🟢 Secondary account set online")
+  return interaction.editReply("🟢 Secondary account set online")
 }
 
 
@@ -924,18 +930,19 @@ if (userData.sec_id) {
 //SETOFFLINE
 
  if (interaction.commandName === "set_offline") {
+  await interaction.deferReply();
 
 const member = interaction.member;
 
 if (!member.roles.cache.some(role => role.name === "Champion")) {
-  return interaction.reply({
+  return interaction.editReply({
     content: "❌ You need the **Champion** role to use this command.",
     ephemeral: true
   });
 }
   
   const group = await getUserGroup(interaction)
-  if (!group) return interaction.reply("❌ No group")
+  if (!group) return interaction.editReply("❌ No group")
 
   const config = GROUP_CONFIG[group]
 
@@ -958,7 +965,7 @@ if (!member.roles.cache.some(role => role.name === "Champion")) {
     .filter(Boolean)
 
   if (onlineIds.length === 0) {
-    return interaction.reply("⚫ No users online")
+    return interaction.editReply("⚫ No users online")
   }
 
   const users = await getUsers(
@@ -994,7 +1001,7 @@ if (!member.roles.cache.some(role => role.name === "Champion")) {
 
   const row = new ActionRowBuilder().addComponents(menu)
 
-  await interaction.reply({
+  await interaction.editReply({
     content: "Select user to set OFFLINE:",
     components: [row],
     ephemeral: true
@@ -1178,6 +1185,7 @@ if (interaction.commandName === "online_list") {
 /////change_rol
 
 if (interaction.commandName === "change_rol") {
+  await interaction.deferReply();
 
   const member = interaction.member;
 
