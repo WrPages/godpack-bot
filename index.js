@@ -327,7 +327,7 @@ async function addVipID(id, group) {
 //tewmina
 require("./gpHandler")(client);
 
-client.once("ready", async () => {
+client.once("clientReady", async () => {
 
   console.log(`✅ Bot listo como ${client.user.tag}`);
 
@@ -494,6 +494,9 @@ function saveHistory(data) {
 
 client.on("interactionCreate", async (interaction) => {
  // if (!interaction.isChatInputCommand()) return
+   if (!interaction.isChatInputCommand() 
+      && !interaction.isStringSelectMenu() 
+      && !interaction.isButton()) return;
   const { commandName } = interaction;
 
   const userId = interaction.user.id
