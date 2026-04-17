@@ -2,7 +2,6 @@ const { Client, GatewayIntentBits, EmbedBuilder, ModalBuilder,
   TextInputBuilder,TextInputStyle,ActionRowBuilder,StringSelectMenuBuilder, ButtonBuilder, ButtonStyle} = require('discord.js')
 const fetch = require('node-fetch')
 
-const { startPanelSystem } = require("./statsPanel");
 
 
 
@@ -337,7 +336,6 @@ client.once("ready", async () => {
   client.once("ready", () => {
     console.log("Bot online");
 
-    startPanelSystem(client); // 👈 AQUÍ ACTIVAS EL PANEL
 });
 
 
@@ -1223,97 +1221,6 @@ if (interaction.commandName === "change_rol") {
 }
 
 
- 
-
-if (commandName === "editpanel") {
-  try {
-    // Verificar si el usuario tiene el rol Champion
-    const member = interaction.member; // miembro que ejecuta el comando
-    if (!member.roles.cache.some(role => role.name === "Champion")) {
-      return interaction.reply({
-        content: "❌ You need the **Champion** role to use this command.",
-        ephemeral: true
-      });
-    }
-
-    // ----- Resto del comando aquí -----
-    await interaction.reply({
-      content: "📝 Please send the **Message ID** of the panel you want to edit:",
-      ephemeral: true
-    });
-
-    const filter = m => m.author.id === interaction.user.id;
-    const collectedId = await interaction.channel.awaitMessages({
-      filter,
-      max: 1,
-      time: 60000,
-      errors: ["time"]
-    });
-    const messageId = collectedId.first().content.trim();
-
-    const message = await interaction.channel.messages.fetch(messageId).catch(() => null);
-    if (!message) {
-      return interaction.followUp({ content: "❌ Message not found.", ephemeral: true });
-    }
-
-    if (!message.embeds.length) {
-      return interaction.followUp({ content: "❌ That message has no embed.", ephemeral: true });
-    }
-
-    await interaction.followUp({
-      content: "🔢 Now, please send the new **Rarity (1-5)**:",
-      ephemeral: true
-    });
-
-    const collectedRarity = await interaction.channel.awaitMessages({
-      filter,
-      max: 1,
-      time: 60000,
-      errors: ["time"]
-    });
-
-    const rarityInput = parseInt(collectedRarity.first().content.trim());
-    if (isNaN(rarityInput) || rarityInput < 1 || rarityInput > 5) {
-      return interaction.followUp({
-        content: "❌ Invalid rarity. Must be a number between 1 and 5.",
-        ephemeral: true
-      });
-    }
-
-    const oldEmbed = message.embeds[0];
-
-    let color = 0x999999;
-    if (rarityInput === 5) color = 0xFFD700;
-    if (rarityInput === 4) color = 0x00ffcc;
-    if (rarityInput === 3) color = 0x0099ff;
-
-    const descMatch = oldEmbed.description?.match(/• (\d+)P\s+\|\s+\*\*(.+)\*\*/i);
-    const pack = descMatch ? parseInt(descMatch[1]) : 1;
-    const username = descMatch ? descMatch[2] : "Unknown";
-
-    const newEmbed = new EmbedBuilder()
-      .setColor(color)
-      .setDescription(`## ✨ ${rarityInput}/5 • ${pack}P  |  **${username}**`);
-
-    if (oldEmbed.image?.url) newEmbed.setImage(oldEmbed.image.url);
-
-    await message.edit({ embeds: [newEmbed] });
-
-    await interaction.followUp({
-      content: `✅ Panel updated successfully to **${rarityInput}/5**!`,
-      ephemeral: true
-    });
-
-  } catch (err) {
-    console.error("EDIT PANEL ERROR:", err);
-    if (!interaction.replied) {
-      await interaction.reply({
-        content: "❌ Something went wrong.",
-        ephemeral: true
-      });
-    }
-  }
-}
 });
     
   // 🔹 CIERRE CORRECTO DE client.on("interactionCreate")
