@@ -90,6 +90,20 @@ async function saveUsers(users,gistId,file){
   })
 }
 
+///safereply
+async function safeReply(interaction, options) {
+  try {
+    if (interaction.replied || interaction.deferred) {
+      return await interaction.followUp(options)
+    } else {
+      return await interaction.reply(options)
+    }
+  } catch (err) {
+    console.error("safeReply error:", err)
+  }
+}
+
+
 async function getOnlineIDs(gistId,file){
   const res = await fetch(`https://api.github.com/gists/${gistId}`)
   const data = await res.json()
@@ -202,39 +216,42 @@ client.once("ready", async()=>{
 
 // ================= INTERACTIONS =================
 
-client.on("interactionCreate", async interaction => {
+client.once("interactionCreate", async interaction => {
 
   // ================= BOTONES =================
 
-  if (interaction.isButton()) {
+ if (interaction.isButton()) {
 
-    const group = await getUserGroup(interaction)
-    if (!group) return interaction.reply({ content:"❌ No group", ephemeral:true })
+  const group = await getUserGroup(interaction)
+  if (!group) return safeReply(interaction, { content:"❌ No group", flags:64 })
 
-    const isModal = ["register","add_sec","change","schedule","gp"].includes(interaction.customId)
+  const config = GROUP_CONFIG[group]
 
-    if (!isModal) {
-      await interaction.deferReply({ ephemeral: true })
-    }
+  // ⚠️ SOLO defer si NO es modal
+  const isModal = ["register","add_sec","change","schedule","gp"].includes(interaction.customId)
 
-    const config = GROUP_CONFIG[group]
-    const users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
-    const userData = users[interaction.user.id]
+  if (!isModal) {
+    await interaction.deferReply({ flags:64 })
+  }
 
-    // ===== REGISTER =====
-    if (interaction.customId === "register") {
-      const modal = new ModalBuilder()
-        .setCustomId("reg_modal")
-        .setTitle("Register ID")
+  const users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
+  const userData = users[interaction.user.id]
+   
+// ===== REGISTER =====
+  if (interaction.customId === "register") {
+    const modal = new ModalBuilder()
+      .setCustomId("reg_modal")
+      .setTitle("Register ID")
 
-      modal.addComponents(
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder()
-            .setCustomId("id")
-            .setLabel("16 digit ID")
-            .setStyle(TextInputStyle.Short)
-        )
+    modal.addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId("id")
+          .setLabel("16 digit ID")
+          .setStyle(TextInputStyle.Short)
       )
+    )
+
 
       return interaction.showModal(modal)
     }
@@ -275,13 +292,15 @@ client.on("interactionCreate", async interaction => {
       return interaction.showModal(modal)
     }
 
-    // ===== ONLINE =====
-    if (interaction.customId === "online") {
-      if (!userData?.main_id) return interaction.editReply("❌ Register first")
+  // ===== ONLINE =====
+  if (interaction.customId === "online") {
+    if (!userData?.main_id)
+      return interaction.editReply("❌ Register first")
 
-      await fetch(`${API_URL}?action=online&id=${userData.main_id}&group=${group}`)
-      return interaction.editReply("🟢 ONLINE")
-    }
+    await fetch(`${API_URL}?action=online&id=${userData.main_id}&group=${group}`)
+
+    return interaction.editReply("🟢 ONLINE")
+  }
 
     // ===== ONLINE SEC =====
     if (interaction.customId === "online_sec") {
@@ -292,17 +311,18 @@ client.on("interactionCreate", async interaction => {
     }
 
     // ===== OFFLINE =====
-    if (interaction.customId === "offline") {
-      if (!userData) return interaction.editReply("❌ Not registered")
+   if (interaction.customId === "offline") {
+    if (!userData)
+      return interaction.editReply("❌ Not registered")
 
-      if (userData.main_id)
-        await fetch(`${API_URL}?action=offline&id=${userData.main_id}&group=${group}`)
+    if (userData.main_id)
+      await fetch(`${API_URL}?action=offline&id=${userData.main_id}&group=${group}`)
 
-      if (userData.sec_id)
-        await fetch(`${API_URL}?action=offline&id=${userData.sec_id}&group=${group}`)
+    if (userData.sec_id)
+      await fetch(`${API_URL}?action=offline&id=${userData.sec_id}&group=${group}`)
 
-      return interaction.editReply("🔴 OFFLINE")
-    }
+    return interaction.editReply("🔴 OFFLINE")
+  }
 
     // ===== LIST =====
     if (interaction.customId === "list") {
@@ -417,27 +437,28 @@ client.on("interactionCreate", async interaction => {
 
   // ================= MODALES =================
 
-  if (interaction.isModalSubmit()) {
+if (interaction.isModalSubmit()) {
 
-    const group = await getUserGroup(interaction)
-    if (!group) return interaction.reply({content:"❌ No group",ephemeral:true})
+  const group = await getUserGroup(interaction)
+  if (!group) return safeReply(interaction,{content:"❌ No group",flags:64})
 
-    const config = GROUP_CONFIG[group]
-    let users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
+  const config = GROUP_CONFIG[group]
+  let users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
 
-    if (interaction.customId === "reg_modal") {
-      const id = interaction.fields.getTextInputValue("id")
+  if (interaction.customId === "reg_modal") {
+    const id = interaction.fields.getTextInputValue("id")
 
-      users[interaction.user.id] = {
-        main_id:id,
-        sec_id:null,
-        name:interaction.member.displayName
-      }
-
-      await saveUsers(users,config.USERS_GIST_ID,config.USERS_FILENAME)
-      return interaction.reply({ content: "✅ Registered", ephemeral: true })
+    users[interaction.user.id] = {
+      main_id:id,
+      sec_id:null,
+      name:interaction.member.displayName
     }
 
+    await saveUsers(users,config.USERS_GIST_ID,config.USERS_FILENAME)
+
+    return safeReply(interaction,{content:"✅ Registered",flags:64})
+  }
+}
     if (interaction.customId === "sec_modal") {
       const id = interaction.fields.getTextInputValue("id")
 
@@ -507,14 +528,18 @@ client.on("interactionCreate", async interaction => {
 
   if (interaction.isStringSelectMenu()) {
 
-    if (interaction.customId.startsWith("gp_select_")) {
-      const id = interaction.customId.split("_")[2]
-      const group = interaction.values[0]
+  if (interaction.customId.startsWith("gp_select_")) {
 
-      await addVipID(id,group)
+    const id = interaction.customId.split("_")[2]
+    const group = interaction.values[0]
 
-      return interaction.update({content:`✅ VIP added`,components:[]})
-    }
+    await addVipID(id,group)
+
+    return interaction.update({
+      content:`✅ VIP added`,
+      components:[]
+    })
+  }
 
     if (interaction.customId === "offline_select") {
       const id = interaction.values[0]
