@@ -436,7 +436,7 @@ if (!isModal) {
     }
 
   }
-})
+
   // ================= MODALES =================
 
 if (interaction.isModalSubmit()) {
