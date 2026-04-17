@@ -230,7 +230,7 @@ if (!isModal) {
 }
   
   // 🔥 SOLO AQUÍ defer
-  await interaction.deferReply({ flags:64 })
+//  await interaction.deferReply({ flags:64 })
 
   const group = await getUserGroup(interaction)
   const config = GROUP_CONFIG[group]
@@ -436,7 +436,7 @@ if (!isModal) {
     }
 
   }
-}
+})
   // ================= MODALES =================
 
 if (interaction.isModalSubmit()) {
