@@ -217,7 +217,7 @@ client.once("clientReady", async()=>{
 // ================= INTERACTIONS =================
 
 client.on("interactionCreate", async interaction => {
-  if (interaction.isButton()) {
+  
 
   // ================= BOTONES =================
 
