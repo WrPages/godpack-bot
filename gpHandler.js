@@ -507,7 +507,7 @@ async function createTestMessage(client) {
 
 module.exports = async (client) => {
     await loadData();
-      //  await loadLiveStats();
+        await loadLiveStats();
     
 
 
@@ -1005,16 +1005,4 @@ if (status) {
   const desc = embed.description || "";
   const rarity = (desc.match(/(\d)\/5/) || [])[1] || 0;
   const pack = (desc.match(/• (\d+)P/) || [])[1] || 0;
-  const user = (desc.match(/\*\*(.*?)\*\*/) || [])[1] || "Unknown";
-
-  await updateThreadName(message, status, rarity, pack, user);
-}
-
-return;
-}
-
-// 👇 cierre del interactionCreate
-});
-
-// 👇 cierre del module.exports
-};
+  const us
