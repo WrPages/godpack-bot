@@ -437,7 +437,7 @@ client.on("interactionCreate", async interaction => {
 
   // ================= MODALES =================
 
-  if (interaction.isModalSubmit()) {
+if (interaction.isModalSubmit()) {
 
   const group = await getUserGroup(interaction)
   if (!group) return safeReply(interaction,{content:"❌ No group",flags:64})
@@ -445,7 +445,6 @@ client.on("interactionCreate", async interaction => {
   const config = GROUP_CONFIG[group]
   let users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
 
-  // ===== REGISTER =====
   if (interaction.customId === "reg_modal") {
     const id = interaction.fields.getTextInputValue("id")
 
@@ -460,7 +459,6 @@ client.on("interactionCreate", async interaction => {
     return safeReply(interaction,{content:"✅ Registered",flags:64})
   }
 
-  // ===== SEC =====
   if (interaction.customId === "sec_modal") {
     const id = interaction.fields.getTextInputValue("id")
 
@@ -470,11 +468,9 @@ client.on("interactionCreate", async interaction => {
     users[interaction.user.id].sec_id = id
 
     await saveUsers(users,config.USERS_GIST_ID,config.USERS_FILENAME)
-
     return safeReply(interaction,{content:"✅ Secondary added",flags:64})
   }
 
-  // ===== CHANGE =====
   if (interaction.customId === "change_modal") {
     const id = interaction.fields.getTextInputValue("id")
 
@@ -484,13 +480,10 @@ client.on("interactionCreate", async interaction => {
     users[interaction.user.id].main_id = id
 
     await saveUsers(users,config.USERS_GIST_ID,config.USERS_FILENAME)
-
     return safeReply(interaction,{content:"🔄 Updated",flags:64})
   }
 
-  // ===== SCHEDULE =====
   if (interaction.customId === "schedule_modal") {
-
     const on = interaction.fields.getTextInputValue("on").split(":")
     const off = interaction.fields.getTextInputValue("off").split(":")
 
@@ -510,7 +503,6 @@ client.on("interactionCreate", async interaction => {
     return safeReply(interaction,{content:"✅ Schedule saved",flags:64})
   }
 
-  // ===== GP =====
   if (interaction.customId === "gp_modal") {
     const id = interaction.fields.getTextInputValue("id")
 
@@ -522,7 +514,7 @@ client.on("interactionCreate", async interaction => {
         {label:"Elite Four",value:"Elite_Four"}
       ])
 
-    return safeReply(interaction,{
+    return interaction.reply({
       content:"Select group",
       components:[new ActionRowBuilder().addComponents(menu)],
       flags:64
