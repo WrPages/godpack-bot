@@ -173,7 +173,7 @@ async function sendPanel(channel){
 
   const embed = new EmbedBuilder()
     .setTitle("🎮 PANEL CONTROL")
-    .setDescription("Usa botones para controlar todo")
+   // .setDescription("Usa botones para controlar todo")
 
   const row1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId("register").setLabel("Register").setStyle(ButtonStyle.Primary),
