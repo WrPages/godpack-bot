@@ -15,6 +15,8 @@ const {
 const fetch = require("node-fetch")
 const fs = require("fs")
 
+const gpHandler = require("./gpHandler");
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -165,6 +167,7 @@ function startScheduler(){
   },60000)
 }
 
+  await gpHandler(client);
 // ================= PANEL =================
 
 async function sendPanel(channel){
