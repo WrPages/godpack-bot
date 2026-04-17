@@ -207,10 +207,15 @@ client.on("interactionCreate", async interaction => {
   // ================= BOTONES =================
 
   if (interaction.isButton()) {
-    await interaction.deferReply({ ephemeral: true })
 
     const group = await getUserGroup(interaction)
-    if (!group) return interaction.editReply({content:"❌ No group",ephemeral:true})
+    if (!group) return interaction.reply({ content:"❌ No group", ephemeral:true })
+
+    const isModal = ["register","add_sec","change","schedule","gp"].includes(interaction.customId)
+
+    if (!isModal) {
+      await interaction.deferReply({ ephemeral: true })
+    }
 
     const config = GROUP_CONFIG[group]
     const users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
@@ -272,23 +277,23 @@ client.on("interactionCreate", async interaction => {
 
     // ===== ONLINE =====
     if (interaction.customId === "online") {
-      if (!userData?.main_id) return interaction.editReply({content:"❌ Register first",ephemeral:true})
+      if (!userData?.main_id) return interaction.editReply("❌ Register first")
 
       await fetch(`${API_URL}?action=online&id=${userData.main_id}&group=${group}`)
-      return interaction.editReply(`🟢 ONLINE`)
+      return interaction.editReply("🟢 ONLINE")
     }
 
     // ===== ONLINE SEC =====
     if (interaction.customId === "online_sec") {
-      if (!userData?.sec_id) return interaction.editReply({content:"❌ No secondary ID",ephemeral:true})
+      if (!userData?.sec_id) return interaction.editReply("❌ No secondary ID")
 
       await fetch(`${API_URL}?action=online&id=${userData.sec_id}&group=${group}`)
-      return interaction.editReply(`🟢 SEC ONLINE`)
+      return interaction.editReply("🟢 SEC ONLINE")
     }
 
     // ===== OFFLINE =====
     if (interaction.customId === "offline") {
-      if (!userData) return interaction.editReply({content:"❌ Not registered",ephemeral:true})
+      if (!userData) return interaction.editReply("❌ Not registered")
 
       if (userData.main_id)
         await fetch(`${API_URL}?action=offline&id=${userData.main_id}&group=${group}`)
@@ -296,7 +301,7 @@ client.on("interactionCreate", async interaction => {
       if (userData.sec_id)
         await fetch(`${API_URL}?action=offline&id=${userData.sec_id}&group=${group}`)
 
-      return interaction.editReply(`🔴 OFFLINE`)
+      return interaction.editReply("🔴 OFFLINE")
     }
 
     // ===== LIST =====
@@ -367,8 +372,7 @@ client.on("interactionCreate", async interaction => {
 
       return interaction.editReply({
         content:"Select role",
-        components:[new ActionRowBuilder().addComponents(menu)],
-        ephemeral:true
+        components:[new ActionRowBuilder().addComponents(menu)]
       })
     }
 
@@ -390,14 +394,12 @@ client.on("interactionCreate", async interaction => {
 
       return interaction.editReply({
         content:"Select ID",
-        components:[new ActionRowBuilder().addComponents(menu)],
-        ephemeral:true
+        components:[new ActionRowBuilder().addComponents(menu)]
       })
     }
 
     // ===== GP =====
     if (interaction.customId === "gp") {
-
       const modal = new ModalBuilder()
         .setCustomId("gp_modal")
         .setTitle("Add VIP")
@@ -418,12 +420,11 @@ client.on("interactionCreate", async interaction => {
   if (interaction.isModalSubmit()) {
 
     const group = await getUserGroup(interaction)
-    if (!group) return interaction.editReply({content:"❌ No group",ephemeral:true})
+    if (!group) return interaction.reply({content:"❌ No group",ephemeral:true})
 
     const config = GROUP_CONFIG[group]
     let users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
 
-    // REGISTER
     if (interaction.customId === "reg_modal") {
       const id = interaction.fields.getTextInputValue("id")
 
@@ -434,36 +435,33 @@ client.on("interactionCreate", async interaction => {
       }
 
       await saveUsers(users,config.USERS_GIST_ID,config.USERS_FILENAME)
-      return interaction.editReply("✅ Registered")
+      return interaction.reply({ content: "✅ Registered", ephemeral: true })
     }
 
-    // ADD SEC
     if (interaction.customId === "sec_modal") {
       const id = interaction.fields.getTextInputValue("id")
 
       if (!users[interaction.user.id])
-        return interaction.editReply("❌ Register first")
+        return interaction.reply({content:"❌ Register first",ephemeral:true})
 
       users[interaction.user.id].sec_id = id
 
       await saveUsers(users,config.USERS_GIST_ID,config.USERS_FILENAME)
-      return interaction.editReply("✅ Secondary added")
+      return interaction.reply({content:"✅ Secondary added",ephemeral:true})
     }
 
-    // CHANGE
     if (interaction.customId === "change_modal") {
       const id = interaction.fields.getTextInputValue("id")
 
       if (!users[interaction.user.id])
-        return interaction.editReply("❌ Register first")
+        return interaction.reply({content:"❌ Register first",ephemeral:true})
 
       users[interaction.user.id].main_id = id
 
       await saveUsers(users,config.USERS_GIST_ID,config.USERS_FILENAME)
-      return interaction.editReply("🔄 Updated")
+      return interaction.reply({content:"🔄 Updated",ephemeral:true})
     }
 
-    // SCHEDULE
     if (interaction.customId === "schedule_modal") {
 
       const on = interaction.fields.getTextInputValue("on").split(":")
@@ -482,10 +480,9 @@ client.on("interactionCreate", async interaction => {
 
       saveSchedules(schedules)
 
-      return interaction.editReply("✅ Schedule saved")
+      return interaction.reply({content:"✅ Schedule saved",ephemeral:true})
     }
 
-    // GP
     if (interaction.customId === "gp_modal") {
       const id = interaction.fields.getTextInputValue("id")
 
@@ -497,7 +494,7 @@ client.on("interactionCreate", async interaction => {
           {label:"Elite Four",value:"Elite_Four"}
         ])
 
-      return interaction.editReply({
+      return interaction.reply({
         content:"Select group",
         components:[new ActionRowBuilder().addComponents(menu)],
         ephemeral:true
@@ -510,7 +507,6 @@ client.on("interactionCreate", async interaction => {
 
   if (interaction.isStringSelectMenu()) {
 
-    // GP SELECT
     if (interaction.customId.startsWith("gp_select_")) {
       const id = interaction.customId.split("_")[2]
       const group = interaction.values[0]
@@ -520,7 +516,6 @@ client.on("interactionCreate", async interaction => {
       return interaction.update({content:`✅ VIP added`,components:[]})
     }
 
-    // FORCE OFFLINE SELECT
     if (interaction.customId === "offline_select") {
       const id = interaction.values[0]
       const group = await getUserGroup(interaction)
@@ -530,7 +525,6 @@ client.on("interactionCreate", async interaction => {
       return interaction.update({content:`🔴 Offline ${id}`,components:[]})
     }
 
-    // ROLE SELECT
     if (interaction.customId === "role_select") {
       return interaction.update({content:`✅ Role selected`,components:[]})
     }
