@@ -501,7 +501,7 @@ if (interaction.customId === "online") {
       return interaction.showModal(modal)
     }
 
-  }
+  
 
   // ================= MODALES =================
 
