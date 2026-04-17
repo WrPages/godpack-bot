@@ -791,7 +791,7 @@ const group = await getUserGroup(interaction)
     const newId = interaction.options.getString("id")
 
     if (!/^\d{16}$/.test(newId)) {
-      return interaction.return safeReply(interaction,"❌ ID must be exactly 16 digits (numbers only)")
+      return safeReply(interaction,"❌ ID must be exactly 16 digits (numbers only)")
     }
 
     // 🔥 Cargar correctamente el archivo del grupo
@@ -803,7 +803,7 @@ const group = await getUserGroup(interaction)
     const userData = users[interaction.user.id]
 
     if (!userData) {
-      return interaction.return safeReply(interaction,"❌ You must register first")
+      return safeReply(interaction,"❌ You must register first")
     }
 
     // 🔴 Poner OFFLINE el main_id anterior
@@ -828,14 +828,14 @@ const group = await getUserGroup(interaction)
       config.USERS_FILENAME
     )
 
-    return interaction.return safeReply(interaction,`🔄 Main ID updated in ${group}`)
+    return safeReply(interaction,`🔄 Main ID updated in ${group}`)
 
   } catch (error) {
 
     console.error("CHANGE ERROR:", error)
 
     if (interaction.deferred || interaction.replied) {
-      return interaction.return safeReply(interaction,"❌ Unexpected error updating ID")
+      return safeReply(interaction,"❌ Unexpected error updating ID")
     } else {
       return safeReply(interaction,"❌ Unexpected error updating ID")
     }
@@ -926,7 +926,7 @@ let users = await getUsers(
   const userData = users[interaction.user.id]
 
   if (!userData) {
-    return interaction.return safeReply(interaction,"❌ You are not registered in your group")
+    return safeReply(interaction,"❌ You are not registered in your group")
   }
 
   // 🌐 Llamar API con grupo
@@ -938,7 +938,7 @@ if (userData.sec_id) {
   await fetch(`${API_URL}?action=offline&id=${userData.sec_id}&group=${group}`)
 }
 
-  return interaction.return safeReply(interaction,`🔴 ${userData.name} is now OFFLINE in ${group}`)
+  return safeReply(interaction,`🔴 ${userData.name} is now OFFLINE in ${group}`)
 }
  
 //SETOFFLINE
