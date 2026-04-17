@@ -219,20 +219,39 @@ client.once("clientReady", async()=>{
 client.on("interactionCreate", async interaction => {
 
   // ================= BOTONES =================
+ const isModal = ["register","add_sec","change","schedule","gp"].includes(interaction.customId)
 
- if (interaction.isButton()) {
+  // 🚨 MODALES VAN PRIMERO Y SALEN
+  if (isModal) {
+
+    if (interaction.customId === "register") {
+      // modal
+      return interaction.showModal(modal)
+    }
+
+    if (interaction.customId === "add_sec") {
+      return interaction.showModal(modal)
+    }
+
+    if (interaction.customId === "change") {
+      return interaction.showModal(modal)
+    }
+
+    if (interaction.customId === "schedule") {
+      return interaction.showModal(modal)
+    }
+
+    if (interaction.customId === "gp") {
+      return interaction.showModal(modal)
+    }
+
+  }
+
+  // 🔥 SOLO AQUÍ defer
+  await interaction.deferReply({ flags:64 })
 
   const group = await getUserGroup(interaction)
-  if (!group) return safeReply(interaction, { content:"❌ No group", flags:64 })
-
-  const config = GROUP_CONFIG[group]
-
-  // ⚠️ SOLO defer si NO es modal
-  const isModal = ["register","add_sec","change","schedule","gp"].includes(interaction.customId)
-
-  if (!isModal) {
-    await interaction.deferReply({ flags:64 })
-  }
+  if (!group) return interaction.editReply("❌ No group")
 
   const users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
   const userData = users[interaction.user.id]
