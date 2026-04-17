@@ -1210,7 +1210,7 @@ if (interaction.isChatInputCommand() && interaction.commandName === "change_rol"
   if (interaction.deferred || interaction.replied) {
     await interaction.editReply("❌ Unexpected error.");
   } else {
-    await interaction.reply({ content: "❌ Unexpected error.", ephemeral: true });
+    await interaction.editReply({ content: "❌ Unexpected error.", ephemeral: true });
   }
 }
 
