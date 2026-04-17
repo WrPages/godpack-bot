@@ -16,11 +16,7 @@ const client = new Client({
 // 👇 PÉGALO AQUÍ
 async function safeReply(interaction, content, options = {}) {
   try {
-    if (interaction.replied) {
-      return safeReply(interaction, { content, ...options });
-    }
-
-    if (interaction.deferred) {
+    if (interaction.replied || interaction.deferred) {
       return interaction.followUp({ content, ...options });
     }
 
@@ -30,7 +26,6 @@ async function safeReply(interaction, content, options = {}) {
     console.error("safeReply error:", err);
   }
 }
-
 
 
 const TOKEN = process.env.TOKEN
