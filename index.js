@@ -498,12 +498,13 @@ client.on("interactionCreate", async (interaction) => {
 
   // 🔥 AUTO-DEFER GLOBAL
  // if (interaction.isChatInputCommand()) {
- //   await interaction.deferReply({ ephemeral: true });
+ //   if (!interaction.deferred && !interaction.replied) {   await interaction.deferReply({ ephemeral: true }); }
 //  }
  // if (!interaction.isChatInputCommand()) return
    if (!interaction.isChatInputCommand() 
     && !interaction.isStringSelectMenu() 
     && !interaction.isButton()) return;
+    
 
   const userId = interaction.user.id
 //  let users = await getUsers()
@@ -511,7 +512,7 @@ client.on("interactionCreate", async (interaction) => {
 //SCHENDULE
 
 if (interaction.isChatInputCommand() && interaction.commandName === "schedule_events") {
-await interaction.deferReply({ ephemeral: true });
+if (!interaction.deferred && !interaction.replied) {   await interaction.deferReply({ ephemeral: true }); }
   const mode = interaction.options.getString("mode")
   const schedules = loadSchedules()
 
@@ -586,7 +587,7 @@ const utcNow = now.toISOString().slice(11,16) // HH:MM en UTC real 24h
 // 🔹 VIP ids
 // 🔹 GP COMMAND (solo Champion + selector de grupo)
 if (interaction.isChatInputCommand() && interaction.commandName === "gp") {
-  await interaction.deferReply({ ephemeral: true });
+  if (!interaction.deferred && !interaction.replied) {   await interaction.deferReply({ ephemeral: true }); }
 
   const CHAMPION_ROLE_ID = "1486206362332434634"; // 👈 tu rol Champion
 
@@ -646,7 +647,7 @@ if (interaction.isChatInputCommand() && interaction.commandName === "gp") {
 //tegister
 
 if (interaction.isChatInputCommand() && interaction.commandName === "register") {
-await interaction.deferReply({ ephemeral: true });
+if (!interaction.deferred && !interaction.replied) {   await interaction.deferReply({ ephemeral: true }); }
 
 const group = await getUserGroup(interaction);
 
@@ -687,7 +688,7 @@ if (!group) {
 
 //adsec
 if (interaction.isChatInputCommand() && interaction.commandName === "add_sec") {
-  await interaction.deferReply({ ephemeral: true });
+  if (!interaction.deferred && !interaction.replied) {   await interaction.deferReply({ ephemeral: true }); }
 
 const group = await getUserGroup(interaction);
 
@@ -800,7 +801,7 @@ const group = await getUserGroup(interaction)
 
   
   if (interaction.isChatInputCommand() && interaction.commandName === "online") {
-    await interaction.deferReply({ ephemeral: true });
+    if (!interaction.deferred && !interaction.replied) {   await interaction.deferReply({ ephemeral: true }); }
 
 const group = await getUserGroup(interaction);
 
@@ -830,7 +831,7 @@ if (!group) {
 
 //online sec
 if (interaction.isChatInputCommand() && interaction.commandName === "online_sec") {
-  await interaction.deferReply({ ephemeral: true });
+  if (!interaction.deferred && !interaction.replied) {   await interaction.deferReply({ ephemeral: true }); }
 
 const group = await getUserGroup(interaction);
 
@@ -864,7 +865,7 @@ if (!group) {
   // 🔹 OFFLINE
   if (interaction.isChatInputCommand() && interaction.commandName === "offline") {
 
-  await interaction.deferReply({ ephemeral: true });
+  if (!interaction.deferred && !interaction.replied) {   await interaction.deferReply({ ephemeral: true }); }
 
   // 🔎 Detectar grupo por rol
   const group = await getUserGroup(interaction)
@@ -902,7 +903,7 @@ if (userData.sec_id) {
 //SETOFFLINE
 
  if (interaction.isChatInputCommand() && interaction.commandName === "set_offline") {
-  await interaction.deferReply({ ephemeral: true });
+  if (!interaction.deferred && !interaction.replied) {   await interaction.deferReply({ ephemeral: true }); }
 
 const member = interaction.member;
 
@@ -1055,7 +1056,7 @@ if (interaction.isButton() && interaction.customId.startsWith("confirm_offline_"
 
 // 🔹 LIST
 if (interaction.isChatInputCommand() && interaction.commandName === "list") {
-await interaction.deferReply({ ephemeral: true });
+if (!interaction.deferred && !interaction.replied) {   await interaction.deferReply({ ephemeral: true }); }
   const group = await getUserGroup(interaction);
   if (!group) {
     return interaction.editReply("❌ No reroll group detected");
@@ -1083,7 +1084,7 @@ await interaction.deferReply({ ephemeral: true });
 
  // 🔹 ONLINE LIST
 if (interaction.isChatInputCommand() && interaction.commandName === "online_list") {
-   await interaction.deferReply({ ephemeral: true });
+   if (!interaction.deferred && !interaction.replied) {   await interaction.deferReply({ ephemeral: true }); }
   try {
    
 
@@ -1158,7 +1159,7 @@ if (interaction.isChatInputCommand() && interaction.commandName === "online_list
 /////change_rol
 
 if (interaction.isChatInputCommand() && interaction.commandName === "change_rol") {
-  await interaction.deferReply({ ephemeral: true });
+  if (!interaction.deferred && !interaction.replied) {   await interaction.deferReply({ ephemeral: true }); }
 
   const member = interaction.member;
 
