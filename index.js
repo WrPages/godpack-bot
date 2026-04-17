@@ -638,6 +638,7 @@ if (interaction.commandName === "gp") {
   "❌ This command can only be used inside a server.",
   { ephemeral: true }
 );
+  }
 
   const member = interaction.member;
 
