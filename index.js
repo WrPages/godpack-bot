@@ -4,15 +4,29 @@ const fetch = require('node-fetch')
 
 
 
-
 const client = new Client({ 
   intents: [
     GatewayIntentBits.Guilds,
-GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent
   ] 
 })
+
+// 👇 PÉGALO AQUÍ
+async function safeReply(interaction, content, options = {}) {
+  try {
+    if (interaction.deferred || interaction.replied) {
+      return await interaction.editReply({ content, ...options })
+    } else {
+      return await interaction.reply({ content, ...options })
+    }
+  } catch (err) {
+    console.error("safeReply error:", err)
+  }
+}
+
+
 
 const TOKEN = process.env.TOKEN
 const API_URL = "https://add-ids.netlify.app/.netlify/functions/api"
@@ -319,7 +333,7 @@ async function addVipID(id, group) {
 
 //tewmina
 
-client.on("ready", () => {
+client.on("clientReady", () => {
  // setInterval(updateTotalPPM, 5 * 60 * 1000)
   //updateTotalPPM()
  startDailyScheduler() 
@@ -329,7 +343,7 @@ require("./gpHandler")(client);
 
 
 //Comandos
-client.once("ready", async () => {
+client.once("clientReady", async () => {
   console.log(`✅ Bot listo como ${client.user.tag}`);
   
   
@@ -528,6 +542,9 @@ function saveHistory(data) {
 
 
 client.on("interactionCreate", async (interaction) => {
+   if (!interaction.isChatInputCommand() &&
+      !interaction.isStringSelectMenu() &&
+      !interaction.isButton()) return;
  // if (!interaction.isChatInputCommand()) return
   const { commandName } = interaction;
 
@@ -549,11 +566,11 @@ const utcNow = now.toISOString().slice(11,16) // HH:MM en UTC real 24h
     delete schedules[interaction.user.id]
     saveSchedules(schedules)
 
-    return interaction.reply(`🛑 All daily schedules stopped.\n🕒 Current UTC time: ${utcNow}`)
+    return safeReply(interaction,`🛑 All daily schedules stopped.\n🕒 Current UTC time: ${utcNow}`)
   }
 
   const group = await getUserGroup(interaction)
-  if (!group) return interaction.reply("❌ No reroll group detected")
+  if (!group) return safeReply(interaction,"❌ No reroll group detected")
 
   const config = GROUP_CONFIG[group]
 
@@ -561,7 +578,7 @@ const utcNow = now.toISOString().slice(11,16) // HH:MM en UTC real 24h
   const userData = users[interaction.user.id]
 
   if (!userData?.main_id) {
-    return interaction.reply("❌ You must register first")
+    return safeReply(interaction,"❌ You must register first")
   }
 
   const onlineHour = interaction.options.getInteger("online_hour")
@@ -573,7 +590,7 @@ const utcNow = now.toISOString().slice(11,16) // HH:MM en UTC real 24h
     onlineHour == null || onlineMinute == null ||
     offlineHour == null || offlineMinute == null
   ) {
-    return interaction.reply("❌ You must provide all time values")
+    return safeReply(interaction,"❌ You must provide all time values")
   }
 
   if (
@@ -582,7 +599,7 @@ const utcNow = now.toISOString().slice(11,16) // HH:MM en UTC real 24h
     onlineMinute < 0 || onlineMinute > 59 ||
     offlineMinute < 0 || offlineMinute > 59
   ) {
-    return interaction.reply("❌ Invalid UTC time format")
+    return safeReply(interaction,"❌ Invalid UTC time format")
   }
 
   schedules[interaction.user.id] = {
@@ -598,7 +615,7 @@ const utcNow = now.toISOString().slice(11,16) // HH:MM en UTC real 24h
 
   saveSchedules(schedules)
 
-  return interaction.reply(
+  return safeReply(interaction,
     `✅ Daily schedule activated\n\n` +
     `🟢 Online: ${onlineHour.toString().padStart(2,"0")}:${onlineMinute.toString().padStart(2,"0")} UTC\n` +
     `🔴 Offline: ${offlineHour.toString().padStart(2,"0")}:${offlineMinute.toString().padStart(2,"0")} UTC\n\n` +
@@ -617,17 +634,16 @@ if (interaction.commandName === "gp") {
 
   // ❌ Solo funciona dentro de servidor
   if (!interaction.inGuild()) {
-    return interaction.reply({
-      content: "❌ This command can only be used inside a server.",
-      ephemeral: true
-    });
-  }
+  return safeReply(interaction,
+  "❌ This command can only be used inside a server.",
+  { ephemeral: true }
+);
 
   const member = interaction.member;
 
   // 🔒 Verificar rol Champion
   if (!member.roles.cache.has(CHAMPION_ROLE_ID)) {
-    return interaction.reply({
+    return safeReply(interaction,{
       content: "⛔ Only Champions can use this command.",
       ephemeral: true
     });
@@ -636,7 +652,7 @@ if (interaction.commandName === "gp") {
   const id = interaction.options.getString("id");
 
   if (!/^\d{16}$/.test(id)) {
-    return interaction.reply({
+    return safeReply(interaction,{
       content: "❌ ID must be 16 digits",
       ephemeral: true
     });
@@ -662,7 +678,7 @@ if (interaction.commandName === "gp") {
 
   const row = new ActionRowBuilder().addComponents(menu);
 
-  return interaction.reply({
+  return safeReply(interaction,{
     content: `🔥 Select group to add VIP ID:\n\`${id}\``,
     components: [row],
     ephemeral: true
@@ -675,7 +691,7 @@ if (interaction.commandName === "register") {
 const group = await getUserGroup(interaction);
 
 if (!group) {
-  return interaction.reply("❌ No group");
+  return safeReply(interaction,"❌ No group");
 }
 
   const config = GROUP_CONFIG[group]
@@ -683,7 +699,7 @@ if (!group) {
   const id = interaction.options.getString("id")
 
   if (!/^\d{16}$/.test(id)) {
-    return interaction.reply("❌ ID must be 16 digits")
+    return safeReply(interaction,"❌ ID must be 16 digits")
   }
 
   // 🔥 Cargar archivo correcto del gist correcto
@@ -705,7 +721,7 @@ if (!group) {
     config.USERS_FILENAME
   )
 
-  return interaction.reply(`✅ Main ID registered in ${group}`)
+  return safeReply(interaction,`✅ Main ID registered in ${group}`)
 }
 
 
@@ -715,7 +731,7 @@ if (interaction.commandName === "add_sec") {
 const group = await getUserGroup(interaction);
 
 if (!group) {
-  return interaction.reply("❌ No group");
+  return safeReply(interaction,"❌ No group");
 }
 
   const config = GROUP_CONFIG[group]
@@ -723,7 +739,7 @@ if (!group) {
   const secId = interaction.options.getString("id")
 
   if (!/^\d{16}$/.test(secId)) {
-    return interaction.reply("❌ ID must be 16 digits")
+    return safeReply(interaction,"❌ ID must be 16 digits")
   }
 
   // 🔥 Cargar desde el archivo correcto
@@ -735,7 +751,7 @@ if (!group) {
   const userData = users[interaction.user.id]
 
   if (!userData) {
-    return interaction.reply("❌ You must register main ID first")
+    return safeReply(interaction,"❌ You must register main ID first")
   }
 
   userData.sec_id = secId
@@ -747,7 +763,7 @@ if (!group) {
     config.USERS_FILENAME
   )
 
-  return interaction.reply("✅ Secondary ID added")
+  return safeReply(interaction,"✅ Secondary ID added")
 }
 
 
@@ -815,7 +831,7 @@ const group = await getUserGroup(interaction)
     if (interaction.deferred || interaction.replied) {
       return interaction.editReply("❌ Unexpected error updating ID")
     } else {
-      return interaction.reply("❌ Unexpected error updating ID")
+      return safeReply(interaction,"❌ Unexpected error updating ID")
     }
   }
 }
@@ -826,7 +842,7 @@ const group = await getUserGroup(interaction)
 const group = await getUserGroup(interaction);
 
 if (!group) {
-  return interaction.reply("❌ No group");
+  return safeReply(interaction,"❌ No group");
 }
 
   const config = GROUP_CONFIG[group]
@@ -840,12 +856,12 @@ if (!group) {
 
   // 🔥 CAMBIO IMPORTANTE
   if (!userData || !userData.main_id) {
-    return interaction.reply("❌ You must register your main ID first")
+    return safeReply(interaction,"❌ You must register your main ID first")
   }
 
   await fetch(`${API_URL}?action=online&id=${userData.main_id}&group=${group}`)
 
-  return interaction.reply("🟢 Main account set online")
+  return safeReply(interaction,"🟢 Main account set online")
 }
 
 
@@ -855,7 +871,7 @@ if (interaction.commandName === "online_sec") {
 const group = await getUserGroup(interaction);
 
 if (!group) {
-  return interaction.reply("❌ No group");
+  return safeReply(interaction,"❌ No group");
 }
 
   const config = GROUP_CONFIG[group]
@@ -868,12 +884,12 @@ if (!group) {
   const userData = users[interaction.user.id]
 
   if (!userData || !userData.sec_id) {
-    return interaction.reply("❌ You must register your secondary ID first")
+    return safeReply(interaction,"❌ You must register your secondary ID first")
   }
 
   await fetch(`${API_URL}?action=online&id=${userData.sec_id}&group=${group}`)
 
-  return interaction.reply("🟢 Secondary account set online")
+  return safeReply(interaction,"🟢 Secondary account set online")
 }
 
 
@@ -926,14 +942,14 @@ if (userData.sec_id) {
 const member = interaction.member;
 
 if (!member.roles.cache.some(role => role.name === "Champion")) {
-  return interaction.reply({
+  return safeReply(interaction,{
     content: "❌ You need the **Champion** role to use this command.",
     ephemeral: true
   });
 }
   
   const group = await getUserGroup(interaction)
-  if (!group) return interaction.reply("❌ No group")
+  if (!group) return safeReply(interaction,"❌ No group")
 
   const config = GROUP_CONFIG[group]
 
@@ -956,7 +972,7 @@ if (!member.roles.cache.some(role => role.name === "Champion")) {
     .filter(Boolean)
 
   if (onlineIds.length === 0) {
-    return interaction.reply("⚫ No users online")
+    return safeReply(interaction,"⚫ No users online")
   }
 
   const users = await getUsers(
@@ -992,7 +1008,7 @@ if (!member.roles.cache.some(role => role.name === "Champion")) {
 
   const row = new ActionRowBuilder().addComponents(menu)
 
-  await interaction.reply({
+  await safeReply(interaction,{
     content: "Select user to set OFFLINE:",
     components: [row],
     ephemeral: true
@@ -1077,7 +1093,7 @@ if (interaction.commandName === "list") {
 
   const group = await getUserGroup(interaction);
   if (!group) {
-    return interaction.reply("❌ No reroll group detected");
+    return safeReply(interaction,"❌ No reroll group detected");
   }
 
   const config = GROUP_CONFIG[group];
@@ -1087,7 +1103,7 @@ if (interaction.commandName === "list") {
   );
 
   if (Object.keys(registeredUsers).length === 0) {
-    return interaction.reply("📭 No users registered");
+    return safeReply(interaction,"📭 No users registered");
   }
 
   let msg = `📋 **Registered users in ${group}:**\n\n`;
@@ -1097,7 +1113,7 @@ if (interaction.commandName === "list") {
     msg += `👤 ${user.name} → Main ID: ${user.main_id}\n`;
   }
 
-  return interaction.reply(msg);
+  return safeReply(interaction,msg);
 }
 
  // 🔹 ONLINE LIST
@@ -1186,7 +1202,7 @@ if (interaction.commandName === "change_rol") {
 
   // ❌ no tiene ningún grupo
   if (userGroups.length === 0) {
-    return interaction.reply({
+    return safeReply(interaction,{
       content: "❌ You don't have any valid reroll roles.",
       ephemeral: true
     });
@@ -1194,7 +1210,7 @@ if (interaction.commandName === "change_rol") {
 
   // ❌ solo tiene uno → no necesita cambiar
   if (userGroups.length === 1) {
-    return interaction.reply({
+    return safeReply(interaction,{
       content: `⚠️ You only have one role (**${userGroups[0]}**).\nYou need at least 2 roles to switch.`,
       ephemeral: true
     });
@@ -1213,7 +1229,7 @@ if (interaction.commandName === "change_rol") {
 
   const row = new ActionRowBuilder().addComponents(menu);
 
-  return interaction.reply({
+  return safeReply(interaction,{
     content: "🎯 Select your active group:",
     components: [row],
     ephemeral: true
@@ -1253,3 +1269,10 @@ if (message.author.bot && !message.webhookId) return
 })
 
 client.login(TOKEN)
+process.on("unhandledRejection", (error) => {
+  console.error("UNHANDLED REJECTION:", error)
+})
+
+process.on("uncaughtException", (error) => {
+  console.error("UNCAUGHT EXCEPTION:", error)
+})
