@@ -167,7 +167,7 @@ function startScheduler(){
   },60000)
 }
 
-  await gpHandler(client);
+
 // ================= PANEL =================
 
 async function sendPanel(channel){
@@ -242,6 +242,8 @@ client.once("ready", async()=>{
   await sendPanel(ch)
 
   startScheduler()
+    await gpHandler(client);
+
 })
 
 // ================= INTERACTIONS =================
