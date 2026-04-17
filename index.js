@@ -223,12 +223,17 @@ client.on("interactionCreate", async interaction => {
 
 
 
-const isModal = ["register","add_sec","change","schedule","gp"].includes(interaction.customId)
 
-if (!isModal) {
-  await interaction.deferReply({ flags:64 })
+if (interaction.isButton()) {
+
+  const modalButtons = ["register","add_sec","change","schedule","gp"]
+
+  if (modalButtons.includes(interaction.customId)) {
+    // ❌ NO defer aquí
+  } else {
+    await interaction.deferReply({ flags:64 })
+  }
 }
-  
   // 🔥 SOLO AQUÍ defer
 //  await interaction.deferReply({ flags:64 })
 
