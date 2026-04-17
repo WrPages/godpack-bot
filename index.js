@@ -17,7 +17,7 @@ const client = new Client({
 async function safeReply(interaction, content, options = {}) {
   try {
     if (interaction.replied) {
-      return interaction.editReply({ content, ...options });
+      return interaction.return safeReply(interaction,{ content, ...options });
     }
 
     if (interaction.deferred) {
@@ -779,11 +779,11 @@ if (interaction.commandName === "change") {
 
   try {
 
-    await interaction.deferReply({ ephemeral: true })
+    ({ ephemeral: true })
 
 const group = await getUserGroup(interaction)
     if (!group) {
-      return interaction.editReply("❌ You don't belong to any reroll group")
+      return interaction.return safeReply(interaction,"❌ You don't belong to any reroll group")
     }
 
     const config = GROUP_CONFIG[group]
@@ -791,7 +791,7 @@ const group = await getUserGroup(interaction)
     const newId = interaction.options.getString("id")
 
     if (!/^\d{16}$/.test(newId)) {
-      return interaction.editReply("❌ ID must be exactly 16 digits (numbers only)")
+      return interaction.return safeReply(interaction,"❌ ID must be exactly 16 digits (numbers only)")
     }
 
     // 🔥 Cargar correctamente el archivo del grupo
@@ -803,7 +803,7 @@ const group = await getUserGroup(interaction)
     const userData = users[interaction.user.id]
 
     if (!userData) {
-      return interaction.editReply("❌ You must register first")
+      return interaction.return safeReply(interaction,"❌ You must register first")
     }
 
     // 🔴 Poner OFFLINE el main_id anterior
@@ -828,14 +828,14 @@ const group = await getUserGroup(interaction)
       config.USERS_FILENAME
     )
 
-    return interaction.editReply(`🔄 Main ID updated in ${group}`)
+    return interaction.return safeReply(interaction,`🔄 Main ID updated in ${group}`)
 
   } catch (error) {
 
     console.error("CHANGE ERROR:", error)
 
     if (interaction.deferred || interaction.replied) {
-      return interaction.editReply("❌ Unexpected error updating ID")
+      return interaction.return safeReply(interaction,"❌ Unexpected error updating ID")
     } else {
       return safeReply(interaction,"❌ Unexpected error updating ID")
     }
@@ -906,13 +906,13 @@ if (!group) {
   // 🔹 OFFLINE
   if (interaction.commandName === "offline") {
 
-  await interaction.deferReply()
+  
 
   // 🔎 Detectar grupo por rol
   const group = await getUserGroup(interaction)
 
   if (!group) {
-    return interaction.editReply("❌ You don't belong to any reroll group")
+    return interaction.return safeReply(interaction,"❌ You don't belong to any reroll group")
   }
 
   const config = GROUP_CONFIG[group]
@@ -926,7 +926,7 @@ let users = await getUsers(
   const userData = users[interaction.user.id]
 
   if (!userData) {
-    return interaction.editReply("❌ You are not registered in your group")
+    return interaction.return safeReply(interaction,"❌ You are not registered in your group")
   }
 
   // 🌐 Llamar API con grupo
@@ -938,7 +938,7 @@ if (userData.sec_id) {
   await fetch(`${API_URL}?action=offline&id=${userData.sec_id}&group=${group}`)
 }
 
-  return interaction.editReply(`🔴 ${userData.name} is now OFFLINE in ${group}`)
+  return interaction.return safeReply(interaction,`🔴 ${userData.name} is now OFFLINE in ${group}`)
 }
  
 //SETOFFLINE
