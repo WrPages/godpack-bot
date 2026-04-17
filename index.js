@@ -221,7 +221,7 @@ client.on("interactionCreate", async interaction => {
 
   // ================= BOTONES =================
 
-}
+
 
 const isModal = ["register","add_sec","change","schedule","gp"].includes(interaction.customId)
 
