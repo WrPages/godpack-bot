@@ -17,7 +17,7 @@ const client = new Client({
 async function safeReply(interaction, content, options = {}) {
   try {
     if (interaction.replied) {
-      return interaction.return safeReply(interaction,{ content, ...options });
+      return safeReply(interaction, { content, ...options });
     }
 
     if (interaction.deferred) {
