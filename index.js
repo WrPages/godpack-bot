@@ -207,9 +207,10 @@ client.on("interactionCreate", async interaction => {
   // ================= BOTONES =================
 
   if (interaction.isButton()) {
+    await interaction.deferReply({ ephemeral: true })
 
     const group = await getUserGroup(interaction)
-    if (!group) return interaction.reply({content:"❌ No group",ephemeral:true})
+    if (!group) return interaction.editReply({content:"❌ No group",ephemeral:true})
 
     const config = GROUP_CONFIG[group]
     const users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
@@ -271,23 +272,23 @@ client.on("interactionCreate", async interaction => {
 
     // ===== ONLINE =====
     if (interaction.customId === "online") {
-      if (!userData?.main_id) return interaction.reply({content:"❌ Register first",ephemeral:true})
+      if (!userData?.main_id) return interaction.editReply({content:"❌ Register first",ephemeral:true})
 
       await fetch(`${API_URL}?action=online&id=${userData.main_id}&group=${group}`)
-      return interaction.reply(`🟢 ONLINE`)
+      return interaction.editReply(`🟢 ONLINE`)
     }
 
     // ===== ONLINE SEC =====
     if (interaction.customId === "online_sec") {
-      if (!userData?.sec_id) return interaction.reply({content:"❌ No secondary ID",ephemeral:true})
+      if (!userData?.sec_id) return interaction.editReply({content:"❌ No secondary ID",ephemeral:true})
 
       await fetch(`${API_URL}?action=online&id=${userData.sec_id}&group=${group}`)
-      return interaction.reply(`🟢 SEC ONLINE`)
+      return interaction.editReply(`🟢 SEC ONLINE`)
     }
 
     // ===== OFFLINE =====
     if (interaction.customId === "offline") {
-      if (!userData) return interaction.reply({content:"❌ Not registered",ephemeral:true})
+      if (!userData) return interaction.editReply({content:"❌ Not registered",ephemeral:true})
 
       if (userData.main_id)
         await fetch(`${API_URL}?action=offline&id=${userData.main_id}&group=${group}`)
@@ -295,14 +296,14 @@ client.on("interactionCreate", async interaction => {
       if (userData.sec_id)
         await fetch(`${API_URL}?action=offline&id=${userData.sec_id}&group=${group}`)
 
-      return interaction.reply(`🔴 OFFLINE`)
+      return interaction.editReply(`🔴 OFFLINE`)
     }
 
     // ===== LIST =====
     if (interaction.customId === "list") {
 
       if (Object.keys(users).length === 0)
-        return interaction.reply("📭 No users")
+        return interaction.editReply("📭 No users")
 
       let msg = "📋 Users:\n\n"
 
@@ -311,7 +312,7 @@ client.on("interactionCreate", async interaction => {
         msg += `👤 ${u.name} → ${u.main_id}\n`
       }
 
-      return interaction.reply(msg)
+      return interaction.editReply(msg)
     }
 
     // ===== ONLINE LIST =====
@@ -319,7 +320,7 @@ client.on("interactionCreate", async interaction => {
 
       const ids = await getOnlineIDs(config.IDS_GIST_ID,config.IDS_FILENAME)
 
-      if (!ids.length) return interaction.reply("⚫ No online")
+      if (!ids.length) return interaction.editReply("⚫ No online")
 
       let msg = "🟢 Online:\n\n"
 
@@ -331,7 +332,7 @@ client.on("interactionCreate", async interaction => {
         }
       }
 
-      return interaction.reply(msg)
+      return interaction.editReply(msg)
     }
 
     // ===== SCHEDULE =====
@@ -364,7 +365,7 @@ client.on("interactionCreate", async interaction => {
         .setCustomId("role_select")
         .addOptions(roles)
 
-      return interaction.reply({
+      return interaction.editReply({
         content:"Select role",
         components:[new ActionRowBuilder().addComponents(menu)],
         ephemeral:true
@@ -376,7 +377,7 @@ client.on("interactionCreate", async interaction => {
 
       const ids = await getOnlineIDs(config.IDS_GIST_ID,config.IDS_FILENAME)
 
-      if (!ids.length) return interaction.reply("⚫ No users online")
+      if (!ids.length) return interaction.editReply("⚫ No users online")
 
       const options = ids.slice(0,25).map(id=>({
         label:id,
@@ -387,7 +388,7 @@ client.on("interactionCreate", async interaction => {
         .setCustomId("offline_select")
         .addOptions(options)
 
-      return interaction.reply({
+      return interaction.editReply({
         content:"Select ID",
         components:[new ActionRowBuilder().addComponents(menu)],
         ephemeral:true
@@ -417,7 +418,7 @@ client.on("interactionCreate", async interaction => {
   if (interaction.isModalSubmit()) {
 
     const group = await getUserGroup(interaction)
-    if (!group) return interaction.reply({content:"❌ No group",ephemeral:true})
+    if (!group) return interaction.editReply({content:"❌ No group",ephemeral:true})
 
     const config = GROUP_CONFIG[group]
     let users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
@@ -433,7 +434,7 @@ client.on("interactionCreate", async interaction => {
       }
 
       await saveUsers(users,config.USERS_GIST_ID,config.USERS_FILENAME)
-      return interaction.reply("✅ Registered")
+      return interaction.editReply("✅ Registered")
     }
 
     // ADD SEC
@@ -441,12 +442,12 @@ client.on("interactionCreate", async interaction => {
       const id = interaction.fields.getTextInputValue("id")
 
       if (!users[interaction.user.id])
-        return interaction.reply("❌ Register first")
+        return interaction.editReply("❌ Register first")
 
       users[interaction.user.id].sec_id = id
 
       await saveUsers(users,config.USERS_GIST_ID,config.USERS_FILENAME)
-      return interaction.reply("✅ Secondary added")
+      return interaction.editReply("✅ Secondary added")
     }
 
     // CHANGE
@@ -454,12 +455,12 @@ client.on("interactionCreate", async interaction => {
       const id = interaction.fields.getTextInputValue("id")
 
       if (!users[interaction.user.id])
-        return interaction.reply("❌ Register first")
+        return interaction.editReply("❌ Register first")
 
       users[interaction.user.id].main_id = id
 
       await saveUsers(users,config.USERS_GIST_ID,config.USERS_FILENAME)
-      return interaction.reply("🔄 Updated")
+      return interaction.editReply("🔄 Updated")
     }
 
     // SCHEDULE
@@ -481,7 +482,7 @@ client.on("interactionCreate", async interaction => {
 
       saveSchedules(schedules)
 
-      return interaction.reply("✅ Schedule saved")
+      return interaction.editReply("✅ Schedule saved")
     }
 
     // GP
@@ -496,7 +497,7 @@ client.on("interactionCreate", async interaction => {
           {label:"Elite Four",value:"Elite_Four"}
         ])
 
-      return interaction.reply({
+      return interaction.editReply({
         content:"Select group",
         components:[new ActionRowBuilder().addComponents(menu)],
         ephemeral:true
