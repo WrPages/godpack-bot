@@ -295,37 +295,82 @@ if (!isModal) {
     }
 
   // ===== ONLINE =====
-  if (interaction.customId === "online") {
-    if (!userData?.main_id)
-      return interaction.editReply("❌ Register first")
+if (interaction.customId === "online") {
 
-    await fetch(`${API_URL}?action=online&id=${userData.main_id}&group=${group}`)
+  const group = await getUserGroup(interaction)
 
-    return interaction.editReply("🟢 ONLINE")
+  if (!group) {
+    return interaction.editReply("❌ No group")
   }
+
+  const config = GROUP_CONFIG[group]
+
+  const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+  const userData = users[interaction.user.id]
+
+  if (!userData || !userData.main_id) {
+    return interaction.editReply("❌ You must register your main ID first")
+  }
+
+  const res = await fetch(`${API_URL}?action=online&id=${userData.main_id}&group=${group}`)
+  const text = await res.text()
+
+  console.log("ONLINE:", text)
+
+  return interaction.editReply("🟢 Main account set online")
+}
 
     // ===== ONLINE SEC =====
-    if (interaction.customId === "online_sec") {
-      if (!userData?.sec_id) return interaction.editReply("❌ No secondary ID")
+  if (interaction.customId === "online_sec") {
 
-      await fetch(`${API_URL}?action=online&id=${userData.sec_id}&group=${group}`)
-      return interaction.editReply("🟢 SEC ONLINE")
-    }
+  const group = await getUserGroup(interaction)
 
-    // ===== OFFLINE =====
-   if (interaction.customId === "offline") {
-    if (!userData)
-      return interaction.editReply("❌ Not registered")
-
-    if (userData.main_id)
-      await fetch(`${API_URL}?action=offline&id=${userData.main_id}&group=${group}`)
-
-    if (userData.sec_id)
-      await fetch(`${API_URL}?action=offline&id=${userData.sec_id}&group=${group}`)
-
-    return interaction.editReply("🔴 OFFLINE")
+  if (!group) {
+    return interaction.editReply("❌ No group")
   }
 
+  const config = GROUP_CONFIG[group]
+
+  const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+  const userData = users[interaction.user.id]
+
+  if (!userData || !userData.sec_id) {
+    return interaction.editReply("❌ You must register your secondary ID first")
+  }
+
+  const res = await fetch(`${API_URL}?action=online&id=${userData.sec_id}&group=${group}`)
+  const text = await res.text()
+
+  console.log("ONLINE SEC:", text)
+
+  return interaction.editReply("🟢 Secondary account set online")
+}
+
+    // ===== OFFLINE =====
+ if (interaction.customId === "online_sec") {
+
+  const group = await getUserGroup(interaction)
+
+  if (!group) {
+    return interaction.editReply("❌ No group")
+  }
+
+  const config = GROUP_CONFIG[group]
+
+  const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+  const userData = users[interaction.user.id]
+
+  if (!userData || !userData.sec_id) {
+    return interaction.editReply("❌ You must register your secondary ID first")
+  }
+
+  const res = await fetch(`${API_URL}?action=online&id=${userData.sec_id}&group=${group}`)
+  const text = await res.text()
+
+  console.log("ONLINE SEC:", text)
+
+  return interaction.editReply("🟢 Secondary account set online")
+}
     // ===== LIST =====
     if (interaction.customId === "list") {
 
@@ -382,22 +427,38 @@ if (!isModal) {
     }
 
     // ===== CHANGE ROLE =====
-    if (interaction.customId === "change_role") {
+   if (interaction.customId === "change_role") {
 
-      const roles = interaction.member.roles.cache
-        .filter(r=>Object.keys(GROUP_CONFIG).includes(r.name))
-        .map(r=>({label:r.name,value:r.name}))
+  const member = interaction.member
 
-      const menu = new StringSelectMenuBuilder()
-        .setCustomId("role_select")
-        .addOptions(roles)
+  // 🔍 roles válidos que el usuario YA tiene
+  const userGroups = Object.keys(GROUP_CONFIG).filter(group =>
+    member.roles.cache.some(role => role.name === group)
+  )
 
-      return interaction.editReply({
-        content:"Select role",
-        components:[new ActionRowBuilder().addComponents(menu)]
-      })
-    }
+  if (userGroups.length === 0) {
+    return interaction.editReply("❌ No tienes roles válidos")
+  }
 
+  if (userGroups.length === 1) {
+    return interaction.editReply(`⚠️ Solo tienes un rol (**${userGroups[0]}**)`)
+  }
+
+  const options = userGroups.map(group => ({
+    label: group.replace("_"," "),
+    value: group
+  }))
+
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId("role_select")
+    .setPlaceholder("Selecciona tu rol activo")
+    .addOptions(options)
+
+  return interaction.editReply({
+    content:"🎯 Selecciona tu grupo:",
+    components:[new ActionRowBuilder().addComponents(menu)]
+  })
+}
     // ===== FORCE OFFLINE =====
     if (interaction.customId === "set_offline") {
 
@@ -553,9 +614,32 @@ if (interaction.isModalSubmit()) {
       return interaction.update({content:`🔴 Offline ${id}`,components:[]})
     }
 
-    if (interaction.customId === "role_select") {
-      return interaction.update({content:`✅ Role selected`,components:[]})
-    }
+   if (interaction.customId === "role_select") {
+
+  const selectedRole = interaction.values[0]
+  const member = interaction.member
+
+  // quitar roles de grupo actuales
+  const rolesToRemove = member.roles.cache.filter(r =>
+    Object.keys(GROUP_CONFIG).includes(r.name)
+  )
+
+  for (const role of rolesToRemove.values()) {
+    await member.roles.remove(role)
+  }
+
+  // agregar el nuevo rol
+  const newRole = interaction.guild.roles.cache.find(r => r.name === selectedRole)
+
+  if (newRole) {
+    await member.roles.add(newRole)
+  }
+
+  return interaction.update({
+    content:`✅ Ahora eres ${selectedRole}`,
+    components:[]
+  })
+}
 
   }
 
