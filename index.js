@@ -1,19 +1,19 @@
 const {
   Client,
   GatewayIntentBits,
-  EmbedBuilder,
+  SlashCommandBuilder,
+  REST,
+  Routes,
   ActionRowBuilder,
+  StringSelectMenuBuilder,
   ButtonBuilder,
-  ButtonStyle,
-  ModalBuilder,
-  TextInputBuilder,
-  TextInputStyle,
-  StringSelectMenuBuilder
+  ButtonStyle
 } = require("discord.js")
 
 const fetch = require("node-fetch")
 const fs = require("fs")
 
+// ================= CLIENT =================
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -23,533 +23,314 @@ const client = new Client({
   ]
 })
 
-// ================= CONFIG =================
-
+// ================= ENV =================
 const TOKEN = process.env.TOKEN
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
+
+if (!TOKEN) {
+  console.error("❌ TOKEN no definido en environment variables")
+  process.exit(1)
+}
+
 const API_URL = "https://add-ids.netlify.app/.netlify/functions/api"
-const PANEL_CHANNEL_ID = "1484015417411244082"
+
+// ================= IDS =================
+const HEARTBEAT_CHANNEL_ID = "1483616146996465735"
+const TOTAL_CHANNEL_ID = "1484416376436424794"
+
+const HISTORY_FILE = "./ppm_history.json"
+const SCHEDULE_FILE = "./daily_schedules.json"
+const TWELVE_HOURS = 12 * 60 * 60 * 1000
 
 // ================= GROUP CONFIG =================
-
 const GROUP_CONFIG = {
   Trainer: {
-    USERS_FILENAME:"trainer_users.json",
-    USERS_GIST_ID:"1c066922bc39ac136b6f234fad6d9420",
-    IDS_FILENAME:"trainer_ids.txt",
-    IDS_GIST_ID:"4edcf4d341cd4f7d5d0fb8a50f8b8c3c",
-    VIP_FILENAME:"trainer_vip.txt",
-    VIP_GIST_ID:"16541fd83785a49ad4a0f22bbeb06000"
+    USERS_FILENAME: "trainer_users.json",
+    USERS_GIST_ID: "1c066922bc39ac136b6f234fad6d9420",
+    IDS_GIST_ID: "4edcf4d341cd4f7d5d0fb8a50f8b8c3c"
   },
   Gym_Leader: {
-    USERS_FILENAME:"gym_users.json",
-    USERS_GIST_ID:"a3f5f3d8a2e6ddf2378fb3481dff49f6",
-    IDS_FILENAME:"gym_ids.txt",
-    IDS_GIST_ID:"e110c37b3e0b8de83a33a1b0a5eb64e8",
-    VIP_FILENAME:"gym_vip.txt",
-    VIP_GIST_ID:"79a0e30c401cfd63e78d9ec5a9210091"
+    USERS_FILENAME: "gym_users.json",
+    USERS_GIST_ID: "a3f5f3d8a2e6ddf2378fb3481dff49f6",
+    IDS_GIST_ID: "e110c37b3e0b8de83a33a1b0a5eb64e8"
   },
   Elite_Four: {
-    USERS_FILENAME:"elite_users.json",
-    USERS_GIST_ID:"bb18eda2ea748723d8fe0131dd740b70",
-    IDS_FILENAME:"elite_ids.txt",
-    IDS_GIST_ID:"d9db3a72fed74c496fd6cc830f9ca6e9",
-    VIP_FILENAME:"elite_vip.txt",
-    VIP_GIST_ID:"5f2f23e0391882ab4e255bd67e98334a"
+    USERS_FILENAME: "elite_users.json",
+    USERS_GIST_ID: "bb18eda2ea748723d8fe0131dd740b70",
+    IDS_GIST_ID: "d9db3a72fed74c496fd6cc830f9ca6e9"
   }
 }
 
-// ================= FILES =================
-
-const SCHEDULE_FILE = "./daily_schedules.json"
-
-// ================= HELPERS =================
-
-function loadSchedules(){
-  if(!fs.existsSync(SCHEDULE_FILE)) return {}
-  return JSON.parse(fs.readFileSync(SCHEDULE_FILE))
-}
-
-function saveSchedules(data){
-  fs.writeFileSync(SCHEDULE_FILE, JSON.stringify(data,null,2))
-}
-
-async function getUsers(gistId,file){
-  const res = await fetch(`https://api.github.com/gists/${gistId}`)
-  const data = await res.json()
-  return JSON.parse(data.files[file]?.content || "{}")
-}
-
-async function saveUsers(users,gistId,file){
-  await fetch(`https://api.github.com/gists/${gistId}`,{
-    method:"PATCH",
-    headers:{Authorization:`Bearer ${GITHUB_TOKEN}`},
-    body:JSON.stringify({
-      files:{[file]:{content:JSON.stringify(users,null,2)}}
-    })
-  })
-}
-
-///safereply
-async function safeReply(interaction, options) {
-  try {
-    if (interaction.replied || interaction.deferred) {
-      return await interaction.followUp(options)
-    } else {
-      return await interaction.reply(options)
-    }
-  } catch (err) {
-    console.error("safeReply error:", err)
-  }
-}
-
-
-async function getOnlineIDs(gistId,file){
-  const res = await fetch(`https://api.github.com/gists/${gistId}`)
-  const data = await res.json()
-  return (data.files[file]?.content || "").split("\n").filter(Boolean)
-}
-
-async function addVipID(id,group){
-  const config = GROUP_CONFIG[group]
-
-  const res = await fetch(`https://api.github.com/gists/${config.VIP_GIST_ID}`)
-  const data = await res.json()
-
-  let content = data.files[config.VIP_FILENAME]?.content || ""
-  let ids = content.split("\n").filter(Boolean)
-
-  if(ids.includes(id)) return
-
-  ids.push(id)
-
-  await fetch(`https://api.github.com/gists/${config.VIP_GIST_ID}`,{
-    method:"PATCH",
-    headers:{Authorization:`Bearer ${GITHUB_TOKEN}`},
-    body:JSON.stringify({
-      files:{[config.VIP_FILENAME]:{content:ids.join("\n")}}
-    })
-  })
-}
-
-// ===== GROUP =====
-async function getUserGroup(interaction){
+// ================= UTIL =================
+function getUserGroup(interaction) {
   const role = interaction.member.roles.cache.find(r =>
     Object.keys(GROUP_CONFIG).includes(r.name)
   )
-  return role?.name || null
+  return role ? role.name : null
 }
 
-// ================= SCHEDULER =================
+// ================= GIST =================
+async function getUsers(gistId, fileName) {
+  try {
+    const res = await fetch(`https://api.github.com/gists/${gistId}?t=${Date.now()}`, {
+      headers: {
+        Authorization: `Bearer ${GITHUB_TOKEN}`
+      }
+    })
 
-function startScheduler(){
-  setInterval(async()=>{
+    const data = await res.json()
+    return JSON.parse(data.files[fileName]?.content || "{}")
+  } catch {
+    return {}
+  }
+}
+
+async function saveUsers(users, gistId, fileName) {
+  await fetch(`https://api.github.com/gists/${gistId}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${GITHUB_TOKEN}`
+    },
+    body: JSON.stringify({
+      files: {
+        [fileName]: {
+          content: JSON.stringify(users, null, 2)
+        }
+      }
+    })
+  })
+}
+
+// ================= VIP =================
+async function addVipID(id) {
+  const gistId = process.env.VIP_GIST_ID
+  if (!gistId) return
+
+  const res = await fetch(`https://api.github.com/gists/${gistId}`)
+  const data = await res.json()
+
+  let content = data.files["vip_ids.txt"]?.content || ""
+  const ids = content.split("\n").filter(Boolean)
+
+  if (!ids.includes(id)) {
+    ids.push(id)
+
+    await fetch(`https://api.github.com/gists/${gistId}`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${GITHUB_TOKEN}` },
+      body: JSON.stringify({
+        files: {
+          "vip_ids.txt": { content: ids.join("\n") }
+        }
+      })
+    })
+  }
+}
+
+// ================= SCHEDULE =================
+function loadSchedules() {
+  if (!fs.existsSync(SCHEDULE_FILE)) return {}
+  return JSON.parse(fs.readFileSync(SCHEDULE_FILE))
+}
+
+function saveSchedules(data) {
+  fs.writeFileSync(SCHEDULE_FILE, JSON.stringify(data, null, 2))
+}
+
+function startDailyScheduler() {
+  setInterval(async () => {
     const schedules = loadSchedules()
     const now = new Date()
 
-    for(const uid in schedules){
-      const s = schedules[uid]
+    for (const userId in schedules) {
+      const s = schedules[userId]
 
-      const hour = now.getUTCHours()
-      const min = now.getUTCMinutes()
-
-      if(hour===s.online_hour && min===s.online_minute){
+      if (
+        now.getUTCHours() === s.online_hour &&
+        now.getUTCMinutes() === s.online_minute &&
+        s.last_online !== now.toDateString()
+      ) {
         await fetch(`${API_URL}?action=online&id=${s.main_id}&group=${s.group}`)
+        s.last_online = now.toDateString()
       }
 
-      if(hour===s.offline_hour && min===s.offline_minute){
+      if (
+        now.getUTCHours() === s.offline_hour &&
+        now.getUTCMinutes() === s.offline_minute &&
+        s.last_offline !== now.toDateString()
+      ) {
         await fetch(`${API_URL}?action=offline&id=${s.main_id}&group=${s.group}`)
+        s.last_offline = now.toDateString()
       }
     }
 
-  },60000)
+    saveSchedules(schedules)
+  }, 60000)
 }
 
-// ================= PANEL =================
+// ================= PPM =================
+function loadHistory() {
+  if (!fs.existsSync(HISTORY_FILE)) return []
+  return JSON.parse(fs.readFileSync(HISTORY_FILE))
+}
 
-async function sendPanel(channel){
+function saveHistory(data) {
+  fs.writeFileSync(HISTORY_FILE, JSON.stringify(data))
+}
 
-  const embed = new EmbedBuilder()
-    .setTitle("🎮 PANEL CONTROL")
-    .setDescription("Usa botones para controlar todo")
+async function updateTotalPPM() {
+  try {
+    const heartbeatChannel = await client.channels.fetch(HEARTBEAT_CHANNEL_ID)
+    const totalChannel = await client.channels.fetch(TOTAL_CHANNEL_ID)
 
-  const row1 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId("register").setLabel("Register").setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId("add_sec").setLabel("Add Sec").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId("change").setLabel("Change").setStyle(ButtonStyle.Secondary)
-  )
+    const messages = await heartbeatChannel.messages.fetch({ limit: 20 })
 
-  const row2 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId("online").setLabel("Online").setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId("offline").setLabel("Offline").setStyle(ButtonStyle.Danger),
-    new ButtonBuilder().setCustomId("online_sec").setLabel("Online Sec").setStyle(ButtonStyle.Success)
-  )
+    let totalPPM = 0
 
-  const row3 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId("list").setLabel("List").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId("online_list").setLabel("Online List").setStyle(ButtonStyle.Secondary)
-  )
+    for (const msg of messages.values()) {
+      const match = msg.content.match(/Avg:\s*([\d.]+)/)
+      if (match) totalPPM += parseFloat(match[1])
+    }
 
-  const row4 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId("schedule").setLabel("Schedule").setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId("change_role").setLabel("Change Role").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId("set_offline").setLabel("Force Offline").setStyle(ButtonStyle.Danger)
-  )
+    let history = loadHistory()
+    const now = Date.now()
 
-  const row5 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId("gp").setLabel("Add VIP").setStyle(ButtonStyle.Success)
-  )
+    history.push({ timestamp: now, value: totalPPM })
+    history = history.filter(e => now - e.timestamp <= TWELVE_HOURS)
 
-  await channel.send({embeds:[embed],components:[row1,row2,row3,row4,row5]})
+    saveHistory(history)
+
+    const avg = history.reduce((a, b) => a + b.value, 0) / history.length
+
+    const text = `🔥 ${totalPPM.toFixed(2)} PPM\n📊 Avg 12H: ${avg.toFixed(2)}`
+
+    const msgs = await totalChannel.messages.fetch({ limit: 5 })
+    const botMsg = msgs.find(m => m.author.id === client.user.id)
+
+    if (botMsg) await botMsg.edit(text)
+    else await totalChannel.send(text)
+
+  } catch (err) {
+    console.error("PPM error:", err)
+  }
 }
 
 // ================= READY =================
+client.on("clientReady", async () => {
+  console.log("🔥 READY DISPARADO (DEPLOY)");
 
-client.once("clientReady", async()=>{
-  console.log("🔥 Bot listo")
+  startDailyScheduler()
+  updateTotalPPM()
+  setInterval(updateTotalPPM, 5 * 60 * 1000)
 
-  const ch = await client.channels.fetch(PANEL_CHANNEL_ID)
-  await sendPanel(ch)
+  const commands = [
+    new SlashCommandBuilder()
+      .setName("register")
+      .setDescription("Register your main ID")
+      .addStringOption(o =>
+        o.setName("id")
+          .setDescription("Your 16 digit ID")
+          .setRequired(true)
+      ),
 
-  startScheduler()
+    new SlashCommandBuilder()
+      .setName("online")
+      .setDescription("Set your account online"),
+
+    new SlashCommandBuilder()
+      .setName("offline")
+      .setDescription("Set your account offline"),
+
+    new SlashCommandBuilder()
+      .setName("gp")
+      .setDescription("Add VIP ID")
+      .addStringOption(o =>
+        o.setName("id")
+          .setDescription("16 digit ID")
+          .setRequired(true)
+      )
+  ]
+
+  // 🔥 DEBUG
+  commands.forEach(cmd => {
+    if (!cmd.description) {
+      console.log("❌ Comando sin descripción:", cmd.name)
+    }
+  })
+
+  const rest = new REST({ version: "10" }).setToken(TOKEN)
+
+  await rest.put(
+    Routes.applicationGuildCommands(
+      process.env.CLIENT_ID,
+      process.env.GUILD_ID
+    ),
+    { body: commands.map(c => c.toJSON()) }
+  )
+
+  console.log("🚀 Commands deployed")
 })
 
 // ================= INTERACTIONS =================
 client.on("interactionCreate", async interaction => {
+  if (!interaction.isChatInputCommand()) return
 
-  // ================= BOTONES =================
-  if (interaction.isButton()) {
+  const group = getUserGroup(interaction)
+  if (!group) return interaction.reply("❌ No group")
 
-    const modalButtons = ["register","add_sec","change","schedule","gp"]
+  const config = GROUP_CONFIG[group]
 
-    if (!modalButtons.includes(interaction.customId)) {
-      await interaction.deferReply({ flags:64 })
+  if (interaction.commandName === "register") {
+    const id = interaction.options.getString("id")
+
+    let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+
+    users[interaction.user.id] = {
+      main_id: id,
+      name: interaction.member.displayName
     }
 
-    const group = await getUserGroup(interaction)
-    if (!group) return interaction.editReply("❌ No group")
+    await saveUsers(users, config.USERS_GIST_ID, config.USERS_FILENAME)
 
-    const config = GROUP_CONFIG[group]
-    const users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
-    const userData = users[interaction.user.id]
-
-    // ===== REGISTER =====
-    if (interaction.customId === "register") {
-      const modal = new ModalBuilder()
-        .setCustomId("reg_modal")
-        .setTitle("Register ID")
-
-      modal.addComponents(
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder()
-            .setCustomId("id")
-            .setLabel("16 digit ID")
-            .setStyle(TextInputStyle.Short)
-        )
-      )
-
-      return interaction.showModal(modal)
-    }
-
-    // ===== ADD SEC =====
-    if (interaction.customId === "add_sec") {
-      const modal = new ModalBuilder()
-        .setCustomId("sec_modal")
-        .setTitle("Add Secondary ID")
-
-      modal.addComponents(
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder()
-            .setCustomId("id")
-            .setLabel("16 digit ID")
-            .setStyle(TextInputStyle.Short)
-        )
-      )
-
-      return interaction.showModal(modal)
-    }
-
-    // ===== CHANGE =====
-    if (interaction.customId === "change") {
-      const modal = new ModalBuilder()
-        .setCustomId("change_modal")
-        .setTitle("Change Main ID")
-
-      modal.addComponents(
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder()
-            .setCustomId("id")
-            .setLabel("New 16 digit ID")
-            .setStyle(TextInputStyle.Short)
-        )
-      )
-
-      return interaction.showModal(modal)
-    }
-
-    // ===== ONLINE =====
-    if (interaction.customId === "online") {
-      if (!userData || !userData.main_id) {
-        return interaction.editReply("❌ You must register your main ID first")
-      }
-
-      await fetch(`${API_URL}?action=online&id=${userData.main_id}&group=${group}`)
-      return interaction.editReply("🟢 Main account set online")
-    }
-
-    // ===== ONLINE SEC =====
-    if (interaction.customId === "online_sec") {
-      if (!userData || !userData.sec_id) {
-        return interaction.editReply("❌ You must register your secondary ID first")
-      }
-
-      await fetch(`${API_URL}?action=online&id=${userData.sec_id}&group=${group}`)
-      return interaction.editReply("🟢 Secondary account set online")
-    }
-
-    // ===== OFFLINE =====
-    if (interaction.customId === "offline") {
-      if (!userData) {
-        return interaction.editReply("❌ You are not registered")
-      }
-
-      if (userData.main_id) {
-        await fetch(`${API_URL}?action=offline&id=${userData.main_id}&group=${group}`)
-      }
-
-      if (userData.sec_id) {
-        await fetch(`${API_URL}?action=offline&id=${userData.sec_id}&group=${group}`)
-      }
-
-      return interaction.editReply(`🔴 ${userData.name} is now OFFLINE`)
-    }
-
-    // ===== LIST =====
-    if (interaction.customId === "list") {
-      if (Object.keys(users).length === 0) {
-        return interaction.editReply("📭 No users")
-      }
-
-      let msg = "📋 Users:\n\n"
-      for (const uid in users) {
-        const u = users[uid]
-        msg += `👤 ${u.name} → ${u.main_id}\n`
-      }
-
-      return interaction.editReply(msg)
-    }
-
-    // ===== ONLINE LIST =====
-    if (interaction.customId === "online_list") {
-      const ids = await getOnlineIDs(config.IDS_GIST_ID,config.IDS_FILENAME)
-
-      if (!ids.length) return interaction.editReply("⚫ No online")
-
-      let msg = "🟢 Online:\n\n"
-
-      for (const uid in users) {
-        const u = users[uid]
-        if (ids.includes(u.main_id) || ids.includes(u.sec_id)) {
-          msg += `👤 ${u.name}\n`
-        }
-      }
-
-      return interaction.editReply(msg)
-    }
-
-    // ===== SCHEDULE =====
-    if (interaction.customId === "schedule") {
-      const modal = new ModalBuilder()
-        .setCustomId("schedule_modal")
-        .setTitle("Schedule UTC")
-
-      modal.addComponents(
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder().setCustomId("on").setLabel("Online HH:MM").setStyle(TextInputStyle.Short)
-        ),
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder().setCustomId("off").setLabel("Offline HH:MM").setStyle(TextInputStyle.Short)
-        )
-      )
-
-      return interaction.showModal(modal)
-    }
-
-    // ===== CHANGE ROLE =====
-    if (interaction.customId === "change_role") {
-
-      const member = interaction.member
-
-      const userGroups = Object.keys(GROUP_CONFIG).filter(group =>
-        member.roles.cache.some(role => role.name === group)
-      )
-
-      if (userGroups.length === 0) {
-        return interaction.editReply("❌ No tienes roles válidos")
-      }
-
-      if (userGroups.length === 1) {
-        return interaction.editReply(`⚠️ Solo tienes un rol (**${userGroups[0]}**)`)
-      }
-
-      const options = userGroups.map(group => ({
-        label: group.replace("_"," "),
-        value: group
-      }))
-
-      const menu = new StringSelectMenuBuilder()
-        .setCustomId("role_select")
-        .setPlaceholder("Selecciona tu rol activo")
-        .addOptions(options)
-
-      return interaction.editReply({
-        content:"🎯 Selecciona tu grupo:",
-        components:[new ActionRowBuilder().addComponents(menu)]
-      })
-    }
-
-    // ===== FORCE OFFLINE =====
-    if (interaction.customId === "set_offline") {
-      const ids = await getOnlineIDs(config.IDS_GIST_ID,config.IDS_FILENAME)
-
-      if (!ids.length) return interaction.editReply("⚫ No users online")
-
-      const options = ids.slice(0,25).map(id=>({
-        label:id,
-        value:id
-      }))
-
-      const menu = new StringSelectMenuBuilder()
-        .setCustomId("offline_select")
-        .addOptions(options)
-
-      return interaction.editReply({
-        content:"Select ID",
-        components:[new ActionRowBuilder().addComponents(menu)]
-      })
-    }
-
-    // ===== GP =====
-    if (interaction.customId === "gp") {
-      const modal = new ModalBuilder()
-        .setCustomId("gp_modal")
-        .setTitle("Add VIP")
-
-      modal.addComponents(
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder().setCustomId("id").setLabel("VIP ID").setStyle(TextInputStyle.Short)
-        )
-      )
-
-      return interaction.showModal(modal)
-    }
-
+    return interaction.reply("✅ Registered")
   }
 
-  // ================= MODALES =================
-  else if (interaction.isModalSubmit()) {
-    // 👉 tu código actual de modales está bien, no lo toco
+  if (interaction.commandName === "online") {
+    let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+
+    const u = users[interaction.user.id]
+    if (!u) return interaction.reply("❌ Register first")
+
+    await fetch(`${API_URL}?action=online&id=${u.main_id}&group=${group}`)
+
+    return interaction.reply("🟢 Online")
   }
 
-  // ================= SELECT MENUS =================
-  else if (interaction.isStringSelectMenu()) {
+  if (interaction.commandName === "offline") {
+    let users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
 
-    if (interaction.customId === "role_select") {
+    const u = users[interaction.user.id]
+    if (!u) return interaction.reply("❌ Register first")
 
-      const selectedRole = interaction.values[0]
-      const member = interaction.member
+    await fetch(`${API_URL}?action=offline&id=${u.main_id}&group=${group}`)
 
-      const rolesToRemove = member.roles.cache.filter(r =>
-        Object.keys(GROUP_CONFIG).includes(r.name)
-      )
-
-      for (const role of rolesToRemove.values()) {
-        await member.roles.remove(role)
-      }
-
-      const newRole = interaction.guild.roles.cache.find(r => r.name === selectedRole)
-
-      if (newRole) {
-        await member.roles.add(newRole)
-      }
-
-      return interaction.update({
-        content:`✅ Ahora eres ${selectedRole}`,
-        components:[]
-      })
-    }
-
-    if (interaction.customId === "offline_select") {
-      const id = interaction.values[0]
-      const group = await getUserGroup(interaction)
-
-      await fetch(`${API_URL}?action=offline&id=${id}&group=${group}`)
-
-      return interaction.update({content:`🔴 Offline ${id}`,components:[]})
-    }
-
+    return interaction.reply("🔴 Offline")
   }
 
+  if (interaction.commandName === "gp") {
+    const id = interaction.options.getString("id")
+    await addVipID(id)
+    return interaction.reply("🔥 VIP added")
+  }
 })
 
+// ================= GP DETECTOR =================
+client.on("messageCreate", async message => {
+  const match = message.content.match(/\((\d{16})\)/)
+  if (!match) return
 
-  // ================= SELECT MENUS =================
-
-  if (interaction.isStringSelectMenu()) {
-
-  if (interaction.customId.startsWith("gp_select_")) {
-
-    const id = interaction.customId.split("_")[2]
-    const group = interaction.values[0]
-
-    await addVipID(id,group)
-
-    return interaction.update({
-      content:`✅ VIP added`,
-      components:[]
-    })
-  }
-
-    if (interaction.customId === "offline_select") {
-      const id = interaction.values[0]
-      const group = await getUserGroup(interaction)
-
-      await fetch(`${API_URL}?action=offline&id=${id}&group=${group}`)
-
-      return interaction.update({content:`🔴 Offline ${id}`,components:[]})
-    }
-
-   if (interaction.customId === "role_select") {
-
-  const selectedRole = interaction.values[0]
-  const member = interaction.member
-
-  // quitar roles de grupo actuales
-  const rolesToRemove = member.roles.cache.filter(r =>
-    Object.keys(GROUP_CONFIG).includes(r.name)
-  )
-
-  for (const role of rolesToRemove.values()) {
-    await member.roles.remove(role)
-  }
-
-  // agregar el nuevo rol
-  const newRole = interaction.guild.roles.cache.find(r => r.name === selectedRole)
-
-  if (newRole) {
-    await member.roles.add(newRole)
-  }
-
-  return interaction.update({
-    content:`✅ Ahora eres ${selectedRole}`,
-    components:[]
-  })
-}
-
-  }
-
+  await addVipID(match[1])
 })
 
-// ================= START =================
-
+// ================= LOGIN =================
 client.login(TOKEN)
