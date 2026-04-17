@@ -217,40 +217,23 @@ client.once("clientReady", async()=>{
 // ================= INTERACTIONS =================
 
 client.on("interactionCreate", async interaction => {
+  if (interaction.isButton()) {
 
   // ================= BOTONES =================
- const isModal = ["register","add_sec","change","schedule","gp"].includes(interaction.customId)
 
-  // 🚨 MODALES VAN PRIMERO Y SALEN
-  if (isModal) {
+}
 
-    if (interaction.customId === "register") {
-      // modal
-      return interaction.showModal(modal)
-    }
+const isModal = ["register","add_sec","change","schedule","gp"].includes(interaction.customId)
 
-    if (interaction.customId === "add_sec") {
-      return interaction.showModal(modal)
-    }
-
-    if (interaction.customId === "change") {
-      return interaction.showModal(modal)
-    }
-
-    if (interaction.customId === "schedule") {
-      return interaction.showModal(modal)
-    }
-
-    if (interaction.customId === "gp") {
-      return interaction.showModal(modal)
-    }
-
-  }
-
+if (!isModal) {
+  await interaction.deferReply({ flags:64 })
+}
+  
   // 🔥 SOLO AQUÍ defer
   await interaction.deferReply({ flags:64 })
 
   const group = await getUserGroup(interaction)
+  const config = GROUP_CONFIG[group]
   if (!group) return interaction.editReply("❌ No group")
 
   const users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
@@ -453,7 +436,7 @@ client.on("interactionCreate", async interaction => {
     }
 
   }
-
+}
   // ================= MODALES =================
 
 if (interaction.isModalSubmit()) {
