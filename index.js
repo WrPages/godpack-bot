@@ -2,7 +2,7 @@ const { Client, GatewayIntentBits, EmbedBuilder, ModalBuilder,
   TextInputBuilder,TextInputStyle,ActionRowBuilder,StringSelectMenuBuilder, ButtonBuilder, ButtonStyle} = require('discord.js')
 const fetch = require('node-fetch')
 
-const { startPanelSystem } = require("./statsPanel");
+//const { startPanelSystem } = require("./statsPanel");
 
 
 
@@ -334,7 +334,7 @@ client.once("ready", async () => {
   client.once("ready", () => {
     console.log("Bot online");
 
-    startPanelSystem(client); // 👈 AQUÍ ACTIVAS EL PANEL
+    //startPanelSystem(client); // 👈 AQUÍ ACTIVAS EL PANEL
 });
 
 
