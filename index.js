@@ -485,8 +485,10 @@ function saveHistory(data) {
 
 
 client.on("interactionCreate", async (interaction) => {
-
+if (!interaction.isChatInputCommand()) return;
   try {
+    // 🔥 defer inmediato SIEMPRE
+    await interaction.deferReply({ flags: 64 });
 
   // 🔥 AUTO-DEFER GLOBAL
  // if (interaction.isChatInputCommand()) {
