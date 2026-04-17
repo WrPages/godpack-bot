@@ -228,11 +228,9 @@ if (interaction.isButton()) {
 
   const modalButtons = ["register","add_sec","change","schedule","gp"]
 
-  if (modalButtons.includes(interaction.customId)) {
-    // ❌ NO defer aquí
-  } else {
-    await interaction.deferReply({ flags:64 })
-  }
+    if (!modalButtons.includes(interaction.customId)) {
+      await interaction.deferReply({ flags:64 })
+    }
 }
   // 🔥 SOLO AQUÍ defer
 //  await interaction.deferReply({ flags:64 })
@@ -588,7 +586,7 @@ if (interaction.isModalSubmit()) {
       flags:64
     })
   }
-
+  return // 🔥 IMPORTANTE
 }
 
 
