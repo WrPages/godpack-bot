@@ -481,14 +481,6 @@ function saveHistory(data) {
 //const HISTORY_FILE = "./ppm_history.json";
 //const TWELVE_HOURS = 12 * 60 * 60 * 1000;
 
-function loadHistory() {
-  if (!fs.existsSync(HISTORY_FILE)) return [];
-  return JSON.parse(fs.readFileSync(HISTORY_FILE));
-}
-
-function saveHistory(data) {
-  fs.writeFileSync(HISTORY_FILE, JSON.stringify(data));
-}
 
 
 
@@ -732,7 +724,9 @@ if (!group) {
 //change
 
 if (interaction.isChatInputCommand() && interaction.commandName === "change") {
-   await interaction.deferReply({ ephemeral: true })
+   if (!interaction.deferred && !interaction.replied) {
+   await interaction.deferReply({ ephemeral: true });
+}
 
   try {
 
@@ -791,11 +785,11 @@ const group = await getUserGroup(interaction)
 
     console.error("CHANGE ERROR:", error)
 
-    if (interaction.deferred || interaction.replied) {
-      return interaction.editReply("❌ Unexpected error updating ID")
-    } else {
-      return interaction.editReply("❌ Unexpected error updating ID")
-    }
+  if (interaction.deferred || interaction.replied) {
+  return interaction.editReply("❌ Unexpected error updating ID")
+} else {
+  return interaction.reply({ content: "❌ Unexpected error updating ID", ephemeral: true })
+}
   }
 }
 
