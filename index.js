@@ -1,14 +1,8 @@
-process.on("unhandledRejection", (err) => {
-  console.error("Unhandled Rejection:", err);
-});
-
-process.on("uncaughtException", (err) => {
-  console.error("Uncaught Exception:", err);
-});
 const { Client, GatewayIntentBits, EmbedBuilder, ModalBuilder,
   TextInputBuilder,TextInputStyle,ActionRowBuilder,StringSelectMenuBuilder, ButtonBuilder, ButtonStyle} = require('discord.js')
 const fetch = require('node-fetch')
 
+const { startPanelSystem } = require("./statsPanel");
 
 
 
@@ -325,20 +319,52 @@ async function addVipID(id, group) {
 }
 
 //tewmina
+
+client.on("ready", () => {
+ // setInterval(updateTotalPPM, 5 * 60 * 1000)
+  //updateTotalPPM()
+ startDailyScheduler() 
+  console.log("Bot ready 🔥")
+})
 require("./gpHandler")(client);
 
-client.once("clientReady", async () => {
 
+//Comandos
+client.once("ready", async () => {
   console.log(`✅ Bot listo como ${client.user.tag}`);
+  
+  
+  client.once("ready", () => {
+    console.log("Bot online");
 
-  // 🔥 iniciar sistemas
-  startDailyScheduler();
+    startPanelSystem(client); // 👈 AQUÍ ACTIVAS EL PANEL
+});
+
+
 
   const { REST, Routes, SlashCommandBuilder } = require("discord.js");
 
   const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
-  // 🔥 DEFINIR COMANDOS
+//  try {
+
+
+    // 🗑️ BORRAR COMANDOS ANTIGUOS DEL SERVIDOR
+   // await rest.put(
+    //  Routes.applicationGuildCommands(
+    //   process.env.CLIENT_ID,
+    //   process.env.GUILD_ID
+   //   ),
+   //   { body: [] }
+  //);
+
+   // console.log("🗑️ Comandos antiguos eliminados");
+
+  //} catch (error) {
+  //  console.error("❌ Error borrando comandos:", error);
+ //}
+
+  // 🔥 DEFINIR COMANDOS NUEVOS
   const commands = [
 
     new SlashCommandBuilder()
@@ -350,9 +376,9 @@ client.once("clientReady", async () => {
           .setRequired(true)
       ),
 
-    new SlashCommandBuilder()
-      .setName("change_rol")
-      .setDescription("Select your active group"),
+   new SlashCommandBuilder()
+  .setName("change_rol")
+  .setDescription("Select your active group"),
 
     new SlashCommandBuilder()
       .setName("add_sec")
@@ -372,39 +398,49 @@ client.once("clientReady", async () => {
           .setRequired(true)
       ),
 
-    new SlashCommandBuilder()
-      .setName("schedule_events")
-      .setDescription("Daily online/offline scheduler (UTC)")
-      .addStringOption(opt =>
-        opt.setName("mode")
-          .setDescription("Start or Stop")
-          .setRequired(true)
-          .addChoices(
-            { name: "Start Daily Schedule", value: "start" },
-            { name: "Stop All Schedules", value: "stop" }
-          )
-      )
-      .addIntegerOption(opt =>
-        opt.setName("online_hour")
-          .setDescription("Online Hour (UTC 0-23)")
-      )
-      .addIntegerOption(opt =>
-        opt.setName("online_minute")
-          .setDescription("Online Minute (0-59)")
-      )
-      .addIntegerOption(opt =>
-        opt.setName("offline_hour")
-          .setDescription("Offline Hour (UTC 0-23)")
-      )
-      .addIntegerOption(opt =>
-        opt.setName("offline_minute")
-          .setDescription("Offline Minute (0-59)")
-      ),
+///////
 
-    new SlashCommandBuilder()
-      .setName("set_offline")
-      .setDescription("Force a user offline"),
+new SlashCommandBuilder()
+  .setName("schedule_events")
+  .setDescription("Daily online/offline scheduler (UTC)")
+  .addStringOption(opt =>
+    opt.setName("mode")
+      .setDescription("Start or Stop")
+      .setRequired(true)
+      .addChoices(
+        { name: "Start Daily Schedule", value: "start" },
+        { name: "Stop All Schedules", value: "stop" }
+      )
+  )
+  .addIntegerOption(opt =>
+    opt.setName("online_hour")
+      .setDescription("Online Hour (UTC 0-23)")
+      .setRequired(false)
+  )
+  .addIntegerOption(opt =>
+    opt.setName("online_minute")
+      .setDescription("Online Minute (0-59)")
+      .setRequired(false)
+  )
+  .addIntegerOption(opt =>
+    opt.setName("offline_hour")
+      .setDescription("Offline Hour (UTC 0-23)")
+      .setRequired(false)
+  )
+  .addIntegerOption(opt =>
+    opt.setName("offline_minute")
+      .setDescription("Offline Minute (0-59)")
+      .setRequired(false)
+  ),
 
+new SlashCommandBuilder()
+  .setName("set_offline")
+  .setDescription("Force a user offline"),
+
+
+
+   
+/////
     new SlashCommandBuilder()
       .setName("online")
       .setDescription("Set your main account online"),
@@ -433,11 +469,15 @@ client.once("clientReady", async () => {
           .setDescription("16 digit VIP ID")
           .setRequired(true)
       )
+  
+      
+      
 
   ].map(cmd => cmd.toJSON());
 
   try {
 
+    // 🚀 REGISTRAR NUEVOS COMANDOS
     await rest.put(
       Routes.applicationGuildCommands(
         process.env.CLIENT_ID,
@@ -451,10 +491,7 @@ client.once("clientReady", async () => {
   } catch (error) {
     console.error("❌ Error registrando comandos:", error);
   }
-
 });
-
-
 //termina comandos
 
 //client.login(process.env.TOKEN)
@@ -481,32 +518,28 @@ function saveHistory(data) {
 //const HISTORY_FILE = "./ppm_history.json";
 //const TWELVE_HOURS = 12 * 60 * 60 * 1000;
 
+function loadHistory() {
+  if (!fs.existsSync(HISTORY_FILE)) return [];
+  return JSON.parse(fs.readFileSync(HISTORY_FILE));
+}
+
+function saveHistory(data) {
+  fs.writeFileSync(HISTORY_FILE, JSON.stringify(data));
+}
 
 
 
 client.on("interactionCreate", async (interaction) => {
-if (!interaction.isChatInputCommand()) return;
-  try {
-    // 🔥 defer inmediato SIEMPRE
-    await interaction.deferReply({ flags: 64 });
-
-  // 🔥 AUTO-DEFER GLOBAL
- // if (interaction.isChatInputCommand()) {
- //   if (!interaction.deferred && !interaction.replied) {   await interaction.deferReply({ ephemeral: true }); }
-//  }
  // if (!interaction.isChatInputCommand()) return
-   if (!interaction.isChatInputCommand() 
-    && !interaction.isStringSelectMenu() 
-    && !interaction.isButton()) return;
-    
+  const { commandName } = interaction;
 
   const userId = interaction.user.id
 //  let users = await getUsers()
 
 //SCHENDULE
 
-if (interaction.isChatInputCommand() && interaction.commandName === "schedule_events") {
-if (!interaction.deferred && !interaction.replied) {   await interaction.deferReply({ ephemeral: true }); }
+if (interaction.commandName === "schedule_events") {
+
   const mode = interaction.options.getString("mode")
   const schedules = loadSchedules()
 
@@ -518,11 +551,11 @@ const utcNow = now.toISOString().slice(11,16) // HH:MM en UTC real 24h
     delete schedules[interaction.user.id]
     saveSchedules(schedules)
 
-    return interaction.editReply(`🛑 All daily schedules stopped.\n🕒 Current UTC time: ${utcNow}`)
+    return interaction.reply(`🛑 All daily schedules stopped.\n🕒 Current UTC time: ${utcNow}`)
   }
 
   const group = await getUserGroup(interaction)
-  if (!group) return interaction.editReply("❌ No reroll group detected")
+  if (!group) return interaction.reply("❌ No reroll group detected")
 
   const config = GROUP_CONFIG[group]
 
@@ -530,7 +563,7 @@ const utcNow = now.toISOString().slice(11,16) // HH:MM en UTC real 24h
   const userData = users[interaction.user.id]
 
   if (!userData?.main_id) {
-    return interaction.editReply("❌ You must register first")
+    return interaction.reply("❌ You must register first")
   }
 
   const onlineHour = interaction.options.getInteger("online_hour")
@@ -542,7 +575,7 @@ const utcNow = now.toISOString().slice(11,16) // HH:MM en UTC real 24h
     onlineHour == null || onlineMinute == null ||
     offlineHour == null || offlineMinute == null
   ) {
-    return interaction.editReply("❌ You must provide all time values")
+    return interaction.reply("❌ You must provide all time values")
   }
 
   if (
@@ -551,7 +584,7 @@ const utcNow = now.toISOString().slice(11,16) // HH:MM en UTC real 24h
     onlineMinute < 0 || onlineMinute > 59 ||
     offlineMinute < 0 || offlineMinute > 59
   ) {
-    return interaction.editReply("❌ Invalid UTC time format")
+    return interaction.reply("❌ Invalid UTC time format")
   }
 
   schedules[interaction.user.id] = {
@@ -567,7 +600,7 @@ const utcNow = now.toISOString().slice(11,16) // HH:MM en UTC real 24h
 
   saveSchedules(schedules)
 
-  return interaction.editReply(
+  return interaction.reply(
     `✅ Daily schedule activated\n\n` +
     `🟢 Online: ${onlineHour.toString().padStart(2,"0")}:${onlineMinute.toString().padStart(2,"0")} UTC\n` +
     `🔴 Offline: ${offlineHour.toString().padStart(2,"0")}:${offlineMinute.toString().padStart(2,"0")} UTC\n\n` +
@@ -580,14 +613,13 @@ const utcNow = now.toISOString().slice(11,16) // HH:MM en UTC real 24h
  
 // 🔹 VIP ids
 // 🔹 GP COMMAND (solo Champion + selector de grupo)
-if (interaction.isChatInputCommand() && interaction.commandName === "gp") {
-  if (!interaction.deferred && !interaction.replied) {   await interaction.deferReply({ ephemeral: true }); }
+if (interaction.commandName === "gp") {
 
   const CHAMPION_ROLE_ID = "1486206362332434634"; // 👈 tu rol Champion
 
   // ❌ Solo funciona dentro de servidor
   if (!interaction.inGuild()) {
-    return interaction.editReply({
+    return interaction.reply({
       content: "❌ This command can only be used inside a server.",
       ephemeral: true
     });
@@ -597,7 +629,7 @@ if (interaction.isChatInputCommand() && interaction.commandName === "gp") {
 
   // 🔒 Verificar rol Champion
   if (!member.roles.cache.has(CHAMPION_ROLE_ID)) {
-    return interaction.editReply({
+    return interaction.reply({
       content: "⛔ Only Champions can use this command.",
       ephemeral: true
     });
@@ -606,7 +638,7 @@ if (interaction.isChatInputCommand() && interaction.commandName === "gp") {
   const id = interaction.options.getString("id");
 
   if (!/^\d{16}$/.test(id)) {
-    return interaction.editReply({
+    return interaction.reply({
       content: "❌ ID must be 16 digits",
       ephemeral: true
     });
@@ -632,7 +664,7 @@ if (interaction.isChatInputCommand() && interaction.commandName === "gp") {
 
   const row = new ActionRowBuilder().addComponents(menu);
 
-  return interaction.editReply({
+  return interaction.reply({
     content: `🔥 Select group to add VIP ID:\n\`${id}\``,
     components: [row],
     ephemeral: true
@@ -640,13 +672,12 @@ if (interaction.isChatInputCommand() && interaction.commandName === "gp") {
 }
 //tegister
 
-if (interaction.isChatInputCommand() && interaction.commandName === "register") {
-if (!interaction.deferred && !interaction.replied) {   await interaction.deferReply({ ephemeral: true }); }
+if (interaction.commandName === "register") {
 
 const group = await getUserGroup(interaction);
 
 if (!group) {
-  return interaction.editReply("❌ No group");
+  return interaction.reply("❌ No group");
 }
 
   const config = GROUP_CONFIG[group]
@@ -654,7 +685,7 @@ if (!group) {
   const id = interaction.options.getString("id")
 
   if (!/^\d{16}$/.test(id)) {
-    return interaction.editReply("❌ ID must be 16 digits")
+    return interaction.reply("❌ ID must be 16 digits")
   }
 
   // 🔥 Cargar archivo correcto del gist correcto
@@ -676,18 +707,17 @@ if (!group) {
     config.USERS_FILENAME
   )
 
-  return interaction.editReply(`✅ Main ID registered in ${group}`)
+  return interaction.reply(`✅ Main ID registered in ${group}`)
 }
 
 
 //adsec
-if (interaction.isChatInputCommand() && interaction.commandName === "add_sec") {
-  if (!interaction.deferred && !interaction.replied) {   await interaction.deferReply({ ephemeral: true }); }
+if (interaction.commandName === "add_sec") {
 
 const group = await getUserGroup(interaction);
 
 if (!group) {
-  return interaction.editReply("❌ No group");
+  return interaction.reply("❌ No group");
 }
 
   const config = GROUP_CONFIG[group]
@@ -695,7 +725,7 @@ if (!group) {
   const secId = interaction.options.getString("id")
 
   if (!/^\d{16}$/.test(secId)) {
-    return interaction.editReply("❌ ID must be 16 digits")
+    return interaction.reply("❌ ID must be 16 digits")
   }
 
   // 🔥 Cargar desde el archivo correcto
@@ -707,7 +737,7 @@ if (!group) {
   const userData = users[interaction.user.id]
 
   if (!userData) {
-    return interaction.editReply("❌ You must register main ID first")
+    return interaction.reply("❌ You must register main ID first")
   }
 
   userData.sec_id = secId
@@ -719,20 +749,17 @@ if (!group) {
     config.USERS_FILENAME
   )
 
-  return interaction.editReply("✅ Secondary ID added")
+  return interaction.reply("✅ Secondary ID added")
 }
 
 
 //change
 
-if (interaction.isChatInputCommand() && interaction.commandName === "change") {
-   if (!interaction.deferred && !interaction.replied) {
-   await interaction.deferReply({ ephemeral: true });
-}
+if (interaction.commandName === "change") {
 
   try {
 
-   
+    await interaction.deferReply({ ephemeral: true })
 
 const group = await getUserGroup(interaction)
     if (!group) {
@@ -787,22 +814,21 @@ const group = await getUserGroup(interaction)
 
     console.error("CHANGE ERROR:", error)
 
-  if (interaction.deferred || interaction.replied) {
-  return interaction.editReply("❌ Unexpected error updating ID")
-} else {
-  return interaction.reply({ content: "❌ Unexpected error updating ID", ephemeral: true })
-}
+    if (interaction.deferred || interaction.replied) {
+      return interaction.editReply("❌ Unexpected error updating ID")
+    } else {
+      return interaction.reply("❌ Unexpected error updating ID")
+    }
   }
 }
 
   
-  if (interaction.isChatInputCommand() && interaction.commandName === "online") {
-    if (!interaction.deferred && !interaction.replied) {   await interaction.deferReply({ ephemeral: true }); }
+  if (interaction.commandName === "online") {
 
 const group = await getUserGroup(interaction);
 
 if (!group) {
-  return interaction.editReply("❌ No group");
+  return interaction.reply("❌ No group");
 }
 
   const config = GROUP_CONFIG[group]
@@ -816,23 +842,22 @@ if (!group) {
 
   // 🔥 CAMBIO IMPORTANTE
   if (!userData || !userData.main_id) {
-    return interaction.editReply("❌ You must register your main ID first")
+    return interaction.reply("❌ You must register your main ID first")
   }
 
   await fetch(`${API_URL}?action=online&id=${userData.main_id}&group=${group}`)
 
-  return interaction.editReply("🟢 Main account set online")
+  return interaction.reply("🟢 Main account set online")
 }
 
 
 //online sec
-if (interaction.isChatInputCommand() && interaction.commandName === "online_sec") {
-  if (!interaction.deferred && !interaction.replied) {   await interaction.deferReply({ ephemeral: true }); }
+if (interaction.commandName === "online_sec") {
 
 const group = await getUserGroup(interaction);
 
 if (!group) {
-  return interaction.editReply("❌ No group");
+  return interaction.reply("❌ No group");
 }
 
   const config = GROUP_CONFIG[group]
@@ -845,12 +870,12 @@ if (!group) {
   const userData = users[interaction.user.id]
 
   if (!userData || !userData.sec_id) {
-    return interaction.editReply("❌ You must register your secondary ID first")
+    return interaction.reply("❌ You must register your secondary ID first")
   }
 
   await fetch(`${API_URL}?action=online&id=${userData.sec_id}&group=${group}`)
 
-  return interaction.editReply("🟢 Secondary account set online")
+  return interaction.reply("🟢 Secondary account set online")
 }
 
 
@@ -859,9 +884,9 @@ if (!group) {
  
 
   // 🔹 OFFLINE
-  if (interaction.isChatInputCommand() && interaction.commandName === "offline") {
+  if (interaction.commandName === "offline") {
 
-  if (!interaction.deferred && !interaction.replied) {   await interaction.deferReply({ ephemeral: true }); }
+  await interaction.deferReply()
 
   // 🔎 Detectar grupo por rol
   const group = await getUserGroup(interaction)
@@ -898,20 +923,19 @@ if (userData.sec_id) {
  
 //SETOFFLINE
 
- if (interaction.isChatInputCommand() && interaction.commandName === "set_offline") {
-  if (!interaction.deferred && !interaction.replied) {   await interaction.deferReply({ ephemeral: true }); }
+ if (interaction.commandName === "set_offline") {
 
 const member = interaction.member;
 
 if (!member.roles.cache.some(role => role.name === "Champion")) {
-  return interaction.editReply({
+  return interaction.reply({
     content: "❌ You need the **Champion** role to use this command.",
     ephemeral: true
   });
 }
   
   const group = await getUserGroup(interaction)
-  if (!group) return interaction.editReply("❌ No group")
+  if (!group) return interaction.reply("❌ No group")
 
   const config = GROUP_CONFIG[group]
 
@@ -934,7 +958,7 @@ if (!member.roles.cache.some(role => role.name === "Champion")) {
     .filter(Boolean)
 
   if (onlineIds.length === 0) {
-    return interaction.editReply("⚫ No users online")
+    return interaction.reply("⚫ No users online")
   }
 
   const users = await getUsers(
@@ -970,7 +994,7 @@ if (!member.roles.cache.some(role => role.name === "Champion")) {
 
   const row = new ActionRowBuilder().addComponents(menu)
 
-  await interaction.editReply({
+  await interaction.reply({
     content: "Select user to set OFFLINE:",
     components: [row],
     ephemeral: true
@@ -1051,11 +1075,11 @@ if (interaction.isButton() && interaction.customId.startsWith("confirm_offline_"
  //////////
 
 // 🔹 LIST
-if (interaction.isChatInputCommand() && interaction.commandName === "list") {
-if (!interaction.deferred && !interaction.replied) {   await interaction.deferReply({ ephemeral: true }); }
+if (interaction.commandName === "list") {
+
   const group = await getUserGroup(interaction);
   if (!group) {
-    return interaction.editReply("❌ No reroll group detected");
+    return interaction.reply("❌ No reroll group detected");
   }
 
   const config = GROUP_CONFIG[group];
@@ -1065,7 +1089,7 @@ if (!interaction.deferred && !interaction.replied) {   await interaction.deferRe
   );
 
   if (Object.keys(registeredUsers).length === 0) {
-    return interaction.editReply("📭 No users registered");
+    return interaction.reply("📭 No users registered");
   }
 
   let msg = `📋 **Registered users in ${group}:**\n\n`;
@@ -1075,14 +1099,13 @@ if (!interaction.deferred && !interaction.replied) {   await interaction.deferRe
     msg += `👤 ${user.name} → Main ID: ${user.main_id}\n`;
   }
 
-  return interaction.editReply(msg);
+  return interaction.reply(msg);
 }
 
  // 🔹 ONLINE LIST
-if (interaction.isChatInputCommand() && interaction.commandName === "online_list") {
-   if (!interaction.deferred && !interaction.replied) {   await interaction.deferReply({ ephemeral: true }); }
+if (interaction.commandName === "online_list") {
   try {
-   
+    await interaction.deferReply();
 
     const group = await getUserGroup(interaction);
     if (!group)
@@ -1154,8 +1177,7 @@ if (interaction.isChatInputCommand() && interaction.commandName === "online_list
 
 /////change_rol
 
-if (interaction.isChatInputCommand() && interaction.commandName === "change_rol") {
-  if (!interaction.deferred && !interaction.replied) {   await interaction.deferReply({ ephemeral: true }); }
+if (interaction.commandName === "change_rol") {
 
   const member = interaction.member;
 
@@ -1166,7 +1188,7 @@ if (interaction.isChatInputCommand() && interaction.commandName === "change_rol"
 
   // ❌ no tiene ningún grupo
   if (userGroups.length === 0) {
-    return interaction.editReply({
+    return interaction.reply({
       content: "❌ You don't have any valid reroll roles.",
       ephemeral: true
     });
@@ -1174,7 +1196,7 @@ if (interaction.isChatInputCommand() && interaction.commandName === "change_rol"
 
   // ❌ solo tiene uno → no necesita cambiar
   if (userGroups.length === 1) {
-    return interaction.editReply({
+    return interaction.reply({
       content: `⚠️ You only have one role (**${userGroups[0]}**).\nYou need at least 2 roles to switch.`,
       ephemeral: true
     });
@@ -1193,29 +1215,105 @@ if (interaction.isChatInputCommand() && interaction.commandName === "change_rol"
 
   const row = new ActionRowBuilder().addComponents(menu);
 
-  return interaction.editReply({
+  return interaction.reply({
     content: "🎯 Select your active group:",
     components: [row],
     ephemeral: true
   });
 }
 
-} catch (err) {
-  console.error("Interaction error:", err);
 
+ 
+
+if (commandName === "editpanel") {
   try {
-    if (interaction.deferred || interaction.replied) {
-      await interaction.editReply("❌ Unexpected error.");
-    } else {
-      await interaction.reply({ content: "❌ Unexpected error.", ephemeral: true });
+    // Verificar si el usuario tiene el rol Champion
+    const member = interaction.member; // miembro que ejecuta el comando
+    if (!member.roles.cache.some(role => role.name === "Champion")) {
+      return interaction.reply({
+        content: "❌ You need the **Champion** role to use this command.",
+        ephemeral: true
+      });
     }
-  } catch (e) {
-    console.error("Error sending error response:", e);
+
+    // ----- Resto del comando aquí -----
+    await interaction.reply({
+      content: "📝 Please send the **Message ID** of the panel you want to edit:",
+      ephemeral: true
+    });
+
+    const filter = m => m.author.id === interaction.user.id;
+    const collectedId = await interaction.channel.awaitMessages({
+      filter,
+      max: 1,
+      time: 60000,
+      errors: ["time"]
+    });
+    const messageId = collectedId.first().content.trim();
+
+    const message = await interaction.channel.messages.fetch(messageId).catch(() => null);
+    if (!message) {
+      return interaction.followUp({ content: "❌ Message not found.", ephemeral: true });
+    }
+
+    if (!message.embeds.length) {
+      return interaction.followUp({ content: "❌ That message has no embed.", ephemeral: true });
+    }
+
+    await interaction.followUp({
+      content: "🔢 Now, please send the new **Rarity (1-5)**:",
+      ephemeral: true
+    });
+
+    const collectedRarity = await interaction.channel.awaitMessages({
+      filter,
+      max: 1,
+      time: 60000,
+      errors: ["time"]
+    });
+
+    const rarityInput = parseInt(collectedRarity.first().content.trim());
+    if (isNaN(rarityInput) || rarityInput < 1 || rarityInput > 5) {
+      return interaction.followUp({
+        content: "❌ Invalid rarity. Must be a number between 1 and 5.",
+        ephemeral: true
+      });
+    }
+
+    const oldEmbed = message.embeds[0];
+
+    let color = 0x999999;
+    if (rarityInput === 5) color = 0xFFD700;
+    if (rarityInput === 4) color = 0x00ffcc;
+    if (rarityInput === 3) color = 0x0099ff;
+
+    const descMatch = oldEmbed.description?.match(/• (\d+)P\s+\|\s+\*\*(.+)\*\*/i);
+    const pack = descMatch ? parseInt(descMatch[1]) : 1;
+    const username = descMatch ? descMatch[2] : "Unknown";
+
+    const newEmbed = new EmbedBuilder()
+      .setColor(color)
+      .setDescription(`## ✨ ${rarityInput}/5 • ${pack}P  |  **${username}**`);
+
+    if (oldEmbed.image?.url) newEmbed.setImage(oldEmbed.image.url);
+
+    await message.edit({ embeds: [newEmbed] });
+
+    await interaction.followUp({
+      content: `✅ Panel updated successfully to **${rarityInput}/5**!`,
+      ephemeral: true
+    });
+
+  } catch (err) {
+    console.error("EDIT PANEL ERROR:", err);
+    if (!interaction.replied) {
+      await interaction.reply({
+        content: "❌ Something went wrong.",
+        ephemeral: true
+      });
+    }
   }
 }
-
-
-  
 });
     
   // 🔹 CIERRE CORRECTO DE client.on("interactionCreate")
