@@ -205,7 +205,7 @@ async function sendPanel(channel){
 
 // ================= READY =================
 
-client.once("ready", async()=>{
+client.once("clientReady", async()=>{
   console.log("🔥 Bot listo")
 
   const ch = await client.channels.fetch(PANEL_CHANNEL_ID)
@@ -216,7 +216,7 @@ client.once("ready", async()=>{
 
 // ================= INTERACTIONS =================
 
-client.once("interactionCreate", async interaction => {
+client.on("interactionCreate", async interaction => {
 
   // ================= BOTONES =================
 
@@ -437,7 +437,7 @@ client.once("interactionCreate", async interaction => {
 
   // ================= MODALES =================
 
-if (interaction.isModalSubmit()) {
+  if (interaction.isModalSubmit()) {
 
   const group = await getUserGroup(interaction)
   if (!group) return safeReply(interaction,{content:"❌ No group",flags:64})
@@ -445,6 +445,7 @@ if (interaction.isModalSubmit()) {
   const config = GROUP_CONFIG[group]
   let users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
 
+  // ===== REGISTER =====
   if (interaction.customId === "reg_modal") {
     const id = interaction.fields.getTextInputValue("id")
 
@@ -458,71 +459,79 @@ if (interaction.isModalSubmit()) {
 
     return safeReply(interaction,{content:"✅ Registered",flags:64})
   }
-}
-    if (interaction.customId === "sec_modal") {
-      const id = interaction.fields.getTextInputValue("id")
 
-      if (!users[interaction.user.id])
-        return interaction.reply({content:"❌ Register first",ephemeral:true})
+  // ===== SEC =====
+  if (interaction.customId === "sec_modal") {
+    const id = interaction.fields.getTextInputValue("id")
 
-      users[interaction.user.id].sec_id = id
+    if (!users[interaction.user.id])
+      return safeReply(interaction,{content:"❌ Register first",flags:64})
 
-      await saveUsers(users,config.USERS_GIST_ID,config.USERS_FILENAME)
-      return interaction.reply({content:"✅ Secondary added",ephemeral:true})
-    }
+    users[interaction.user.id].sec_id = id
 
-    if (interaction.customId === "change_modal") {
-      const id = interaction.fields.getTextInputValue("id")
+    await saveUsers(users,config.USERS_GIST_ID,config.USERS_FILENAME)
 
-      if (!users[interaction.user.id])
-        return interaction.reply({content:"❌ Register first",ephemeral:true})
-
-      users[interaction.user.id].main_id = id
-
-      await saveUsers(users,config.USERS_GIST_ID,config.USERS_FILENAME)
-      return interaction.reply({content:"🔄 Updated",ephemeral:true})
-    }
-
-    if (interaction.customId === "schedule_modal") {
-
-      const on = interaction.fields.getTextInputValue("on").split(":")
-      const off = interaction.fields.getTextInputValue("off").split(":")
-
-      const schedules = loadSchedules()
-
-      schedules[interaction.user.id] = {
-        group,
-        main_id:users[interaction.user.id].main_id,
-        online_hour:+on[0],
-        online_minute:+on[1],
-        offline_hour:+off[0],
-        offline_minute:+off[1]
-      }
-
-      saveSchedules(schedules)
-
-      return interaction.reply({content:"✅ Schedule saved",ephemeral:true})
-    }
-
-    if (interaction.customId === "gp_modal") {
-      const id = interaction.fields.getTextInputValue("id")
-
-      const menu = new StringSelectMenuBuilder()
-        .setCustomId(`gp_select_${id}`)
-        .addOptions([
-          {label:"Trainer",value:"Trainer"},
-          {label:"Gym Leader",value:"Gym_Leader"},
-          {label:"Elite Four",value:"Elite_Four"}
-        ])
-
-      return interaction.reply({
-        content:"Select group",
-        components:[new ActionRowBuilder().addComponents(menu)],
-        ephemeral:true
-      })
-    }
-
+    return safeReply(interaction,{content:"✅ Secondary added",flags:64})
   }
+
+  // ===== CHANGE =====
+  if (interaction.customId === "change_modal") {
+    const id = interaction.fields.getTextInputValue("id")
+
+    if (!users[interaction.user.id])
+      return safeReply(interaction,{content:"❌ Register first",flags:64})
+
+    users[interaction.user.id].main_id = id
+
+    await saveUsers(users,config.USERS_GIST_ID,config.USERS_FILENAME)
+
+    return safeReply(interaction,{content:"🔄 Updated",flags:64})
+  }
+
+  // ===== SCHEDULE =====
+  if (interaction.customId === "schedule_modal") {
+
+    const on = interaction.fields.getTextInputValue("on").split(":")
+    const off = interaction.fields.getTextInputValue("off").split(":")
+
+    const schedules = loadSchedules()
+
+    schedules[interaction.user.id] = {
+      group,
+      main_id:users[interaction.user.id].main_id,
+      online_hour:+on[0],
+      online_minute:+on[1],
+      offline_hour:+off[0],
+      offline_minute:+off[1]
+    }
+
+    saveSchedules(schedules)
+
+    return safeReply(interaction,{content:"✅ Schedule saved",flags:64})
+  }
+
+  // ===== GP =====
+  if (interaction.customId === "gp_modal") {
+    const id = interaction.fields.getTextInputValue("id")
+
+    const menu = new StringSelectMenuBuilder()
+      .setCustomId(`gp_select_${id}`)
+      .addOptions([
+        {label:"Trainer",value:"Trainer"},
+        {label:"Gym Leader",value:"Gym_Leader"},
+        {label:"Elite Four",value:"Elite_Four"}
+      ])
+
+    return safeReply(interaction,{
+      content:"Select group",
+      components:[new ActionRowBuilder().addComponents(menu)],
+      flags:64
+    })
+  }
+
+}
+
+
 
   // ================= SELECT MENUS =================
 
