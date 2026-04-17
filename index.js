@@ -497,9 +497,9 @@ client.on("interactionCreate", async (interaction) => {
   try {
 
   // 🔥 AUTO-DEFER GLOBAL
-  if (interaction.isChatInputCommand()) {
-    await interaction.deferReply({ ephemeral: true });
-  }
+ // if (interaction.isChatInputCommand()) {
+ //   await interaction.deferReply({ ephemeral: true });
+//  }
  // if (!interaction.isChatInputCommand()) return
    if (!interaction.isChatInputCommand() 
     && !interaction.isStringSelectMenu() 
