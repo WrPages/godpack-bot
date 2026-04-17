@@ -204,172 +204,336 @@ client.once("ready", async()=>{
 
 client.on("interactionCreate", async interaction => {
 
-  // ===== REGISTER =====
-  if(interaction.isButton() && interaction.customId==="register"){
-    const modal = new ModalBuilder()
-      .setCustomId("reg_modal")
-      .setTitle("Register ID")
+  // ================= BOTONES =================
 
-    modal.addComponents(
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder()
-          .setCustomId("id")
-          .setLabel("16 digit ID")
-          .setStyle(TextInputStyle.Short)
-      )
-    )
-
-    return interaction.showModal(modal)
-  }
-
-  if(interaction.isModalSubmit() && interaction.customId==="reg_modal"){
-    const id = interaction.fields.getTextInputValue("id")
+  if (interaction.isButton()) {
 
     const group = await getUserGroup(interaction)
-    const config = GROUP_CONFIG[group]
+    if (!group) return interaction.reply({content:"❌ No group",ephemeral:true})
 
+    const config = GROUP_CONFIG[group]
+    const users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
+    const userData = users[interaction.user.id]
+
+    // ===== REGISTER =====
+    if (interaction.customId === "register") {
+      const modal = new ModalBuilder()
+        .setCustomId("reg_modal")
+        .setTitle("Register ID")
+
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId("id")
+            .setLabel("16 digit ID")
+            .setStyle(TextInputStyle.Short)
+        )
+      )
+
+      return interaction.showModal(modal)
+    }
+
+    // ===== ADD SEC =====
+    if (interaction.customId === "add_sec") {
+      const modal = new ModalBuilder()
+        .setCustomId("sec_modal")
+        .setTitle("Add Secondary ID")
+
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId("id")
+            .setLabel("16 digit ID")
+            .setStyle(TextInputStyle.Short)
+        )
+      )
+
+      return interaction.showModal(modal)
+    }
+
+    // ===== CHANGE =====
+    if (interaction.customId === "change") {
+      const modal = new ModalBuilder()
+        .setCustomId("change_modal")
+        .setTitle("Change Main ID")
+
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId("id")
+            .setLabel("New 16 digit ID")
+            .setStyle(TextInputStyle.Short)
+        )
+      )
+
+      return interaction.showModal(modal)
+    }
+
+    // ===== ONLINE =====
+    if (interaction.customId === "online") {
+      if (!userData?.main_id) return interaction.reply({content:"❌ Register first",ephemeral:true})
+
+      await fetch(`${API_URL}?action=online&id=${userData.main_id}&group=${group}`)
+      return interaction.reply(`🟢 ONLINE`)
+    }
+
+    // ===== ONLINE SEC =====
+    if (interaction.customId === "online_sec") {
+      if (!userData?.sec_id) return interaction.reply({content:"❌ No secondary ID",ephemeral:true})
+
+      await fetch(`${API_URL}?action=online&id=${userData.sec_id}&group=${group}`)
+      return interaction.reply(`🟢 SEC ONLINE`)
+    }
+
+    // ===== OFFLINE =====
+    if (interaction.customId === "offline") {
+      if (!userData) return interaction.reply({content:"❌ Not registered",ephemeral:true})
+
+      if (userData.main_id)
+        await fetch(`${API_URL}?action=offline&id=${userData.main_id}&group=${group}`)
+
+      if (userData.sec_id)
+        await fetch(`${API_URL}?action=offline&id=${userData.sec_id}&group=${group}`)
+
+      return interaction.reply(`🔴 OFFLINE`)
+    }
+
+    // ===== LIST =====
+    if (interaction.customId === "list") {
+
+      if (Object.keys(users).length === 0)
+        return interaction.reply("📭 No users")
+
+      let msg = "📋 Users:\n\n"
+
+      for (const uid in users) {
+        const u = users[uid]
+        msg += `👤 ${u.name} → ${u.main_id}\n`
+      }
+
+      return interaction.reply(msg)
+    }
+
+    // ===== ONLINE LIST =====
+    if (interaction.customId === "online_list") {
+
+      const ids = await getOnlineIDs(config.IDS_GIST_ID,config.IDS_FILENAME)
+
+      if (!ids.length) return interaction.reply("⚫ No online")
+
+      let msg = "🟢 Online:\n\n"
+
+      for (const uid in users) {
+        const u = users[uid]
+
+        if (ids.includes(u.main_id) || ids.includes(u.sec_id)) {
+          msg += `👤 ${u.name}\n`
+        }
+      }
+
+      return interaction.reply(msg)
+    }
+
+    // ===== SCHEDULE =====
+    if (interaction.customId === "schedule") {
+
+      const modal = new ModalBuilder()
+        .setCustomId("schedule_modal")
+        .setTitle("Schedule UTC")
+
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder().setCustomId("on").setLabel("Online HH:MM").setStyle(TextInputStyle.Short)
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder().setCustomId("off").setLabel("Offline HH:MM").setStyle(TextInputStyle.Short)
+        )
+      )
+
+      return interaction.showModal(modal)
+    }
+
+    // ===== CHANGE ROLE =====
+    if (interaction.customId === "change_role") {
+
+      const roles = interaction.member.roles.cache
+        .filter(r=>Object.keys(GROUP_CONFIG).includes(r.name))
+        .map(r=>({label:r.name,value:r.name}))
+
+      const menu = new StringSelectMenuBuilder()
+        .setCustomId("role_select")
+        .addOptions(roles)
+
+      return interaction.reply({
+        content:"Select role",
+        components:[new ActionRowBuilder().addComponents(menu)],
+        ephemeral:true
+      })
+    }
+
+    // ===== FORCE OFFLINE =====
+    if (interaction.customId === "set_offline") {
+
+      const ids = await getOnlineIDs(config.IDS_GIST_ID,config.IDS_FILENAME)
+
+      if (!ids.length) return interaction.reply("⚫ No users online")
+
+      const options = ids.slice(0,25).map(id=>({
+        label:id,
+        value:id
+      }))
+
+      const menu = new StringSelectMenuBuilder()
+        .setCustomId("offline_select")
+        .addOptions(options)
+
+      return interaction.reply({
+        content:"Select ID",
+        components:[new ActionRowBuilder().addComponents(menu)],
+        ephemeral:true
+      })
+    }
+
+    // ===== GP =====
+    if (interaction.customId === "gp") {
+
+      const modal = new ModalBuilder()
+        .setCustomId("gp_modal")
+        .setTitle("Add VIP")
+
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder().setCustomId("id").setLabel("VIP ID").setStyle(TextInputStyle.Short)
+        )
+      )
+
+      return interaction.showModal(modal)
+    }
+
+  }
+
+  // ================= MODALES =================
+
+  if (interaction.isModalSubmit()) {
+
+    const group = await getUserGroup(interaction)
+    if (!group) return interaction.reply({content:"❌ No group",ephemeral:true})
+
+    const config = GROUP_CONFIG[group]
     let users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
 
-    users[interaction.user.id]={
-      main_id:id,
-      sec_id:null,
-      name:interaction.member.displayName
+    // REGISTER
+    if (interaction.customId === "reg_modal") {
+      const id = interaction.fields.getTextInputValue("id")
+
+      users[interaction.user.id] = {
+        main_id:id,
+        sec_id:null,
+        name:interaction.member.displayName
+      }
+
+      await saveUsers(users,config.USERS_GIST_ID,config.USERS_FILENAME)
+      return interaction.reply("✅ Registered")
     }
 
-    await saveUsers(users,config.USERS_GIST_ID,config.USERS_FILENAME)
+    // ADD SEC
+    if (interaction.customId === "sec_modal") {
+      const id = interaction.fields.getTextInputValue("id")
 
-    return interaction.reply(`✅ ${interaction.user} registrado`)
-  }
+      if (!users[interaction.user.id])
+        return interaction.reply("❌ Register first")
 
-  // ===== ONLINE =====
-  if(interaction.isButton() && interaction.customId==="online"){
-    const group = await getUserGroup(interaction)
-    const config = GROUP_CONFIG[group]
+      users[interaction.user.id].sec_id = id
 
-    const users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
-    const u = users[interaction.user.id]
-
-    await fetch(`${API_URL}?action=online&id=${u.main_id}&group=${group}`)
-
-    return interaction.reply(`🟢 ${interaction.user} ONLINE`)
-  }
-
-  // ===== OFFLINE =====
-  if(interaction.isButton() && interaction.customId==="offline"){
-    const group = await getUserGroup(interaction)
-    const config = GROUP_CONFIG[group]
-
-    const users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
-    const u = users[interaction.user.id]
-
-    await fetch(`${API_URL}?action=offline&id=${u.main_id}&group=${group}`)
-
-    return interaction.reply(`🔴 ${interaction.user} OFFLINE`)
-  }
-
-  // ===== SCHEDULE =====
-  if(interaction.isButton() && interaction.customId==="schedule"){
-
-    const modal = new ModalBuilder()
-      .setCustomId("schedule_modal")
-      .setTitle("Schedule UTC")
-
-    modal.addComponents(
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId("on").setLabel("Online HH:MM").setStyle(TextInputStyle.Short)
-      ),
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId("off").setLabel("Offline HH:MM").setStyle(TextInputStyle.Short)
-      )
-    )
-
-    return interaction.showModal(modal)
-  }
-
-  if(interaction.isModalSubmit() && interaction.customId==="schedule_modal"){
-    const on = interaction.fields.getTextInputValue("on").split(":")
-    const off = interaction.fields.getTextInputValue("off").split(":")
-
-    const schedules = loadSchedules()
-
-    const group = await getUserGroup(interaction)
-    const config = GROUP_CONFIG[group]
-
-    const users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
-
-    schedules[interaction.user.id]={
-      group,
-      main_id:users[interaction.user.id].main_id,
-      online_hour:+on[0],
-      online_minute:+on[1],
-      offline_hour:+off[0],
-      offline_minute:+off[1]
+      await saveUsers(users,config.USERS_GIST_ID,config.USERS_FILENAME)
+      return interaction.reply("✅ Secondary added")
     }
 
-    saveSchedules(schedules)
+    // CHANGE
+    if (interaction.customId === "change_modal") {
+      const id = interaction.fields.getTextInputValue("id")
 
-    return interaction.reply("✅ Schedule guardado")
+      if (!users[interaction.user.id])
+        return interaction.reply("❌ Register first")
+
+      users[interaction.user.id].main_id = id
+
+      await saveUsers(users,config.USERS_GIST_ID,config.USERS_FILENAME)
+      return interaction.reply("🔄 Updated")
+    }
+
+    // SCHEDULE
+    if (interaction.customId === "schedule_modal") {
+
+      const on = interaction.fields.getTextInputValue("on").split(":")
+      const off = interaction.fields.getTextInputValue("off").split(":")
+
+      const schedules = loadSchedules()
+
+      schedules[interaction.user.id] = {
+        group,
+        main_id:users[interaction.user.id].main_id,
+        online_hour:+on[0],
+        online_minute:+on[1],
+        offline_hour:+off[0],
+        offline_minute:+off[1]
+      }
+
+      saveSchedules(schedules)
+
+      return interaction.reply("✅ Schedule saved")
+    }
+
+    // GP
+    if (interaction.customId === "gp_modal") {
+      const id = interaction.fields.getTextInputValue("id")
+
+      const menu = new StringSelectMenuBuilder()
+        .setCustomId(`gp_select_${id}`)
+        .addOptions([
+          {label:"Trainer",value:"Trainer"},
+          {label:"Gym Leader",value:"Gym_Leader"},
+          {label:"Elite Four",value:"Elite_Four"}
+        ])
+
+      return interaction.reply({
+        content:"Select group",
+        components:[new ActionRowBuilder().addComponents(menu)],
+        ephemeral:true
+      })
+    }
+
   }
 
-  // ===== CHANGE ROLE =====
-  if(interaction.isButton() && interaction.customId==="change_role"){
+  // ================= SELECT MENUS =================
 
-    const roles = interaction.member.roles.cache
-      .filter(r=>Object.keys(GROUP_CONFIG).includes(r.name))
-      .map(r=>({label:r.name,value:r.name}))
+  if (interaction.isStringSelectMenu()) {
 
-    const menu = new StringSelectMenuBuilder()
-      .setCustomId("role_select")
-      .addOptions(roles)
+    // GP SELECT
+    if (interaction.customId.startsWith("gp_select_")) {
+      const id = interaction.customId.split("_")[2]
+      const group = interaction.values[0]
 
-    return interaction.reply({
-      content:"Selecciona rol activo",
-      components:[new ActionRowBuilder().addComponents(menu)],
-      ephemeral:true
-    })
-  }
+      await addVipID(id,group)
 
-  // ===== GP =====
-  if(interaction.isButton() && interaction.customId==="gp"){
+      return interaction.update({content:`✅ VIP added`,components:[]})
+    }
 
-    const modal = new ModalBuilder()
-      .setCustomId("gp_modal")
-      .setTitle("Add VIP")
+    // FORCE OFFLINE SELECT
+    if (interaction.customId === "offline_select") {
+      const id = interaction.values[0]
+      const group = await getUserGroup(interaction)
 
-    modal.addComponents(
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId("id").setLabel("VIP ID").setStyle(TextInputStyle.Short)
-      )
-    )
+      await fetch(`${API_URL}?action=offline&id=${id}&group=${group}`)
 
-    return interaction.showModal(modal)
-  }
+      return interaction.update({content:`🔴 Offline ${id}`,components:[]})
+    }
 
-  if(interaction.isModalSubmit() && interaction.customId==="gp_modal"){
-    const id = interaction.fields.getTextInputValue("id")
+    // ROLE SELECT
+    if (interaction.customId === "role_select") {
+      return interaction.update({content:`✅ Role selected`,components:[]})
+    }
 
-    const menu = new StringSelectMenuBuilder()
-      .setCustomId(`gp_select_${id}`)
-      .addOptions([
-        {label:"Trainer",value:"Trainer"},
-        {label:"Gym Leader",value:"Gym_Leader"},
-        {label:"Elite Four",value:"Elite_Four"}
-      ])
-
-    return interaction.reply({
-      content:"Selecciona grupo",
-      components:[new ActionRowBuilder().addComponents(menu)],
-      ephemeral:true
-    })
-  }
-
-  if(interaction.isStringSelectMenu() && interaction.customId.startsWith("gp_select_")){
-    const id = interaction.customId.split("_")[2]
-    const group = interaction.values[0]
-
-    await addVipID(id,group)
-
-    return interaction.update({content:`✅ VIP agregado a ${group}`,components:[]})
   }
 
 })
