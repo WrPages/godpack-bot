@@ -28,7 +28,7 @@ const client = new Client({
 const TOKEN = process.env.TOKEN
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
 const API_URL = "https://add-ids.netlify.app/.netlify/functions/api"
-const PANEL_CHANNEL_ID = "ID_CANAL_PANEL"
+const PANEL_CHANNEL_ID = "1484015417411244082L"
 
 // ================= GROUP CONFIG =================
 
