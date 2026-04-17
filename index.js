@@ -16,13 +16,18 @@ const client = new Client({
 // 👇 PÉGALO AQUÍ
 async function safeReply(interaction, content, options = {}) {
   try {
-    if (interaction.deferred || interaction.replied) {
-      return await interaction.editReply({ content, ...options })
-    } else {
-      return await interaction.reply({ content, ...options })
+    if (interaction.replied) {
+      return interaction.editReply({ content, ...options });
     }
+
+    if (interaction.deferred) {
+      return interaction.followUp({ content, ...options });
+    }
+
+    return interaction.reply({ content, ...options });
+
   } catch (err) {
-    console.error("safeReply error:", err)
+    console.error("safeReply error:", err);
   }
 }
 
@@ -1120,44 +1125,29 @@ if (interaction.commandName === "list") {
  // 🔹 ONLINE LIST
 if (interaction.commandName === "online_list") {
   try {
-    await interaction.deferReply();
-
     const group = await getUserGroup(interaction);
-    if (!group)
-      return interaction.editReply("❌ You don't belong to any reroll group");
+    if (!group) return safeReply(interaction, "❌ No group");
 
     const config = GROUP_CONFIG[group];
 
-    // 🔹 Obtener IDs online del gist correcto
     const resOnline = await fetch(
-      `https://api.github.com/gists/${config.IDS_GIST_ID}?t=${Date.now()}`,
-      {
-        headers: {
-          //Authorization: `Bearer ${GITHUB_TOKEN}`,
-          Accept: "application/vnd.github+json",
-          "Cache-Control": "no-cache"
-        }
-      }
+      `https://api.github.com/gists/${config.IDS_GIST_ID}?t=${Date.now()}`
     );
-
-    if (!resOnline.ok)
-      return interaction.editReply("❌ Error fetching online IDs");
 
     const gistOnline = await resOnline.json();
 
-    // 🔥 AQUÍ usamos el nombre correcto por grupo
     const contentOnline =
       gistOnline.files[config.IDS_FILENAME]?.content || "";
 
     const onlineIds = contentOnline
-      .split(/\r?\n/)
+      .split("\n")
       .map(x => x.trim())
       .filter(x => /^\d{16}$/.test(x));
 
-    if (onlineIds.length === 0)
-      return interaction.editReply(`⚫ No users online in ${group}`);
+    if (onlineIds.length === 0) {
+      return safeReply(interaction, `⚫ No users online in ${group}`);
+    }
 
-    // 🔹 Obtener usuarios registrados del grupo
     const registeredUsers = await getUsers(
       config.USERS_GIST_ID,
       config.USERS_FILENAME
@@ -1166,27 +1156,25 @@ if (interaction.commandName === "online_list") {
     let msg = `🟢 **Online users in ${group}:**\n\n`;
     let found = false;
 
-    // 🔥 Optimizado (sin doble loop innecesario)
     for (const uid in registeredUsers) {
       const user = registeredUsers[uid];
 
-      const mainId = (user.main_id || "").trim();
-      const secId = (user.sec_id || "").trim();
-
-      if (onlineIds.includes(mainId) || onlineIds.includes(secId)) {
-        msg += `👤 ${user.name} → ${mainId}\n`;
+      if (
+        onlineIds.includes(user.main_id) ||
+        onlineIds.includes(user.sec_id)
+      ) {
+        msg += `👤 ${user.name} → ${user.main_id}\n`;
         found = true;
       }
     }
 
-    if (!found)
-      msg += "⚫ No registered users online\n";
+    if (!found) msg += "⚫ No registered users online\n";
 
-    return interaction.editReply(msg);
+    return safeReply(interaction, msg);
 
-  } catch (error) {
-    console.error("Online list error:", error);
-    return interaction.editReply("❌ Something went wrong");
+  } catch (err) {
+    console.error("Online list error:", err);
+    return safeReply(interaction, "❌ Error loading data");
   }
 }
 
