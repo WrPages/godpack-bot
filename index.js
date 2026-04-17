@@ -783,7 +783,7 @@ if (interaction.commandName === "change") {
 
 const group = await getUserGroup(interaction)
     if (!group) {
-      return interaction.return safeReply(interaction,"❌ You don't belong to any reroll group")
+      return safeReply(interaction, "❌ You don't belong to any reroll group")
     }
 
     const config = GROUP_CONFIG[group]
@@ -912,7 +912,7 @@ if (!group) {
   const group = await getUserGroup(interaction)
 
   if (!group) {
-    return interaction.return safeReply(interaction,"❌ You don't belong to any reroll group")
+    return safeReply(interaction, "❌ You don't belong to any reroll group")
   }
 
   const config = GROUP_CONFIG[group]
