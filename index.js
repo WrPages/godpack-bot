@@ -1207,10 +1207,14 @@ if (interaction.isChatInputCommand() && interaction.commandName === "change_rol"
 } catch (err) {
   console.error("Interaction error:", err);
 
-  if (interaction.deferred || interaction.replied) {
-    await interaction.editReply("❌ Unexpected error.");
-  } else {
-    await interaction.editReply({ content: "❌ Unexpected error.", ephemeral: true });
+  try {
+    if (interaction.deferred || interaction.replied) {
+      await interaction.editReply("❌ Unexpected error.");
+    } else {
+      await interaction.reply({ content: "❌ Unexpected error.", ephemeral: true });
+    }
+  } catch (e) {
+    console.error("Error sending error response:", e);
   }
 }
 
