@@ -246,7 +246,7 @@ client.once("clientReady", async()=>{
 
 })
 
-const { MessageFlags } = require("discord.js");
+//const { MessageFlags } = require("discord.js");
 
 const OWN_BUTTONS = new Set([
   "register",
