@@ -865,7 +865,6 @@ if (alreadyVoted) {
 }
 
 // Registrar voto en memoria temporal del mensaje
-//message.votedUsers = votedUsers.concat(userId);
 
   await interaction.deferUpdate();
 
