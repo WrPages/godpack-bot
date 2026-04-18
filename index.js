@@ -66,10 +66,85 @@ const GROUP_CONFIG = {
 
 const SCHEDULE_FILE = "./daily_schedules.json"
 const PANEL_DATA_FILE = "./panel_data.json"
-
+const ACTIVE_ROLE_GIST_ID = "49c42c0a844bbc4d2c0187fc254140d1"
+const ACTIVE_ROLE_FILE = "active_roles.json"
 
 
 // ================= HELPERS =================
+
+function isChampion(interaction) {
+  return interaction.member.roles.cache.some(r => r.name === "Champion");
+}
+
+function getGroupLabel(group) {
+  const labels = {
+    Trainer: "Trainer",
+    Gym_Leader: "Gym Leader",
+    Elite_Four: "Elite Four"
+  };
+  return labels[group] || group;
+}
+
+function buildGroupOptions() {
+  return [
+    { label: "Trainer", value: "Trainer" },
+    { label: "Gym Leader", value: "Gym_Leader" },
+    { label: "Elite Four", value: "Elite_Four" }
+  ];
+}
+
+
+async function getActiveRoles() {
+  try {
+    const res = await fetch(`https://api.github.com/gists/${ACTIVE_ROLE_GIST_ID}`, {
+      headers: {
+        Authorization: `Bearer ${GITHUB_TOKEN}`,
+        Accept: "application/vnd.github+json"
+      }
+    })
+
+    if (!res.ok) {
+      console.error("Error loading active roles:", res.status)
+      return {}
+    }
+
+    const data = await res.json()
+
+    if (!data.files || !data.files[ACTIVE_ROLE_FILE]) return {}
+
+    return JSON.parse(data.files[ACTIVE_ROLE_FILE].content || "{}")
+  } catch (err) {
+    console.error("Error loading active roles:", err)
+    return {}
+  }
+}
+
+async function saveActiveRoles(data) {
+  try {
+    const res = await fetch(`https://api.github.com/gists/${ACTIVE_ROLE_GIST_ID}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${GITHUB_TOKEN}`,
+        Accept: "application/vnd.github+json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        files: {
+          [ACTIVE_ROLE_FILE]: {
+            content: JSON.stringify(data, null, 2)
+          }
+        }
+      })
+    })
+
+    if (!res.ok) {
+      throw new Error(`saveActiveRoles failed: ${res.status}`)
+    }
+  } catch (err) {
+    console.error("Error saving active roles:", err)
+  }
+}
+
 
 function loadSchedules(){
   if(!fs.existsSync(SCHEDULE_FILE)) return {}
@@ -99,6 +174,8 @@ async function saveUsers(users,gistId,file){
     })
   })
 }
+
+
 
 async function getOnlineIDs(gistId,file){
   const res = await fetch(`https://api.github.com/gists/${gistId}`)
@@ -133,11 +210,23 @@ async function addVipID(id,group){
 }
 
 // ===== GROUP =====
-async function getUserGroup(interaction){
-  const role = interaction.member.roles.cache.find(r =>
-    Object.keys(GROUP_CONFIG).includes(r.name)
-  )
-  return role?.name || null
+async function getUserGroup(interaction) {
+  const allowedGroups = Object.keys(GROUP_CONFIG)
+  const activeRoles = await getActiveRoles()
+
+  const memberGroups = interaction.member.roles.cache
+    .filter(r => allowedGroups.includes(r.name))
+    .map(r => r.name)
+
+  if (!memberGroups.length) return null
+
+  const savedRole = activeRoles[interaction.user.id]
+
+  if (savedRole && memberGroups.includes(savedRole)) {
+    return savedRole
+  }
+
+  return memberGroups[0]
 }
 /// panel
 function loadPanelData(){
@@ -287,7 +376,9 @@ const OWN_MODALS = new Set([
 
 const OWN_SELECTS = new Set([
   "role_select",
-  "offline_select"
+  "offline_group_select",
+  "forced_offline_user_select",
+  "gp_group_select"
 ]);
 
 function isOwnInteraction(interaction) {
@@ -488,60 +579,66 @@ if (!isModal) {
     }
 
     // ===== CHANGE ROLE =====
-    if (interaction.customId === "change_role") {
+if (interaction.customId === "change_role") {
+  const roles = interaction.member.roles.cache
+    .filter(r => Object.keys(GROUP_CONFIG).includes(r.name))
+    .map(r => ({ label: r.name, value: r.name }))
 
-      const roles = interaction.member.roles.cache
-        .filter(r=>Object.keys(GROUP_CONFIG).includes(r.name))
-        .map(r=>({label:r.name,value:r.name}))
+  if (roles.length < 2) {
+    return interaction.editReply("❌ You need at least 2 group roles")
+  }
 
-      const menu = new StringSelectMenuBuilder()
-        .setCustomId("role_select")
-        .addOptions(roles)
+  const currentRole = await getUserGroup(interaction)
 
-      return interaction.editReply({
-        content:"Select role",
-        components:[new ActionRowBuilder().addComponents(menu)]
-      })
-    }
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId("role_select")
+    .setPlaceholder("Select your active role")
+    .addOptions(roles)
+
+  return interaction.editReply({
+    content: `Current active role: ${currentRole}\nSelect your new active role`,
+    components: [new ActionRowBuilder().addComponents(menu)]
+  })
+}
 
     // ===== FORCE OFFLINE =====
-    if (interaction.customId === "set_offline") {
+if (interaction.customId === "set_offline") {
+  if (!isChampion(interaction)) {
+    return interaction.editReply("❌ Only Champion can use this button")
+  }
 
-      const ids = await getOnlineIDs(config.IDS_GIST_ID,config.IDS_FILENAME)
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId("offline_group_select")
+    .setPlaceholder("Select group")
+    .addOptions(buildGroupOptions())
 
-      if (!ids.length) return interaction.editReply("⚫ No users online")
-
-      const options = ids.slice(0,25).map(id=>({
-        label:id,
-        value:id
-      }))
-
-      const menu = new StringSelectMenuBuilder()
-        .setCustomId("offline_select")
-        .addOptions(options)
-
-      return interaction.editReply({
-        content:"Select ID",
-        components:[new ActionRowBuilder().addComponents(menu)]
-      })
-    }
+  return interaction.editReply({
+    content: "Select the group where you want to force offline",
+    components: [new ActionRowBuilder().addComponents(menu)]
+  })
+}
 
     // ===== GP =====
-    if (interaction.customId === "gp") {
-      const modal = new ModalBuilder()
-        .setCustomId("gp_modal")
-        .setTitle("Add VIP")
-
-      modal.addComponents(
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder().setCustomId("id").setLabel("VIP ID").setStyle(TextInputStyle.Short)
-        )
-      )
-
-      return interaction.showModal(modal)
-    }
-
+if (interaction.customId === "gp") {
+  if (!isChampion(interaction)) {
+    return interaction.editReply("❌ Only Champion can use this button")
   }
+
+  const modal = new ModalBuilder()
+    .setCustomId("gp_modal")
+    .setTitle("Add VIP")
+
+  modal.addComponents(
+    new ActionRowBuilder().addComponents(
+      new TextInputBuilder()
+        .setCustomId("id")
+        .setLabel("VIP ID")
+        .setStyle(TextInputStyle.Short)
+    )
+  )
+
+  return interaction.showModal(modal)
+}
 
   // ================= MODALES =================
 
@@ -665,59 +762,168 @@ if (interaction.customId === "schedule_modal") {
   })
 }
 
-    if (interaction.customId === "gp_modal") {
-      const id = interaction.fields.getTextInputValue("id")
-      if (!isValidId(id)) {
+ if (interaction.customId === "gp_modal") {
+  if (!isChampion(interaction)) {
+    return interaction.reply({
+      content: "❌ Only Champion can use this function",
+      flags: MessageFlags.Ephemeral
+    })
+  }
+
+  const id = interaction.fields.getTextInputValue("id").trim()
+
+  if (!isValidId(id)) {
+    return interaction.reply({
+      content: "❌ ID must be exactly 16 digits",
+      flags: MessageFlags.Ephemeral
+    })
+  }
+
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId(`gp_group_select:${id}`)
+    .setPlaceholder("Select group")
+    .addOptions(buildGroupOptions())
+
   return interaction.reply({
-    content: "❌ ID must be exactly 16 digits",
+    content: "Select the group where you want to add this VIP ID",
+    components: [new ActionRowBuilder().addComponents(menu)],
     flags: MessageFlags.Ephemeral
   })
 }
 
-      const menu = new StringSelectMenuBuilder()
-        .setCustomId(`gp_select_${id}`)
-        .addOptions([
-          {label:"Trainer",value:"Trainer"},
-          {label:"Gym Leader",value:"Gym_Leader"},
-          {label:"Elite Four",value:"Elite_Four"}
-        ])
-
-      return interaction.reply({
-        content:"Select group",
-        components:[new ActionRowBuilder().addComponents(menu)],
-        flags: MessageFlags.Ephemeral
-      })
-    }
-
   }
 
   // ================= SELECT MENUS =================
+if (interaction.isStringSelectMenu()) {
 
-  if (interaction.isStringSelectMenu()) {
-
-    if (interaction.customId.startsWith("gp_select_")) {
-      const id = interaction.customId.split("_")[2]
-      const group = interaction.values[0]
-
-      await addVipID(id,group)
-
-      return interaction.update({content:`✅ VIP added`,components:[]})
+  if (interaction.customId.startsWith("gp_group_select:")) {
+    if (!isChampion(interaction)) {
+      return interaction.update({
+        content: "❌ Only Champion can use this function",
+        components: []
+      })
     }
 
-    if (interaction.customId === "offline_select") {
-      const id = interaction.values[0]
-      const group = await getUserGroup(interaction)
+    const id = interaction.customId.split(":")[1]
+    const group = interaction.values[0]
 
-      await fetch(`${API_URL}?action=offline&id=${id}&group=${group}`)
+    await addVipID(id, group)
 
-      return interaction.update({content:`🔴 Offline ${id}`,components:[]})
-    }
-
-    if (interaction.customId === "role_select") {
-      return interaction.update({content:`✅ Role selected`,components:[]})
-    }
-
+    return interaction.update({
+      content: `✅ VIP ID added to ${getGroupLabel(group)}`,
+      components: []
+    })
   }
+
+  if (interaction.customId === "offline_group_select") {
+    if (!isChampion(interaction)) {
+      return interaction.update({
+        content: "❌ Only Champion can use this function",
+        components: []
+      })
+    }
+
+    const group = interaction.values[0]
+    const config = GROUP_CONFIG[group]
+
+    const ids = await getOnlineIDs(config.IDS_GIST_ID, config.IDS_FILENAME)
+    const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+
+    if (!ids.length) {
+      return interaction.update({
+        content: `⚫ No users online in ${getGroupLabel(group)}`,
+        components: []
+      })
+    }
+
+    const onlineOptions = []
+
+    for (const uid in users) {
+      const u = users[uid]
+      const matchedId = ids.find(id => id === u.main_id || id === u.sec_id)
+
+      if (matchedId) {
+        onlineOptions.push({
+          label: u.name || `User ${uid}`,
+          value: `${group}|${matchedId}`,
+          description: matchedId === u.main_id ? "Main ID online" : "Secondary ID online"
+        })
+      }
+    }
+
+    if (!onlineOptions.length) {
+      const fallbackOptions = ids.slice(0, 25).map(id => ({
+        label: id,
+        value: `${group}|${id}`
+      }))
+
+      const fallbackMenu = new StringSelectMenuBuilder()
+        .setCustomId("forced_offline_user_select")
+        .setPlaceholder("Select online user")
+        .addOptions(fallbackOptions)
+
+      return interaction.update({
+        content: `Online users found in ${getGroupLabel(group)} (fallback by ID)`,
+        components: [new ActionRowBuilder().addComponents(fallbackMenu)]
+      })
+    }
+
+    const menu = new StringSelectMenuBuilder()
+      .setCustomId("forced_offline_user_select")
+      .setPlaceholder("Select online user")
+      .addOptions(onlineOptions.slice(0, 25))
+
+    return interaction.update({
+      content: `Select the online user to force offline in ${getGroupLabel(group)}`,
+      components: [new ActionRowBuilder().addComponents(menu)]
+    })
+  }
+
+  if (interaction.customId === "forced_offline_user_select") {
+    if (!isChampion(interaction)) {
+      return interaction.update({
+        content: "❌ Only Champion can use this function",
+        components: []
+      })
+    }
+
+    const raw = interaction.values[0]
+    const [group, id] = raw.split("|")
+
+    await fetch(`${API_URL}?action=offline&id=${id}&group=${group}`)
+
+    return interaction.update({
+      content: `🔴 User forced offline in ${getGroupLabel(group)}`,
+      components: []
+    })
+  }
+
+  if (interaction.customId === "role_select") {
+    const selectedRole = interaction.values[0]
+
+    const userRoles = interaction.member.roles.cache
+      .filter(r => Object.keys(GROUP_CONFIG).includes(r.name))
+      .map(r => r.name)
+
+    if (!userRoles.includes(selectedRole)) {
+      return interaction.update({
+        content: "❌ Invalid role selection",
+        components: []
+      })
+    }
+
+    const activeRoles = await getActiveRoles()
+    activeRoles[interaction.user.id] = selectedRole
+    await saveActiveRoles(activeRoles)
+
+    return interaction.update({
+      content: `✅ Active role changed to ${selectedRole}`,
+      components: []
+    })
+  }
+}
+    
+ 
   } catch (err) {
     console.error("INDEX interaction error:", err);
 
