@@ -1015,7 +1015,7 @@ if (status) {
 
 // ===== ACTUALIZAR MENSAJE =====
 await message.edit({
-  embeds: [newEmbed],
+ // embeds: [newEmbed],
   components: components
 });
 
