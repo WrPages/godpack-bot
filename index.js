@@ -21,7 +21,6 @@ const gpHandler = require("./gpHandler");
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent
   ]
@@ -642,7 +641,17 @@ client.on("interactionCreate", async interaction => {
   }
 });
 
-  
+  client.on("error", err => {
+  console.error("Discord client error:", err);
+});
+
+process.on("unhandledRejection", err => {
+  console.error("Unhandled rejection:", err);
+});
+
+process.on("uncaughtException", err => {
+  console.error("Uncaught exception:", err);
+});
 
 // ================= START =================
 
