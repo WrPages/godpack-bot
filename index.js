@@ -447,6 +447,7 @@ if (!isModal) {
 
       return interaction.showModal(modal)
     }
+  }
 
     // ===== ADD SEC =====
     if (interaction.customId === "add_sec") {
