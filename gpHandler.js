@@ -9,11 +9,42 @@ const {
   SlashCommandBuilder,
   ModalBuilder,
   TextInputBuilder,
-  TextInputStyle
+  TextInputStyle,
+  MessageFlags
 } = require("discord.js");
 
 const fetch = require("node-fetch");
 const locks = new Map();
+
+const cache = new Map();
+
+function getCache(key, ttlMs) {
+  const item = cache.get(key);
+  if (!item) return null;
+  if (Date.now() - item.time > ttlMs) return null;
+  return item.data;
+}
+
+function setCache(key, data) {
+  cache.set(key, { time: Date.now(), data });
+}
+
+
+async function fetchJson(url, options = {}) {
+  const data = await fetchJson(url, options);
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status} -> ${url}`);
+  }
+  return res.json();
+}
+
+async function fetchText(url, options = {}) {
+  const data = await fetchJson(url, options);
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status} -> ${url}`);
+  }
+  return res.text();
+}
 
 async function updateStatsSafe(group, callback) {
   while (locks.get(group)) {
@@ -60,15 +91,20 @@ const CHANNEL_ONLINE_GIST_MAP = {
 
 async function loadUsersGP() {
   try {
-    const res = await fetch(`https://api.github.com/gists/${USERS_GP_GIST_ID}`, {
+    const cached = getCache("users_gp", 30000);
+    if (cached) return cached;
+
+    const data = await fetchJson(`https://api.github.com/gists/${USERS_GP_GIST_ID}`, {
       headers: { Authorization: `token ${GITHUB_TOKEN}` }
     });
 
-    const data = await res.json();
+    //const data = await res.json();
 
     if (!data.files || !data.files[USERS_GP_FILE]) return {};
 
-    return JSON.parse(data.files[USERS_GP_FILE].content || "{}");
+    const parsed = JSON.parse(data.files[USERS_GP_FILE].content || "{}");
+    setCache("users_gp", parsed);
+    return parsed;
 
   } catch (err) {
     console.error("LOAD USERS GP ERROR:", err);
@@ -125,6 +161,7 @@ async function registerUserGP(message) {
     }
 
     await saveUsersGP(usersGP);
+    setCache("users_gp", data);
 
   } catch (err) {
     console.error("REGISTER USER GP ERROR:", err);
@@ -137,15 +174,15 @@ async function getOnlineMentions(channelId) {
     if (!onlineGistId) return [];
 
     // IDs que están online
-    const res = await fetch(`https://gist.githubusercontent.com/WrPages/${onlineGistId}/raw?t=${Date.now()}`);
-    const text = await res.text();
+    const text = await fetchText(`https://gist.githubusercontent.com/WrPages/${onlineGistId}/raw`);
+ //   const text = await res.text();
     const onlineIDs = text.split("\n").map(x => x.trim()).filter(Boolean);
 
     const userGistId = CHANNEL_USER_GIST_MAP[channelId];
     if (!userGistId) return [];
 
     // Traer usuarios del gist
-    const userRes = await fetch(`https://api.github.com/gists/${userGistId}?t=${Date.now()}`, {
+    const userRes = await fetch(`https://api.github.com/gists/${userGistId}`, {
       headers: { Authorization: `token ${GITHUB_TOKEN}` }
     });
     const userData = await userRes.json();
@@ -175,8 +212,8 @@ const users = JSON.parse(userData.files[fileKeys[0]].content);
 
 async function getOnlineIDs() {
   try {
-    const res = await fetch(IDS_GIST_RAW_URL + "?t=" + Date.now());
-    const text = await res.text();
+    const text = await fetchText(IDS_GIST_RAW_URL);
+ //   const text = await res.text();
     return text.split("\n").map(x => x.trim()).filter(x => x.length > 0);
   } catch {
     return [];
@@ -185,14 +222,14 @@ async function getOnlineIDs() {
 
 async function getUsers() {
   try {
-    const res = await fetch(
-      `https://api.github.com/gists/${USERS_GIST_ID}?t=${Date.now()}`,
+   const data = await fetchJson(
+  `https://api.github.com/gists/${USERS_GIST_ID}`,
       {
         headers: { Authorization: `token ${GITHUB_TOKEN}` }
       }
     );
 
-    const data = await res.json();
+    //const data = await res.json();
 
     if (!data.files || !data.files["elite_users.json"]) return {};
 
@@ -284,8 +321,8 @@ async function saveData() {
 
 async function loadData() {
   try {
-    const res = await fetch(`https://api.github.com/gists/${GIST_ID}`);
-    const data = await res.json();
+    const data = await fetchJson(`https://api.github.com/gists/${GIST_ID}`);
+    //const data = await res.json();
     const content = data.files[FILE_NAME].content;
     statsData = JSON.parse(content);
   } catch (err) {
@@ -330,8 +367,8 @@ async function loadLiveStats(group) {
     const config = GROUP_CONFIG[group];
     if (!config) return null;
 
-    const res = await fetch(`https://api.github.com/gists/${config.LIVE_GIST_ID}`);
-    const data = await res.json();
+    const data = await fetchJson(`https://api.github.com/gists/${config.LIVE_GIST_ID}`);
+    //const data = await res.json();
 
     if (!data.files[config.LIVE_FILE]) {
       return {
@@ -476,9 +513,7 @@ async function cleanWebhookMessage(channel) {
 }
 
 // **Nueva función para limpiar mensajes antiguos y enviar un mensaje de prueba**
-async function createTestMessage(client) {
-  const channel = await client.channels.fetch(ALLOWED_CHANNEL_ID);
-  if (!channel) return;
+
 
   // Eliminar mensajes antiguos (limit 10 para no sobrecargar)
  // const oldMessages = await channel.messages.fetch({ limit: 10 });
@@ -718,7 +753,7 @@ if (interaction.isButton() && interaction.customId.startsWith("edit_panel_")) {
   const message = await interaction.channel.messages.fetch(messageId).catch(() => null);
 
   if (!message) {
-    return interaction.reply({ content: "❌ Mensaje no encontrado.", ephemeral: true });
+   return interaction.reply({ content: "❌ Mensaje no encontrado.", flags: MessageFlags.Ephemeral });
   }
 
   // 🔥 LEER DATOS DESDE EL EMBED (AQUÍ VA EL PASO 4)
@@ -769,7 +804,7 @@ if (interaction.isButton() && interaction.customId.startsWith("edit_panel_")) {
 // =========================
 if (interaction.isModalSubmit() && interaction.customId.startsWith("edit_panel_")) {
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const messageId = interaction.customId.replace("edit_panel_", "");
   const message = await interaction.channel.messages.fetch(messageId).catch(() => null);
@@ -837,11 +872,12 @@ if (interaction.isButton()) {
   const userId = interaction.user.id;
 
   // 🚫 BLOQUEAR SI YA VOTÓ
-const votedUsers = message.votedUsers || [];
-if (votedUsers.includes(userId)) {
+const alreadyVoted = aliveUsers.includes(userId) || deadUsers.includes(userId);
+
+if (alreadyVoted) {
   return interaction.reply({
     content: "⚠️ You already voted for this GP.",
-    ephemeral: true
+    flags: MessageFlags.Ephemeral
   });
 }
 
@@ -997,6 +1033,7 @@ if (status) {
 
 // ===== ACTUALIZAR MENSAJE =====
 await message.edit({
+  embeds: [newEmbed],
   components: components
 });
 
