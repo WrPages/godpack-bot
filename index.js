@@ -310,7 +310,12 @@ function isOwnInteraction(interaction) {
 
 client.on("interactionCreate", async interaction => {
   try {
-    if (!isOwnInteraction(interaction)) return;
+    if (!isOwnInteraction(interaction)) return
+
+    if (interaction.deferred || interaction.replied) {
+      console.warn("Interaction already acknowledged before index handler:", interaction.customId, interaction.user.id)
+      return
+    }
 
   // ================= BOTONES =================
 
@@ -319,11 +324,17 @@ client.on("interactionCreate", async interaction => {
     const group = await getUserGroup(interaction)
     if (!group) return interaction.reply({ content:"❌ No group" , flags: MessageFlags.Ephemeral })
 
-    const isModal = ["register","add_sec","change","schedule","gp"].includes(interaction.customId)
+const isModal = ["register", "add_sec", "change", "schedule", "gp"].includes(interaction.customId)
 
-    if (!isModal) {
-      await interaction.deferReply({ flags: MessageFlags.Ephemeral })
-    }
+if (!isModal) {
+  if (interaction.deferred || interaction.replied) {
+    console.warn("Duplicate ack prevented in index:", interaction.customId, interaction.user.id)
+    return
+  }
+
+  console.log("Index handling button:", interaction.customId, "user:", interaction.user.id)
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral })
+}
 
     const config = GROUP_CONFIG[group]
   
