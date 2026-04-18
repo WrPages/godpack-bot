@@ -18,6 +18,15 @@ const locks = new Map();
 
 const cache = new Map();
 
+
+const STATS_CHANNEL_ID = "1484416376436424794"; // Mismo canal para estadísticas
+
+const GIST_ID = process.env.GIST_ID;
+const LIVE_GIST_ID = process.env.LIVE_GIST_ID;
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const FILE_NAME = "gp_record.txt";
+
+
 function getCache(key, ttlMs) {
   const item = cache.get(key);
   if (!item) return null;
@@ -164,7 +173,7 @@ async function registerUserGP(message) {
     }
 
    await saveUsersGP(usersGP);
-setCache("users_gp", usersGP);
+//setCache("users_gp", usersGP);
 
   } catch (err) {
     console.error("REGISTER USER GP ERROR:", err);
@@ -272,12 +281,7 @@ const GROUP_CONFIG = {
   }
 };
 
-const STATS_CHANNEL_ID = "1484416376436424794"; // Mismo canal para estadísticas
 
-const GIST_ID = process.env.GIST_ID;
-const LIVE_GIST_ID = process.env.LIVE_GIST_ID;
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-const FILE_NAME = "gp_record.txt";
 
 // ===== LIVE GP STATS =====
 //const LIVE_STATS_FILE = "gp_live_stats.json";
@@ -518,30 +522,6 @@ async function cleanWebhookMessage(channel) {
 // **Nueva función para limpiar mensajes antiguos y enviar un mensaje de prueba**
 
 
-  // Eliminar mensajes antiguos (limit 10 para no sobrecargar)
- // const oldMessages = await channel.messages.fetch({ limit: 10 });
-  //await channel.bulkDelete(oldMessages, true).catch(() => {});
-
-  // Crear mensaje de prueba para asegurar que los botones funcionen
-  const testEmbed = new EmbedBuilder()
-    .setColor(0x00ff00)
-    .setTitle("✅ GP Bot Test Message")
-    .setDescription("Este es un mensaje de prueba para botones Alive/Dead.");
-
-  const testButtons = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("gp_alive")
-      .setLabel("🟢 Alive (0)")
-      .setStyle(ButtonStyle.Success),
-    new ButtonBuilder()
-      .setCustomId("gp_dead")
-      .setLabel("🔴 Dead (0)")
-      .setStyle(ButtonStyle.Danger)
-  );
-
-  const msg = await channel.send({ embeds: [testEmbed], components: [testButtons] });
-
-}
 
 module.exports = async (client) => {
     await loadData();
