@@ -383,565 +383,583 @@ const OWN_SELECTS = new Set([
 
 function isOwnInteraction(interaction) {
   if (interaction.isButton()) {
-    return OWN_BUTTONS.has(interaction.customId);
+    return OWN_BUTTONS.has(interaction.customId)
   }
 
   if (interaction.isModalSubmit()) {
-    return OWN_MODALS.has(interaction.customId);
+    return OWN_MODALS.has(interaction.customId)
   }
 
- if (interaction.isStringSelectMenu()) {
-  return OWN_SELECTS.has(interaction.customId) || interaction.customId.startsWith("gp_group_select:");
-}
+  if (interaction.isStringSelectMenu()) {
+    return OWN_SELECTS.has(interaction.customId) || interaction.customId.startsWith("gp_group_select:")
+  }
 
-  return false;
+  return false
 }
 
 // ================= INTERACTIONS =================
-
 client.on("interactionCreate", async interaction => {
   try {
     if (!isOwnInteraction(interaction)) return
 
     if (interaction.deferred || interaction.replied) {
-      console.warn("Interaction already acknowledged before index handler:", interaction.customId, interaction.user.id)
+      console.warn(
+        "Interaction already acknowledged before index handler:",
+        interaction.customId,
+        interaction.user.id
+      )
       return
     }
 
-  // ================= BOTONES =================
-
-  if (interaction.isButton()) {
-
-    const group = await getUserGroup(interaction)
-    if (!group) return interaction.reply({ content:"❌ No group" , flags: MessageFlags.Ephemeral })
-
-const isModal = ["register", "add_sec", "change", "schedule", "gp"].includes(interaction.customId)
-
-if (!isModal) {
-  if (interaction.deferred || interaction.replied) {
-    console.warn("Duplicate ack prevented in index:", interaction.customId, interaction.user.id)
-    return
-  }
-
-  console.log("Index handling button:", interaction.customId, "user:", interaction.user.id)
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral })
-}
-
-    const config = GROUP_CONFIG[group]
-  
-
-    // ===== REGISTER =====
-    if (interaction.customId === "register") {
-      const modal = new ModalBuilder()
-        .setCustomId("reg_modal")
-        .setTitle("Register ID")
-
-      modal.addComponents(
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder()
-            .setCustomId("id")
-            .setLabel("16 digit ID")
-            .setStyle(TextInputStyle.Short)
-        )
-      )
-
-      return interaction.showModal(modal)
-    }
-  }
-
-    // ===== ADD SEC =====
-    if (interaction.customId === "add_sec") {
-      const modal = new ModalBuilder()
-        .setCustomId("sec_modal")
-        .setTitle("Add Secondary ID")
-
-      modal.addComponents(
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder()
-            .setCustomId("id")
-            .setLabel("16 digit ID")
-            .setStyle(TextInputStyle.Short)
-        )
-      )
-
-      return interaction.showModal(modal)
-    }
-
-    // ===== CHANGE =====
-    if (interaction.customId === "change") {
-      const modal = new ModalBuilder()
-        .setCustomId("change_modal")
-        .setTitle("Change Main ID")
-
-      modal.addComponents(
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder()
-            .setCustomId("id")
-            .setLabel("New 16 digit ID")
-            .setStyle(TextInputStyle.Short)
-        )
-      )
-
-      return interaction.showModal(modal)
-    }
-
-    // ===== ONLINE =====
-    if (interaction.customId === "online") {
-        const users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
-    const userData = users[interaction.user.id]
-      if (!userData?.main_id) return interaction.editReply("❌ Register first")
-
-      await fetch(`${API_URL}?action=online&id=${userData.main_id}&group=${group}`)
-      return interaction.editReply("🟢 ONLINE")
-    }
-
-    // ===== ONLINE SEC =====
-    if (interaction.customId === "online_sec") {
-        const users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
-    const userData = users[interaction.user.id]
-      if (!userData?.sec_id) return interaction.editReply("❌ No secondary ID")
-
-      await fetch(`${API_URL}?action=online&id=${userData.sec_id}&group=${group}`)
-      return interaction.editReply("🟢 SEC ONLINE")
-    }
-
-    // ===== OFFLINE =====
-    if (interaction.customId === "offline") {
-        const users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
-    const userData = users[interaction.user.id]
-      if (!userData) return interaction.editReply("❌ Not registered")
-
-      if (userData.main_id)
-        await fetch(`${API_URL}?action=offline&id=${userData.main_id}&group=${group}`)
-
-      if (userData.sec_id)
-        await fetch(`${API_URL}?action=offline&id=${userData.sec_id}&group=${group}`)
-
-      return interaction.editReply("🔴 OFFLINE")
-    }
-
-    // ===== LIST =====
-    if (interaction.customId === "list") {
-        const users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
-    const userData = users[interaction.user.id]
-
-      if (Object.keys(users).length === 0)
-        return interaction.editReply("📭 No users")
-
-      let msg = "📋 Users:\n\n"
-
-      for (const uid in users) {
-        const u = users[uid]
-        msg += `👤 ${u.name} → ${u.main_id}\n`
+    // ================= BOTONES =================
+    if (interaction.isButton()) {
+      const group = await getUserGroup(interaction)
+      if (!group) {
+        return interaction.reply({
+          content: "❌ No group",
+          flags: MessageFlags.Ephemeral
+        })
       }
 
-      return interaction.editReply(msg)
-    }
+      const isModalButton = ["register", "add_sec", "change", "schedule", "gp"].includes(interaction.customId)
 
-    // ===== ONLINE LIST =====
-    if (interaction.customId === "online_list") {
-        const users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
-    const userData = users[interaction.user.id]
-
-      const ids = await getOnlineIDs(config.IDS_GIST_ID,config.IDS_FILENAME)
-
-      if (!ids.length) return interaction.editReply("⚫ No online")
-
-      let msg = "🟢 Online:\n\n"
-
-      for (const uid in users) {
-        const u = users[uid]
-
-        if (ids.includes(u.main_id) || ids.includes(u.sec_id)) {
-          msg += `👤 ${u.name}\n`
+      if (!isModalButton) {
+        if (interaction.deferred || interaction.replied) {
+          console.warn("Duplicate ack prevented in index:", interaction.customId, interaction.user.id)
+          return
         }
+
+        console.log("Index handling button:", interaction.customId, "user:", interaction.user.id)
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral })
       }
 
-      return interaction.editReply(msg)
-    }
+      const config = GROUP_CONFIG[group]
 
-    // ===== SCHEDULE =====
-    if (interaction.customId === "schedule") {
+      if (interaction.customId === "register") {
+        const modal = new ModalBuilder()
+          .setCustomId("reg_modal")
+          .setTitle("Register ID")
 
-      const modal = new ModalBuilder()
-        .setCustomId("schedule_modal")
-        .setTitle("Schedule UTC")
-
-      modal.addComponents(
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder().setCustomId("on").setLabel("Online HH:MM").setStyle(TextInputStyle.Short)
-        ),
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder().setCustomId("off").setLabel("Offline HH:MM").setStyle(TextInputStyle.Short)
+        modal.addComponents(
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId("id")
+              .setLabel("16 digit ID")
+              .setStyle(TextInputStyle.Short)
+          )
         )
-      )
 
-      return interaction.showModal(modal)
-    }
-
-    // ===== CHANGE ROLE =====
-if (interaction.customId === "change_role") {
-  const roles = interaction.member.roles.cache
-    .filter(r => Object.keys(GROUP_CONFIG).includes(r.name))
-    .map(r => ({ label: r.name, value: r.name }))
-
-  if (roles.length < 2) {
-    return interaction.editReply("❌ You need at least 2 group roles")
-  }
-
-  const currentRole = await getUserGroup(interaction)
-
-  const menu = new StringSelectMenuBuilder()
-    .setCustomId("role_select")
-    .setPlaceholder("Select your active role")
-    .addOptions(roles)
-
-  return interaction.editReply({
-    content: `Current active role: ${currentRole}\nSelect your new active role`,
-    components: [new ActionRowBuilder().addComponents(menu)]
-  })
-}
-
-    // ===== FORCE OFFLINE =====
-if (interaction.customId === "set_offline") {
-  if (!isChampion(interaction)) {
-    return interaction.editReply("❌ Only Champion can use this button")
-  }
-
-  const menu = new StringSelectMenuBuilder()
-    .setCustomId("offline_group_select")
-    .setPlaceholder("Select group")
-    .addOptions(buildGroupOptions())
-
-  return interaction.editReply({
-    content: "Select the group where you want to force offline",
-    components: [new ActionRowBuilder().addComponents(menu)]
-  })
-}
-
-    // ===== GP =====
-if (interaction.customId === "gp") {
-  if (!isChampion(interaction)) {
-    return interaction.editReply("❌ Only Champion can use this button")
-  }
-
-  const modal = new ModalBuilder()
-    .setCustomId("gp_modal")
-    .setTitle("Add VIP")
-
-  modal.addComponents(
-    new ActionRowBuilder().addComponents(
-      new TextInputBuilder()
-        .setCustomId("id")
-        .setLabel("VIP ID")
-        .setStyle(TextInputStyle.Short)
-    )
-  )
-
-  return interaction.showModal(modal)
-}
-  }
-
-  // ================= MODALES =================
-
-  if (interaction.isModalSubmit()) {
-
-    const group = await getUserGroup(interaction)
-    if (!group) return interaction.reply({ content:"❌ No group", flags: MessageFlags.Ephemeral })
-
-    const config = GROUP_CONFIG[group]
-    let users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
-
-    if (interaction.customId === "reg_modal") {
-      const id = interaction.fields.getTextInputValue("id")
-      if (!isValidId(id)) {
-  return interaction.reply({
-    content: "❌ ID must be exactly 16 digits",
-    flags: MessageFlags.Ephemeral
-  })
-}
-
-      users[interaction.user.id] = {
-        main_id:id,
-        sec_id:null,
-        name:interaction.member.displayName
+        return interaction.showModal(modal)
       }
 
-      await saveUsers(users,config.USERS_GIST_ID,config.USERS_FILENAME)
-      return interaction.reply({ content: "✅ Registered", flags: MessageFlags.Ephemeral })
+      if (interaction.customId === "add_sec") {
+        const modal = new ModalBuilder()
+          .setCustomId("sec_modal")
+          .setTitle("Add Secondary ID")
+
+        modal.addComponents(
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId("id")
+              .setLabel("16 digit ID")
+              .setStyle(TextInputStyle.Short)
+          )
+        )
+
+        return interaction.showModal(modal)
+      }
+
+      if (interaction.customId === "change") {
+        const modal = new ModalBuilder()
+          .setCustomId("change_modal")
+          .setTitle("Change Main ID")
+
+        modal.addComponents(
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId("id")
+              .setLabel("New 16 digit ID")
+              .setStyle(TextInputStyle.Short)
+          )
+        )
+
+        return interaction.showModal(modal)
+      }
+
+      if (interaction.customId === "online") {
+        const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+        const userData = users[interaction.user.id]
+
+        if (!userData?.main_id) return interaction.editReply("❌ Register first")
+
+        await fetch(`${API_URL}?action=online&id=${userData.main_id}&group=${group}`)
+        return interaction.editReply("🟢 ONLINE")
+      }
+
+      if (interaction.customId === "online_sec") {
+        const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+        const userData = users[interaction.user.id]
+
+        if (!userData?.sec_id) return interaction.editReply("❌ No secondary ID")
+
+        await fetch(`${API_URL}?action=online&id=${userData.sec_id}&group=${group}`)
+        return interaction.editReply("🟢 SEC ONLINE")
+      }
+
+      if (interaction.customId === "offline") {
+        const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+        const userData = users[interaction.user.id]
+
+        if (!userData) return interaction.editReply("❌ Not registered")
+
+        if (userData.main_id) {
+          await fetch(`${API_URL}?action=offline&id=${userData.main_id}&group=${group}`)
+        }
+
+        if (userData.sec_id) {
+          await fetch(`${API_URL}?action=offline&id=${userData.sec_id}&group=${group}`)
+        }
+
+        return interaction.editReply("🔴 OFFLINE")
+      }
+
+      if (interaction.customId === "list") {
+        const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+
+        if (Object.keys(users).length === 0) {
+          return interaction.editReply("📭 No users")
+        }
+
+        let msg = "📋 Users:\n\n"
+
+        for (const uid in users) {
+          const u = users[uid]
+          msg += `👤 ${u.name} → ${u.main_id}\n`
+        }
+
+        return interaction.editReply(msg)
+      }
+
+      if (interaction.customId === "online_list") {
+        const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+        const ids = await getOnlineIDs(config.IDS_GIST_ID, config.IDS_FILENAME)
+
+        if (!ids.length) return interaction.editReply("⚫ No online")
+
+        let msg = "🟢 Online:\n\n"
+
+        for (const uid in users) {
+          const u = users[uid]
+
+          if (ids.includes(u.main_id) || ids.includes(u.sec_id)) {
+            msg += `👤 ${u.name}\n`
+          }
+        }
+
+        return interaction.editReply(msg)
+      }
+
+      if (interaction.customId === "schedule") {
+        const modal = new ModalBuilder()
+          .setCustomId("schedule_modal")
+          .setTitle("Schedule UTC")
+
+        modal.addComponents(
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId("on")
+              .setLabel("Online HH:MM")
+              .setStyle(TextInputStyle.Short)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId("off")
+              .setLabel("Offline HH:MM")
+              .setStyle(TextInputStyle.Short)
+          )
+        )
+
+        return interaction.showModal(modal)
+      }
+
+      if (interaction.customId === "change_role") {
+        const roles = interaction.member.roles.cache
+          .filter(r => Object.keys(GROUP_CONFIG).includes(r.name))
+          .map(r => ({ label: r.name, value: r.name }))
+
+        if (roles.length < 2) {
+          return interaction.editReply("❌ You need at least 2 group roles")
+        }
+
+        const currentRole = await getUserGroup(interaction)
+
+        const menu = new StringSelectMenuBuilder()
+          .setCustomId("role_select")
+          .setPlaceholder("Select your active role")
+          .addOptions(roles)
+
+        return interaction.editReply({
+          content: `Current active role: ${currentRole}\nSelect your new active role`,
+          components: [new ActionRowBuilder().addComponents(menu)]
+        })
+      }
+
+      if (interaction.customId === "set_offline") {
+        if (!isChampion(interaction)) {
+          return interaction.editReply("❌ Only Champion can use this button")
+        }
+
+        const menu = new StringSelectMenuBuilder()
+          .setCustomId("offline_group_select")
+          .setPlaceholder("Select group")
+          .addOptions(buildGroupOptions())
+
+        return interaction.editReply({
+          content: "Select the group where you want to force offline",
+          components: [new ActionRowBuilder().addComponents(menu)]
+        })
+      }
+
+      if (interaction.customId === "gp") {
+        if (!isChampion(interaction)) {
+          return interaction.reply({
+            content: "❌ Only Champion can use this button",
+            flags: MessageFlags.Ephemeral
+          })
+        }
+
+        const modal = new ModalBuilder()
+          .setCustomId("gp_modal")
+          .setTitle("Add VIP")
+
+        modal.addComponents(
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId("id")
+              .setLabel("VIP ID")
+              .setStyle(TextInputStyle.Short)
+          )
+        )
+
+        return interaction.showModal(modal)
+      }
     }
 
-    if (interaction.customId === "sec_modal") {
-      const id = interaction.fields.getTextInputValue("id")
-      if (!isValidId(id)) {
-  return interaction.reply({
-    content: "❌ ID must be exactly 16 digits",
-    flags: MessageFlags.Ephemeral
-  })
-}
+    // ================= MODALES =================
+    if (interaction.isModalSubmit()) {
+      const group = await getUserGroup(interaction)
+      if (!group) {
+        return interaction.reply({
+          content: "❌ No group",
+          flags: MessageFlags.Ephemeral
+        })
+      }
 
-      if (!users[interaction.user.id])
-        return interaction.reply({content:"❌ Register first",flags: MessageFlags.Ephemeral})
+      const config = GROUP_CONFIG[group]
+      const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
 
-      users[interaction.user.id].sec_id = id
+      if (interaction.customId === "reg_modal") {
+        const id = interaction.fields.getTextInputValue("id").trim()
 
-      await saveUsers(users,config.USERS_GIST_ID,config.USERS_FILENAME)
-      return interaction.reply({content:"✅ Secondary added", flags: MessageFlags.Ephemeral})
-    }
+        if (!isValidId(id)) {
+          return interaction.reply({
+            content: "❌ ID must be exactly 16 digits",
+            flags: MessageFlags.Ephemeral
+          })
+        }
 
-    if (interaction.customId === "change_modal") {
-      const id = interaction.fields.getTextInputValue("id")
-      if (!isValidId(id)) {
-  return interaction.reply({
-    content: "❌ ID must be exactly 16 digits",
-    flags: MessageFlags.Ephemeral
-  })
-}
+        users[interaction.user.id] = {
+          main_id: id,
+          sec_id: null,
+          name: interaction.member.displayName
+        }
 
-      if (!users[interaction.user.id])
-        return interaction.reply({content:"❌ Register first",flags: MessageFlags.Ephemeral})
+        await saveUsers(users, config.USERS_GIST_ID, config.USERS_FILENAME)
+        return interaction.reply({
+          content: "✅ Registered",
+          flags: MessageFlags.Ephemeral
+        })
+      }
 
-      users[interaction.user.id].main_id = id
+      if (interaction.customId === "sec_modal") {
+        const id = interaction.fields.getTextInputValue("id").trim()
 
-      await saveUsers(users,config.USERS_GIST_ID,config.USERS_FILENAME)
-      return interaction.reply({content:"🔄 Updated",flags: MessageFlags.Ephemeral})
-    }
+        if (!isValidId(id)) {
+          return interaction.reply({
+            content: "❌ ID must be exactly 16 digits",
+            flags: MessageFlags.Ephemeral
+          })
+        }
 
-if (interaction.customId === "schedule_modal") {
-  const onRaw = interaction.fields.getTextInputValue("on").trim()
-  const offRaw = interaction.fields.getTextInputValue("off").trim()
+        if (!users[interaction.user.id]) {
+          return interaction.reply({
+            content: "❌ Register first",
+            flags: MessageFlags.Ephemeral
+          })
+        }
 
-  if (!/^\d{1,2}:\d{2}$/.test(onRaw) || !/^\d{1,2}:\d{2}$/.test(offRaw)) {
-    return interaction.reply({
-      content: "❌ Use HH:MM format",
-      flags: MessageFlags.Ephemeral
-    })
-  }
+        users[interaction.user.id].sec_id = id
 
-  const on = onRaw.split(":")
-  const off = offRaw.split(":")
+        await saveUsers(users, config.USERS_GIST_ID, config.USERS_FILENAME)
+        return interaction.reply({
+          content: "✅ Secondary added",
+          flags: MessageFlags.Ephemeral
+        })
+      }
 
-  const onHour = +on[0]
-  const onMinute = +on[1]
-  const offHour = +off[0]
-  const offMinute = +off[1]
+      if (interaction.customId === "change_modal") {
+        const id = interaction.fields.getTextInputValue("id").trim()
 
-  if (
-    onHour < 0 || onHour > 23 ||
-    offHour < 0 || offHour > 23 ||
-    onMinute < 0 || onMinute > 59 ||
-    offMinute < 0 || offMinute > 59
-  ) {
-    return interaction.reply({
-      content: "❌ Invalid UTC time",
-      flags: MessageFlags.Ephemeral
-    })
-  }
+        if (!isValidId(id)) {
+          return interaction.reply({
+            content: "❌ ID must be exactly 16 digits",
+            flags: MessageFlags.Ephemeral
+          })
+        }
 
-  if (!users[interaction.user.id]?.main_id) {
-    return interaction.reply({
-      content: "❌ Register first",
-      flags: MessageFlags.Ephemeral
-    })
-  }
+        if (!users[interaction.user.id]) {
+          return interaction.reply({
+            content: "❌ Register first",
+            flags: MessageFlags.Ephemeral
+          })
+        }
 
-  const schedules = loadSchedules()
+        users[interaction.user.id].main_id = id
 
-  schedules[interaction.user.id] = {
-    group,
-    main_id: users[interaction.user.id].main_id,
-    online_hour: onHour,
-    online_minute: onMinute,
-    offline_hour: offHour,
-    offline_minute: offMinute
-  }
+        await saveUsers(users, config.USERS_GIST_ID, config.USERS_FILENAME)
+        return interaction.reply({
+          content: "🔄 Updated",
+          flags: MessageFlags.Ephemeral
+        })
+      }
 
-  saveSchedules(schedules)
+      if (interaction.customId === "schedule_modal") {
+        const onRaw = interaction.fields.getTextInputValue("on").trim()
+        const offRaw = interaction.fields.getTextInputValue("off").trim()
 
-  return interaction.reply({
-    content: "✅ Schedule saved",
-    flags: MessageFlags.Ephemeral
-  })
-}
+        if (!/^\d{1,2}:\d{2}$/.test(onRaw) || !/^\d{1,2}:\d{2}$/.test(offRaw)) {
+          return interaction.reply({
+            content: "❌ Use HH:MM format",
+            flags: MessageFlags.Ephemeral
+          })
+        }
 
- if (interaction.customId === "gp_modal") {
-  if (!isChampion(interaction)) {
-    return interaction.reply({
-      content: "❌ Only Champion can use this function",
-      flags: MessageFlags.Ephemeral
-    })
-  }
+        const [onHour, onMinute] = onRaw.split(":").map(Number)
+        const [offHour, offMinute] = offRaw.split(":").map(Number)
 
-  const id = interaction.fields.getTextInputValue("id").trim()
+        if (
+          onHour < 0 || onHour > 23 ||
+          offHour < 0 || offHour > 23 ||
+          onMinute < 0 || onMinute > 59 ||
+          offMinute < 0 || offMinute > 59
+        ) {
+          return interaction.reply({
+            content: "❌ Invalid UTC time",
+            flags: MessageFlags.Ephemeral
+          })
+        }
 
-  if (!isValidId(id)) {
-    return interaction.reply({
-      content: "❌ ID must be exactly 16 digits",
-      flags: MessageFlags.Ephemeral
-    })
-  }
+        if (!users[interaction.user.id]?.main_id) {
+          return interaction.reply({
+            content: "❌ Register first",
+            flags: MessageFlags.Ephemeral
+          })
+        }
 
-  const menu = new StringSelectMenuBuilder()
-    .setCustomId(`gp_group_select:${id}`)
-    .setPlaceholder("Select group")
-    .addOptions(buildGroupOptions())
+        const schedules = loadSchedules()
 
-  return interaction.reply({
-    content: "Select the group where you want to add this VIP ID",
-    components: [new ActionRowBuilder().addComponents(menu)],
-    flags: MessageFlags.Ephemeral
-  })
-}
+        schedules[interaction.user.id] = {
+          group,
+          main_id: users[interaction.user.id].main_id,
+          online_hour: onHour,
+          online_minute: onMinute,
+          offline_hour: offHour,
+          offline_minute: offMinute
+        }
 
-  }
+        saveSchedules(schedules)
 
-  // ================= SELECT MENUS =================
-if (interaction.isStringSelectMenu()) {
+        return interaction.reply({
+          content: "✅ Schedule saved",
+          flags: MessageFlags.Ephemeral
+        })
+      }
 
-  if (interaction.customId.startsWith("gp_group_select:")) {
-    if (!isChampion(interaction)) {
-      return interaction.update({
-        content: "❌ Only Champion can use this function",
-        components: []
-      })
-    }
+      if (interaction.customId === "gp_modal") {
+        if (!isChampion(interaction)) {
+          return interaction.reply({
+            content: "❌ Only Champion can use this function",
+            flags: MessageFlags.Ephemeral
+          })
+        }
 
-    const id = interaction.customId.split(":")[1]
-    const group = interaction.values[0]
+        const id = interaction.fields.getTextInputValue("id").trim()
 
-    await addVipID(id, group)
+        if (!isValidId(id)) {
+          return interaction.reply({
+            content: "❌ ID must be exactly 16 digits",
+            flags: MessageFlags.Ephemeral
+          })
+        }
 
-    return interaction.update({
-      content: `✅ VIP ID added to ${getGroupLabel(group)}`,
-      components: []
-    })
-  }
+        const menu = new StringSelectMenuBuilder()
+          .setCustomId(`gp_group_select:${id}`)
+          .setPlaceholder("Select group")
+          .addOptions(buildGroupOptions())
 
-  if (interaction.customId === "offline_group_select") {
-    if (!isChampion(interaction)) {
-      return interaction.update({
-        content: "❌ Only Champion can use this function",
-        components: []
-      })
-    }
-
-    const group = interaction.values[0]
-    const config = GROUP_CONFIG[group]
-
-    const ids = await getOnlineIDs(config.IDS_GIST_ID, config.IDS_FILENAME)
-    const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
-
-    if (!ids.length) {
-      return interaction.update({
-        content: `⚫ No users online in ${getGroupLabel(group)}`,
-        components: []
-      })
-    }
-
-    const onlineOptions = []
-
-    for (const uid in users) {
-      const u = users[uid]
-      const matchedId = ids.find(id => id === u.main_id || id === u.sec_id)
-
-      if (matchedId) {
-        onlineOptions.push({
-          label: u.name || `User ${uid}`,
-          value: `${group}|${matchedId}`,
-          description: matchedId === u.main_id ? "Main ID online" : "Secondary ID online"
+        return interaction.reply({
+          content: "Select the group where you want to add this VIP ID",
+          components: [new ActionRowBuilder().addComponents(menu)],
+          flags: MessageFlags.Ephemeral
         })
       }
     }
 
-    if (!onlineOptions.length) {
-      const fallbackOptions = ids.slice(0, 25).map(id => ({
-        label: id,
-        value: `${group}|${id}`
-      }))
+    // ================= SELECT MENUS =================
+    if (interaction.isStringSelectMenu()) {
+      if (interaction.customId.startsWith("gp_group_select:")) {
+        if (!isChampion(interaction)) {
+          return interaction.update({
+            content: "❌ Only Champion can use this function",
+            components: []
+          })
+        }
 
-      const fallbackMenu = new StringSelectMenuBuilder()
-        .setCustomId("forced_offline_user_select")
-        .setPlaceholder("Select online user")
-        .addOptions(fallbackOptions)
+        const id = interaction.customId.split(":")[1]
+        const group = interaction.values[0]
 
-      return interaction.update({
-        content: `Online users found in ${getGroupLabel(group)} (fallback by ID)`,
-        components: [new ActionRowBuilder().addComponents(fallbackMenu)]
-      })
+        await addVipID(id, group)
+
+        return interaction.update({
+          content: `✅ VIP ID added to ${getGroupLabel(group)}`,
+          components: []
+        })
+      }
+
+      if (interaction.customId === "offline_group_select") {
+        if (!isChampion(interaction)) {
+          return interaction.update({
+            content: "❌ Only Champion can use this function",
+            components: []
+          })
+        }
+
+        const group = interaction.values[0]
+        const config = GROUP_CONFIG[group]
+
+        const ids = await getOnlineIDs(config.IDS_GIST_ID, config.IDS_FILENAME)
+        const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+
+        if (!ids.length) {
+          return interaction.update({
+            content: `⚫ No users online in ${getGroupLabel(group)}`,
+            components: []
+          })
+        }
+
+        const onlineOptions = []
+
+        for (const uid in users) {
+          const u = users[uid]
+          const matchedId = ids.find(id => id === u.main_id || id === u.sec_id)
+
+          if (matchedId) {
+            onlineOptions.push({
+              label: u.name || `User ${uid}`,
+              value: `${group}|${matchedId}`,
+              description: matchedId === u.main_id ? "Main ID online" : "Secondary ID online"
+            })
+          }
+        }
+
+        if (!onlineOptions.length) {
+          const fallbackOptions = ids.slice(0, 25).map(id => ({
+            label: id,
+            value: `${group}|${id}`
+          }))
+
+          const fallbackMenu = new StringSelectMenuBuilder()
+            .setCustomId("forced_offline_user_select")
+            .setPlaceholder("Select online user")
+            .addOptions(fallbackOptions)
+
+          return interaction.update({
+            content: `Online users found in ${getGroupLabel(group)} (fallback by ID)`,
+            components: [new ActionRowBuilder().addComponents(fallbackMenu)]
+          })
+        }
+
+        const menu = new StringSelectMenuBuilder()
+          .setCustomId("forced_offline_user_select")
+          .setPlaceholder("Select online user")
+          .addOptions(onlineOptions.slice(0, 25))
+
+        return interaction.update({
+          content: `Select the online user to force offline in ${getGroupLabel(group)}`,
+          components: [new ActionRowBuilder().addComponents(menu)]
+        })
+      }
+
+      if (interaction.customId === "forced_offline_user_select") {
+        if (!isChampion(interaction)) {
+          return interaction.update({
+            content: "❌ Only Champion can use this function",
+            components: []
+          })
+        }
+
+        const raw = interaction.values[0]
+        const [group, id] = raw.split("|")
+
+        await fetch(`${API_URL}?action=offline&id=${id}&group=${group}`)
+
+        return interaction.update({
+          content: `🔴 User forced offline in ${getGroupLabel(group)}`,
+          components: []
+        })
+      }
+
+      if (interaction.customId === "role_select") {
+        const selectedRole = interaction.values[0]
+
+        const userRoles = interaction.member.roles.cache
+          .filter(r => Object.keys(GROUP_CONFIG).includes(r.name))
+          .map(r => r.name)
+
+        if (!userRoles.includes(selectedRole)) {
+          return interaction.update({
+            content: "❌ Invalid role selection",
+            components: []
+          })
+        }
+
+        const activeRoles = await getActiveRoles()
+        activeRoles[interaction.user.id] = selectedRole
+        await saveActiveRoles(activeRoles)
+
+        return interaction.update({
+          content: `✅ Active role changed to ${selectedRole}`,
+          components: []
+        })
+      }
     }
-
-    const menu = new StringSelectMenuBuilder()
-      .setCustomId("forced_offline_user_select")
-      .setPlaceholder("Select online user")
-      .addOptions(onlineOptions.slice(0, 25))
-
-    return interaction.update({
-      content: `Select the online user to force offline in ${getGroupLabel(group)}`,
-      components: [new ActionRowBuilder().addComponents(menu)]
-    })
-  }
-
-  if (interaction.customId === "forced_offline_user_select") {
-    if (!isChampion(interaction)) {
-      return interaction.update({
-        content: "❌ Only Champion can use this function",
-        components: []
-      })
-    }
-
-    const raw = interaction.values[0]
-    const [group, id] = raw.split("|")
-
-    await fetch(`${API_URL}?action=offline&id=${id}&group=${group}`)
-
-    return interaction.update({
-      content: `🔴 User forced offline in ${getGroupLabel(group)}`,
-      components: []
-    })
-  }
-
-  if (interaction.customId === "role_select") {
-    const selectedRole = interaction.values[0]
-
-    const userRoles = interaction.member.roles.cache
-      .filter(r => Object.keys(GROUP_CONFIG).includes(r.name))
-      .map(r => r.name)
-
-    if (!userRoles.includes(selectedRole)) {
-      return interaction.update({
-        content: "❌ Invalid role selection",
-        components: []
-      })
-    }
-
-    const activeRoles = await getActiveRoles()
-    activeRoles[interaction.user.id] = selectedRole
-    await saveActiveRoles(activeRoles)
-
-    return interaction.update({
-      content: `✅ Active role changed to ${selectedRole}`,
-      components: []
-    })
-  }
-
-    
- 
   } catch (err) {
-    console.error("INDEX interaction error:", err);
+    console.error("INDEX interaction error:", err)
 
     if (!interaction.replied && !interaction.deferred) {
       await interaction.reply({
         content: "❌ Internal error",
         flags: MessageFlags.Ephemeral
-      }).catch(() => {});
+      }).catch(() => {})
     } else {
       await interaction.followUp({
         content: "❌ Internal error",
         flags: MessageFlags.Ephemeral
-      }).catch(() => {});
+      }).catch(() => {})
     }
   }
-});
+})
+
 
   client.on("error", err => {
   console.error("Discord client error:", err);
