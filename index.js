@@ -246,9 +246,57 @@ client.once("ready", async()=>{
 
 })
 
+const { MessageFlags } = require("discord.js");
+
+const OWN_BUTTONS = new Set([
+  "register",
+  "add_sec",
+  "change",
+  "online",
+  "offline",
+  "online_sec",
+  "list",
+  "online_list",
+  "schedule",
+  "change_role",
+  "set_offline",
+  "gp"
+]);
+
+const OWN_MODALS = new Set([
+  "reg_modal",
+  "sec_modal",
+  "change_modal",
+  "schedule_modal",
+  "gp_modal"
+]);
+
+const OWN_SELECTS = new Set([
+  "role_select",
+  "offline_select"
+]);
+
+function isOwnInteraction(interaction) {
+  if (interaction.isButton()) {
+    return OWN_BUTTONS.has(interaction.customId);
+  }
+
+  if (interaction.isModalSubmit()) {
+    return OWN_MODALS.has(interaction.customId);
+  }
+
+  if (interaction.isStringSelectMenu()) {
+    return OWN_SELECTS.has(interaction.customId) || interaction.customId.startsWith("gp_select_");
+  }
+
+  return false;
+}
+
 // ================= INTERACTIONS =================
 
 client.on("interactionCreate", async interaction => {
+  try {
+    if (!isOwnInteraction(interaction)) return;
 
   // ================= BOTONES =================
 
@@ -576,8 +624,24 @@ client.on("interactionCreate", async interaction => {
     }
 
   }
+  } catch (err) {
+    console.error("INDEX interaction error:", err);
 
-})
+    if (!interaction.replied && !interaction.deferred) {
+      await interaction.reply({
+        content: "❌ Internal error",
+        flags: MessageFlags.Ephemeral
+      }).catch(() => {});
+    } else {
+      await interaction.followUp({
+        content: "❌ Internal error",
+        flags: MessageFlags.Ephemeral
+      }).catch(() => {});
+    }
+  }
+});
+
+  
 
 // ================= START =================
 
