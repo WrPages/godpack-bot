@@ -16,7 +16,7 @@ const {
 const fetch = require("node-fetch")
 const fs = require("fs")
 
-const gpHandler = require("./gpHandler");
+//const gpHandler = require("./gpHandler");
 
 const client = new Client({
   intents: [
@@ -242,7 +242,7 @@ client.once("clientReady", async()=>{
   await sendPanel(ch)
 
   startScheduler()
-    await gpHandler(client);
+   // await gpHandler(client);
 
 })
 
