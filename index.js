@@ -9,7 +9,8 @@ const {
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
-  StringSelectMenuBuilder
+  StringSelectMenuBuilder,
+  MessageFlags
 } = require("discord.js")
 
 const fetch = require("node-fetch")
@@ -235,7 +236,7 @@ async function sendPanel(channel){
 
 // ================= READY =================
 
-client.once("ready", async()=>{
+client.once("clientReady", async()=>{
   console.log("🔥 Bot listo")
 
   const ch = await client.channels.fetch(PANEL_CHANNEL_ID)
@@ -303,12 +304,12 @@ client.on("interactionCreate", async interaction => {
   if (interaction.isButton()) {
 
     const group = await getUserGroup(interaction)
-    if (!group) return interaction.reply({ content:"❌ No group", ephemeral:true })
+    if (!group) return interaction.reply({ content:"❌ No group" , flags: MessageFlags.Ephemeral })
 
     const isModal = ["register","add_sec","change","schedule","gp"].includes(interaction.customId)
 
     if (!isModal) {
-      await interaction.deferReply({ ephemeral: true })
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral })
     }
 
     const config = GROUP_CONFIG[group]
@@ -514,7 +515,7 @@ client.on("interactionCreate", async interaction => {
   if (interaction.isModalSubmit()) {
 
     const group = await getUserGroup(interaction)
-    if (!group) return interaction.reply({content:"❌ No group",ephemeral:true})
+    if (!group) return interaction.reply({ content:"❌ No group", flags: MessageFlags.Ephemeral })
 
     const config = GROUP_CONFIG[group]
     let users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
