@@ -252,6 +252,68 @@ async function getUsers() {
   }
 }
 
+async function addVipID(id, group) {
+  try {
+    if (!id || id === "Unknown") {
+      console.log("⚠️ VIP no agregado: friendId inválido");
+      return false;
+    }
+
+    const config = GROUP_CONFIG[group];
+    if (!config || !config.VIP_GIST_ID || !config.VIP_FILENAME) {
+      console.log("⚠️ VIP config faltante para grupo:", group);
+      return false;
+    }
+
+    const res = await fetch(`https://api.github.com/gists/${config.VIP_GIST_ID}`, {
+      headers: { Authorization: `token ${GITHUB_TOKEN}` }
+    });
+
+    if (!res.ok) {
+      throw new Error(`VIP gist fetch failed: ${res.status}`);
+    }
+
+    const data = await res.json();
+
+    let content = data.files?.[config.VIP_FILENAME]?.content || "";
+    let ids = content
+      .split("\n")
+      .map(x => x.trim())
+      .filter(Boolean);
+
+    if (ids.includes(id)) {
+      console.log(`ℹ️ VIP ya existe en ${group}: ${id}`);
+      return false;
+    }
+
+    ids.push(id);
+
+    const patchRes = await fetch(`https://api.github.com/gists/${config.VIP_GIST_ID}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `token ${GITHUB_TOKEN}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        files: {
+          [config.VIP_FILENAME]: {
+            content: ids.join("\n")
+          }
+        }
+      })
+    });
+
+    if (!patchRes.ok) {
+      throw new Error(`VIP gist patch failed: ${patchRes.status}`);
+    }
+
+    console.log(`✅ VIP agregado en ${group}: ${id}`);
+    return true;
+  } catch (err) {
+    console.error("ADD VIP ERROR:", err);
+    return false;
+  }
+}
 
 
 const ALLOWED_CHANNELS = [
@@ -269,15 +331,21 @@ const CHANNEL_GROUP_MAP = {
 const GROUP_CONFIG = {
   Trainer: {
     LIVE_GIST_ID: "4f35f34b50e142fd4c89ff7bb8e30190",
-    LIVE_FILE: "trainer_gp_live_stats.json"
+    LIVE_FILE: "trainer_gp_live_stats.json",
+    VIP_GIST_ID: "16541fd83785a49ad4a0f22bbeb06000",
+    VIP_FILENAME: "trainer_vip.txt"
   },
   Gym_Leader: {
     LIVE_GIST_ID: "931b1284bc6abffc6681f733ac4361ff",
-    LIVE_FILE: "gym_gp_live_stats.json"
+    LIVE_FILE: "gym_gp_live_stats.json",
+    VIP_GIST_ID: "79a0e30c401cfd63e78d9ec5a9210091",
+    VIP_FILENAME: "gym_vip.txt"
   },
   Elite_Four: {
     LIVE_GIST_ID: "4773653072f4851e91958a333e503de9",
-    LIVE_FILE: "gp_live_stats.json"
+    LIVE_FILE: "gp_live_stats.json",
+    VIP_GIST_ID: "5f2f23e0391882ab4e255bd67e98334a",
+    VIP_FILENAME: "elite_vip.txt"
   }
 };
 
@@ -608,7 +676,11 @@ if (!match) {
 }
 
 console.log("Friend ID detectado:", friendId);
-
+if (friendId !== "Unknown") {
+  await addVipID(friendId, group);
+} else {
+  console.log("⚠️ No se agregó VIP porque no se detectó friendId");
+}
 
 
     // ===== COLOR =====
