@@ -16,7 +16,7 @@ const {
 const fetch = require("node-fetch")
 const fs = require("fs")
 
-//const gpHandler = require("./gpHandler");
+const gpHandler = require("./gpHandler");
 
 const client = new Client({
   intents: [
@@ -82,6 +82,7 @@ function saveSchedules(data){
 
 async function getUsers(gistId,file){
   const res = await fetch(`https://api.github.com/gists/${gistId}`)
+  if (!res.ok) throw new Error(`getUsers failed: ${res.status}`)
   const data = await res.json()
   return JSON.parse(data.files[file]?.content || "{}")
 }
@@ -89,7 +90,10 @@ async function getUsers(gistId,file){
 async function saveUsers(users,gistId,file){
   await fetch(`https://api.github.com/gists/${gistId}`,{
     method:"PATCH",
-    headers:{Authorization:`Bearer ${GITHUB_TOKEN}`},
+    headers:{
+  Authorization:`Bearer ${GITHUB_TOKEN}`,
+  "Content-Type":"application/json"
+},
     body:JSON.stringify({
       files:{[file]:{content:JSON.stringify(users,null,2)}}
     })
@@ -98,6 +102,7 @@ async function saveUsers(users,gistId,file){
 
 async function getOnlineIDs(gistId,file){
   const res = await fetch(`https://api.github.com/gists/${gistId}`)
+  if (!res.ok) throw new Error(`getOnlineIDs failed: ${res.status}`)
   const data = await res.json()
   return (data.files[file]?.content || "").split("\n").filter(Boolean)
 }
@@ -117,7 +122,10 @@ async function addVipID(id,group){
 
   await fetch(`https://api.github.com/gists/${config.VIP_GIST_ID}`,{
     method:"PATCH",
-    headers:{Authorization:`Bearer ${GITHUB_TOKEN}`},
+    headers:{
+  Authorization:`Bearer ${GITHUB_TOKEN}`,
+  "Content-Type":"application/json"
+},
     body:JSON.stringify({
       files:{[config.VIP_FILENAME]:{content:ids.join("\n")}}
     })
@@ -145,26 +153,29 @@ function savePanelData(data){
 // ================= SCHEDULER =================
 
 function startScheduler(){
-  setInterval(async()=>{
-    const schedules = loadSchedules()
-    const now = new Date()
+  setInterval(async () => {
+    try {
+      const schedules = loadSchedules()
+      const now = new Date()
 
-    for(const uid in schedules){
-      const s = schedules[uid]
+      for (const uid in schedules) {
+        const s = schedules[uid]
 
-      const hour = now.getUTCHours()
-      const min = now.getUTCMinutes()
+        const hour = now.getUTCHours()
+        const min = now.getUTCMinutes()
 
-      if(hour===s.online_hour && min===s.online_minute){
-        await fetch(`${API_URL}?action=online&id=${s.main_id}&group=${s.group}`)
+        if (hour === s.online_hour && min === s.online_minute) {
+          await fetch(`${API_URL}?action=online&id=${s.main_id}&group=${s.group}`)
+        }
+
+        if (hour === s.offline_hour && min === s.offline_minute) {
+          await fetch(`${API_URL}?action=offline&id=${s.main_id}&group=${s.group}`)
+        }
       }
-
-      if(hour===s.offline_hour && min===s.offline_minute){
-        await fetch(`${API_URL}?action=offline&id=${s.main_id}&group=${s.group}`)
-      }
+    } catch (err) {
+      console.error("Scheduler error:", err)
     }
-
-  },60000)
+  }, 60000)
 }
 
 
@@ -235,15 +246,18 @@ async function sendPanel(channel){
 
 // ================= READY =================
 
-client.once("clientReady", async()=>{
-  console.log("🔥 Bot listo")
+client.once("clientReady", async () => {
+  try {
+    console.log("🔥 Bot listo")
 
-  const ch = await client.channels.fetch(PANEL_CHANNEL_ID)
-  await sendPanel(ch)
+    const ch = await client.channels.fetch(PANEL_CHANNEL_ID)
+    await sendPanel(ch)
 
-  startScheduler()
-   // await gpHandler(client);
-
+    startScheduler()
+    await gpHandler(client)
+  } catch (err) {
+    console.error("Ready error:", err)
+  }
 })
 
 //const { MessageFlags } = require("discord.js");
@@ -312,8 +326,7 @@ client.on("interactionCreate", async interaction => {
     }
 
     const config = GROUP_CONFIG[group]
-    const users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
-    const userData = users[interaction.user.id]
+  
 
     // ===== REGISTER =====
     if (interaction.customId === "register") {
@@ -371,6 +384,8 @@ client.on("interactionCreate", async interaction => {
 
     // ===== ONLINE =====
     if (interaction.customId === "online") {
+        const users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
+    const userData = users[interaction.user.id]
       if (!userData?.main_id) return interaction.editReply("❌ Register first")
 
       await fetch(`${API_URL}?action=online&id=${userData.main_id}&group=${group}`)
@@ -379,6 +394,8 @@ client.on("interactionCreate", async interaction => {
 
     // ===== ONLINE SEC =====
     if (interaction.customId === "online_sec") {
+        const users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
+    const userData = users[interaction.user.id]
       if (!userData?.sec_id) return interaction.editReply("❌ No secondary ID")
 
       await fetch(`${API_URL}?action=online&id=${userData.sec_id}&group=${group}`)
@@ -387,6 +404,8 @@ client.on("interactionCreate", async interaction => {
 
     // ===== OFFLINE =====
     if (interaction.customId === "offline") {
+        const users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
+    const userData = users[interaction.user.id]
       if (!userData) return interaction.editReply("❌ Not registered")
 
       if (userData.main_id)
@@ -400,6 +419,8 @@ client.on("interactionCreate", async interaction => {
 
     // ===== LIST =====
     if (interaction.customId === "list") {
+        const users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
+    const userData = users[interaction.user.id]
 
       if (Object.keys(users).length === 0)
         return interaction.editReply("📭 No users")
@@ -416,6 +437,8 @@ client.on("interactionCreate", async interaction => {
 
     // ===== ONLINE LIST =====
     if (interaction.customId === "online_list") {
+        const users = await getUsers(config.USERS_GIST_ID,config.USERS_FILENAME)
+    const userData = users[interaction.user.id]
 
       const ids = await getOnlineIDs(config.IDS_GIST_ID,config.IDS_FILENAME)
 
@@ -521,6 +544,12 @@ client.on("interactionCreate", async interaction => {
 
     if (interaction.customId === "reg_modal") {
       const id = interaction.fields.getTextInputValue("id")
+      if (!isValidId(id)) {
+  return interaction.reply({
+    content: "❌ ID must be exactly 16 digits",
+    flags: MessageFlags.Ephemeral
+  })
+}
 
       users[interaction.user.id] = {
         main_id:id,
@@ -529,56 +558,110 @@ client.on("interactionCreate", async interaction => {
       }
 
       await saveUsers(users,config.USERS_GIST_ID,config.USERS_FILENAME)
-      return interaction.reply({ content: "✅ Registered", ephemeral: true })
+      return interaction.reply({ content: "✅ Registered", flags: MessageFlags.Ephemeral })
     }
 
     if (interaction.customId === "sec_modal") {
       const id = interaction.fields.getTextInputValue("id")
+      if (!isValidId(id)) {
+  return interaction.reply({
+    content: "❌ ID must be exactly 16 digits",
+    flags: MessageFlags.Ephemeral
+  })
+}
 
       if (!users[interaction.user.id])
-        return interaction.reply({content:"❌ Register first",ephemeral:true})
+        return interaction.reply({content:"❌ Register first",flags: MessageFlags.Ephemeral})
 
       users[interaction.user.id].sec_id = id
 
       await saveUsers(users,config.USERS_GIST_ID,config.USERS_FILENAME)
-      return interaction.reply({content:"✅ Secondary added",ephemeral:true})
+      return interaction.reply({content:"✅ Secondary added", flags: MessageFlags.Ephemeral})
     }
 
     if (interaction.customId === "change_modal") {
       const id = interaction.fields.getTextInputValue("id")
+      if (!isValidId(id)) {
+  return interaction.reply({
+    content: "❌ ID must be exactly 16 digits",
+    flags: MessageFlags.Ephemeral
+  })
+}
 
       if (!users[interaction.user.id])
-        return interaction.reply({content:"❌ Register first",ephemeral:true})
+        return interaction.reply({content:"❌ Register first",flags: MessageFlags.Ephemeral})
 
       users[interaction.user.id].main_id = id
 
       await saveUsers(users,config.USERS_GIST_ID,config.USERS_FILENAME)
-      return interaction.reply({content:"🔄 Updated",ephemeral:true})
+      return interaction.reply({content:"🔄 Updated",flags: MessageFlags.Ephemeral})
     }
 
-    if (interaction.customId === "schedule_modal") {
+if (interaction.customId === "schedule_modal") {
+  const onRaw = interaction.fields.getTextInputValue("on").trim()
+  const offRaw = interaction.fields.getTextInputValue("off").trim()
 
-      const on = interaction.fields.getTextInputValue("on").split(":")
-      const off = interaction.fields.getTextInputValue("off").split(":")
+  if (!/^\d{1,2}:\d{2}$/.test(onRaw) || !/^\d{1,2}:\d{2}$/.test(offRaw)) {
+    return interaction.reply({
+      content: "❌ Use HH:MM format",
+      flags: MessageFlags.Ephemeral
+    })
+  }
 
-      const schedules = loadSchedules()
+  const on = onRaw.split(":")
+  const off = offRaw.split(":")
 
-      schedules[interaction.user.id] = {
-        group,
-        main_id:users[interaction.user.id].main_id,
-        online_hour:+on[0],
-        online_minute:+on[1],
-        offline_hour:+off[0],
-        offline_minute:+off[1]
-      }
+  const onHour = +on[0]
+  const onMinute = +on[1]
+  const offHour = +off[0]
+  const offMinute = +off[1]
 
-      saveSchedules(schedules)
+  if (
+    onHour < 0 || onHour > 23 ||
+    offHour < 0 || offHour > 23 ||
+    onMinute < 0 || onMinute > 59 ||
+    offMinute < 0 || offMinute > 59
+  ) {
+    return interaction.reply({
+      content: "❌ Invalid UTC time",
+      flags: MessageFlags.Ephemeral
+    })
+  }
 
-      return interaction.reply({content:"✅ Schedule saved",ephemeral:true})
-    }
+  if (!users[interaction.user.id]?.main_id) {
+    return interaction.reply({
+      content: "❌ Register first",
+      flags: MessageFlags.Ephemeral
+    })
+  }
+
+  const schedules = loadSchedules()
+
+  schedules[interaction.user.id] = {
+    group,
+    main_id: users[interaction.user.id].main_id,
+    online_hour: onHour,
+    online_minute: onMinute,
+    offline_hour: offHour,
+    offline_minute: offMinute
+  }
+
+  saveSchedules(schedules)
+
+  return interaction.reply({
+    content: "✅ Schedule saved",
+    flags: MessageFlags.Ephemeral
+  })
+}
 
     if (interaction.customId === "gp_modal") {
       const id = interaction.fields.getTextInputValue("id")
+      if (!isValidId(id)) {
+  return interaction.reply({
+    content: "❌ ID must be exactly 16 digits",
+    flags: MessageFlags.Ephemeral
+  })
+}
 
       const menu = new StringSelectMenuBuilder()
         .setCustomId(`gp_select_${id}`)
@@ -591,7 +674,7 @@ client.on("interactionCreate", async interaction => {
       return interaction.reply({
         content:"Select group",
         components:[new ActionRowBuilder().addComponents(menu)],
-        ephemeral:true
+        flags: MessageFlags.Ephemeral
       })
     }
 
