@@ -390,9 +390,9 @@ function isOwnInteraction(interaction) {
     return OWN_MODALS.has(interaction.customId);
   }
 
-  if (interaction.isStringSelectMenu()) {
-    return OWN_SELECTS.has(interaction.customId) || interaction.customId.startsWith("gp_select_");
-  }
+ if (interaction.isStringSelectMenu()) {
+  return OWN_SELECTS.has(interaction.customId) || interaction.customId.startsWith("gp_group_select:");
+}
 
   return false;
 }
@@ -640,6 +640,7 @@ if (interaction.customId === "gp") {
 
   return interaction.showModal(modal)
 }
+  }
 
   // ================= MODALES =================
 
