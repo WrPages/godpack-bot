@@ -92,7 +92,9 @@ function buildGroupOptions() {
     { label: "Elite Four", value: "Elite_Four" }
   ];
 }
-
+function isValidId(id) {
+  return /^\d{16}$/.test(String(id).trim())
+}
 
 async function getActiveRoles() {
   try {
@@ -785,34 +787,34 @@ client.on("interactionCreate", async interaction => {
         })
       }
 
-      if (interaction.customId === "gp_modal") {
-        if (!isChampion(interaction)) {
-          return interaction.reply({
-            content: "❌ Only Champion can use this function",
-            flags: MessageFlags.Ephemeral
-          })
-        }
+     if (interaction.customId === "gp_modal") {
+  if (!isChampion(interaction)) {
+    return interaction.reply({
+      content: "❌ Only Champion can use this function",
+      flags: MessageFlags.Ephemeral
+    })
+  }
 
-        const id = interaction.fields.getTextInputValue("id").trim()
+  const id = interaction.fields.getTextInputValue("id").trim()
 
-        if (!isValidId(id)) {
-          return interaction.reply({
-            content: "❌ ID must be exactly 16 digits",
-            flags: MessageFlags.Ephemeral
-          })
-        }
+  if (!isValidId(id)) {
+    return interaction.reply({
+      content: "❌ ID must be exactly 16 digits",
+      flags: MessageFlags.Ephemeral
+    })
+  }
 
-        const menu = new StringSelectMenuBuilder()
-          .setCustomId(`gp_group_select:${id}`)
-          .setPlaceholder("Select group")
-          .addOptions(buildGroupOptions())
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId(`gp_group_select:${id}`)
+    .setPlaceholder("Select group")
+    .addOptions(buildGroupOptions())
 
-        return interaction.reply({
-          content: "Select the group where you want to add this VIP ID",
-          components: [new ActionRowBuilder().addComponents(menu)],
-          flags: MessageFlags.Ephemeral
-        })
-      }
+  return interaction.reply({
+    content: `Select the group where you want to add VIP ID ${id}`,
+    components: [new ActionRowBuilder().addComponents(menu)],
+    flags: MessageFlags.Ephemeral
+  })
+}
     }
 
     // ================= SELECT MENUS =================
