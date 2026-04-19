@@ -87,14 +87,14 @@ const USERS_GP_FILE = "gp_user.json";
 const CHANNEL_USER_GIST_MAP = {
   "1486277594629275770": "bb18eda2ea748723d8fe0131dd740b70", // Elite Four
   "1487362022864588902": "1c066922bc39ac136b6f234fad6d9420", // Trainer
-  "1484015417411244082": "a3f5f3d8a2e6ddf2378fb3481dff49f6"  // Gym Leader
+  "1491238471556403281": "a3f5f3d8a2e6ddf2378fb3481dff49f6"  // Gym Leader
 };
 
 // Mapa canal → Gist con IDs online
 const CHANNEL_ONLINE_GIST_MAP = {
   "1486277594629275770": "d9db3a72fed74c496fd6cc830f9ca6e9", // Elite Four
   "1487362022864588902": "4edcf4d341cd4f7d5d0fb8a50f8b8c3c", // Trainer
-  "1484015417411244082": "e110c37b3e0b8de83a33a1b0a5eb64e8"  // Gym Leader
+  "1491238471556403281": "e110c37b3e0b8de83a33a1b0a5eb64e8"  // Gym Leader
 };
 
 
@@ -318,7 +318,7 @@ async function addVipID(id, group) {
 
 const ALLOWED_CHANNELS = [
   "1486277594629275770", // canal 1
-  "1484015417411244082",
+  "1491238471556403281",
   "1487362022864588902"// canal 2
 
    // canal 3
@@ -326,7 +326,7 @@ const ALLOWED_CHANNELS = [
 const CHANNEL_GROUP_MAP = {
   "1486277594629275770": "Elite_Four",
   "1487362022864588902": "Trainer",
-  "1484015417411244082": "Gym_Leader"
+  "1491238471556403281": "Gym_Leader"
 };
 const GROUP_CONFIG = {
   Trainer: {
