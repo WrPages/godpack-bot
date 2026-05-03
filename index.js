@@ -178,35 +178,28 @@ async function saveUsers(users,gistId,file){
 }
 
 async function setOnlineStatus(action, id, group) {
-  id = String(id || "").trim()
+  try {
+    id = String(id || "").trim()
 
-  if (!/^\d{16}$/.test(id)) {
-    throw new Error(`Invalid ID: ${id}`)
-  }
-
-  if (!GROUP_CONFIG[group]) {
-    throw new Error(`Invalid group: ${group}`)
-  }
-
-  const params = new URLSearchParams({
-    action,
-    id,
-    group
-  })
-
-  const res = await fetch(`${API_URL}?${params.toString()}`, {
-    headers: {
-      "Cache-Control": "no-cache"
+    if (!/^\d{16}$/.test(id)) {
+      console.error("Invalid ID:", id)
+      return false
     }
-  })
 
-  const text = await res.text().catch(() => "")
+    const url = `${API_URL}?action=${action}&id=${id}&group=${group}`
+    const res = await fetch(url)
 
-  if (!res.ok) {
-    throw new Error(`API ${action} failed: ${res.status} ${text}`)
+    if (!res.ok) {
+      const text = await res.text().catch(() => "")
+      console.error(`API ${action} error:`, res.status, text)
+      return false
+    }
+
+    return true
+  } catch (err) {
+    console.error(`setOnlineStatus ${action} error:`, err)
+    return false
   }
-
-  return text
 }
 
 async function getOnlineIDs(gistId,file){
@@ -701,10 +694,6 @@ if (userData.sec_id) {
 
 const oldData = users[interaction.user.id]
 
-if (oldData?.main_id && oldData.main_id !== id) {
-  await setOnlineStatus("offline", oldData.main_id, group)
-}
-
 users[interaction.user.id] = {
   main_id: id,
   sec_id: oldData?.sec_id || null,
@@ -761,7 +750,7 @@ users[interaction.user.id] = {
           })
         }
 
-        const oldMainId = users[interaction.user.id].main_id
+const oldMainId = users[interaction.user.id].main_id
 
 if (oldMainId && oldMainId !== id) {
   await setOnlineStatus("offline", oldMainId, group)
