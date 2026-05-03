@@ -177,7 +177,37 @@ async function saveUsers(users,gistId,file){
   })
 }
 
+async function setOnlineStatus(action, id, group) {
+  id = String(id || "").trim()
 
+  if (!/^\d{16}$/.test(id)) {
+    throw new Error(`Invalid ID: ${id}`)
+  }
+
+  if (!GROUP_CONFIG[group]) {
+    throw new Error(`Invalid group: ${group}`)
+  }
+
+  const params = new URLSearchParams({
+    action,
+    id,
+    group
+  })
+
+  const res = await fetch(`${API_URL}?${params.toString()}`, {
+    headers: {
+      "Cache-Control": "no-cache"
+    }
+  })
+
+  const text = await res.text().catch(() => "")
+
+  if (!res.ok) {
+    throw new Error(`API ${action} failed: ${res.status} ${text}`)
+  }
+
+  return text
+}
 
 async function getOnlineIDs(gistId,file){
   const res = await fetch(`https://api.github.com/gists/${gistId}`)
@@ -494,7 +524,7 @@ client.on("interactionCreate", async interaction => {
 
         if (!userData?.main_id) return interaction.editReply("❌ Register first")
 
-        await fetch(`${API_URL}?action=online&id=${userData.main_id}&group=${group}`)
+        await setOnlineStatus("online", userData.main_id, group)
         return interaction.editReply("🟢 ONLINE")
       }
 
@@ -504,7 +534,7 @@ client.on("interactionCreate", async interaction => {
 
         if (!userData?.sec_id) return interaction.editReply("❌ No secondary ID")
 
-        await fetch(`${API_URL}?action=online&id=${userData.sec_id}&group=${group}`)
+        await setOnlineStatus("online", userData.sec_id, group)
         return interaction.editReply("🟢 SEC ONLINE")
       }
 
@@ -514,14 +544,13 @@ client.on("interactionCreate", async interaction => {
 
         if (!userData) return interaction.editReply("❌ Not registered")
 
-        if (userData.main_id) {
-          await fetch(`${API_URL}?action=offline&id=${userData.main_id}&group=${group}`)
-        }
+ if (userData.main_id) {
+  await setOnlineStatus("offline", userData.main_id, group)
+}
 
-        if (userData.sec_id) {
-          await fetch(`${API_URL}?action=offline&id=${userData.sec_id}&group=${group}`)
-        }
-
+if (userData.sec_id) {
+  await setOnlineStatus("offline", userData.sec_id, group)
+}
         return interaction.editReply("🔴 OFFLINE")
       }
 
@@ -670,11 +699,17 @@ client.on("interactionCreate", async interaction => {
           })
         }
 
-        users[interaction.user.id] = {
-          main_id: id,
-          sec_id: null,
-          name: interaction.member.displayName
-        }
+const oldData = users[interaction.user.id]
+
+if (oldData?.main_id && oldData.main_id !== id) {
+  await setOnlineStatus("offline", oldData.main_id, group)
+}
+
+users[interaction.user.id] = {
+  main_id: id,
+  sec_id: oldData?.sec_id || null,
+  name: interaction.member.displayName
+}
 
         await saveUsers(users, config.USERS_GIST_ID, config.USERS_FILENAME)
         return interaction.reply({
@@ -726,7 +761,13 @@ client.on("interactionCreate", async interaction => {
           })
         }
 
-        users[interaction.user.id].main_id = id
+        const oldMainId = users[interaction.user.id].main_id
+
+if (oldMainId && oldMainId !== id) {
+  await setOnlineStatus("offline", oldMainId, group)
+}
+
+users[interaction.user.id].main_id = id
 
         await saveUsers(users, config.USERS_GIST_ID, config.USERS_FILENAME)
         return interaction.reply({
