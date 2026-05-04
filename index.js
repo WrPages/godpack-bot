@@ -606,30 +606,29 @@ if (!ok) {
 return interaction.editReply("🟢 SEC ONLINE. It now appears in Online List.")
       }
 
-      if (interaction.customId === "offline") {
-        const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
-        const userData = users[interaction.user.id]
+if (interaction.customId === "offline") {
+  const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+  const userData = users[interaction.user.id]
 
-        if (!userData) return interaction.editReply("❌ Not registered")
+  if (!userData) return interaction.editReply("❌ Not registered")
 
- if (userData.main_id) {
-let okMain = true
-let okSec = true
+  let okMain = true
+  let okSec = true
 
-if (userData.main_id) {
-  okMain = await setOnlineStatus("offline", userData.main_id, group)
+  if (userData.main_id) {
+    okMain = await setOnlineStatus("offline", userData.main_id, group)
+  }
+
+  if (userData.sec_id) {
+    okSec = await setOnlineStatus("offline", userData.sec_id, group)
+  }
+
+  if (!okMain || !okSec) {
+    return interaction.editReply("❌ Some IDs could not be set offline")
+  }
+
+  return interaction.editReply("🔴 OFFLINE")
 }
-
-if (userData.sec_id) {
-  okSec = await setOnlineStatus("offline", userData.sec_id, group)
-}
-
-if (!okMain || !okSec) {
-  return interaction.editReply("❌ Some IDs could not be set offline")
-}
-
-return interaction.editReply("🔴 OFFLINE")
-      }
 
       if (interaction.customId === "list") {
         const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
@@ -1083,7 +1082,6 @@ if (interaction.customId === "forced_offline_user_select") {
     }
   } catch (err) {
     console.error("INDEX interaction error:", err)
-  }
 
     if (!interaction.replied && !interaction.deferred) {
       await interaction.reply({
