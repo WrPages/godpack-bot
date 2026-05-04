@@ -1083,6 +1083,7 @@ if (interaction.customId === "forced_offline_user_select") {
     }
   } catch (err) {
     console.error("INDEX interaction error:", err)
+  }
 
     if (!interaction.replied && !interaction.deferred) {
       await interaction.reply({
