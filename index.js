@@ -13,8 +13,7 @@ const {
   MessageFlags
 } = require("discord.js")
 
-const fetch = require("node-fetch")
-const fs = require("fs")
+
 const { Redis } = require("@upstash/redis")
 
 const gpHandler = require("./gpHandler");
@@ -31,8 +30,7 @@ const client = new Client({
 // ================= CONFIG =================
 
 const TOKEN = process.env.TOKEN
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN
-//const API_URL = "https://add-ids.netlify.app/.netlify/functions/api"
+
 const PANEL_CHANNEL_ID = "1494760619985862676"
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
@@ -50,42 +48,51 @@ function normalizeRedisIds(ids) {
     .map(id => String(id).trim())
     .filter(id => /^\d{16}$/.test(id))
 }
+function usersKey(group) {
+  return `users:${group}`
+}
+
+function vipKey(group) {
+  return `vip:${group}`
+}
+
+function schedulesKey() {
+  return "daily_schedules"
+}
+
+function panelDataKey() {
+  return "panel_data"
+}
+
+function activeRolesKey() {
+  return "active_roles"
+}
+
+function safeJsonParse(value, fallback = {}) {
+  try {
+    if (!value) return fallback
+    if (typeof value === "object") return value
+    return JSON.parse(value)
+  } catch {
+    return fallback
+  }
+}
 
 // ================= GROUP CONFIG =================
 
 const GROUP_CONFIG = {
   Trainer: {
-    USERS_FILENAME:"trainer_users.json",
-    USERS_GIST_ID:"1c066922bc39ac136b6f234fad6d9420",
-    IDS_FILENAME:"trainer_ids.txt",
-    IDS_GIST_ID:"4edcf4d341cd4f7d5d0fb8a50f8b8c3c",
-    VIP_FILENAME:"trainer_vip.txt",
-    VIP_GIST_ID:"16541fd83785a49ad4a0f22bbeb06000"
+    label: "Trainer"
   },
   Gym_Leader: {
-    USERS_FILENAME:"gym_users.json",
-    USERS_GIST_ID:"a3f5f3d8a2e6ddf2378fb3481dff49f6",
-    IDS_FILENAME:"gym_ids.txt",
-    IDS_GIST_ID:"e110c37b3e0b8de83a33a1b0a5eb64e8",
-    VIP_FILENAME:"gym_vip.txt",
-    VIP_GIST_ID:"79a0e30c401cfd63e78d9ec5a9210091"
+    label: "Gym Leader"
   },
   Elite_Four: {
-    USERS_FILENAME:"elite_users.json",
-    USERS_GIST_ID:"bb18eda2ea748723d8fe0131dd740b70",
-    IDS_FILENAME:"elite_ids.txt",
-    IDS_GIST_ID:"d9db3a72fed74c496fd6cc830f9ca6e9",
-    VIP_FILENAME:"elite_vip.txt",
-    VIP_GIST_ID:"5f2f23e0391882ab4e255bd67e98334a"
+    label: "Elite Four"
   }
 }
 
-// ================= FILES =================
 
-const SCHEDULE_FILE = "./daily_schedules.json"
-const PANEL_DATA_FILE = "./panel_data.json"
-const ACTIVE_ROLE_GIST_ID = "49c42c0a844bbc4d2c0187fc254140d1"
-const ACTIVE_ROLE_FILE = "active_roles.json"
 
 
 // ================= HELPERS =================
@@ -134,83 +141,104 @@ function isValidId(id) {
 
 async function getActiveRoles() {
   try {
-    const res = await fetch(`https://api.github.com/gists/${ACTIVE_ROLE_GIST_ID}`, {
-      headers: {
-        Authorization: `Bearer ${GITHUB_TOKEN}`,
-        Accept: "application/vnd.github+json"
-      }
-    })
+    const data = await redis.hgetall(activeRolesKey())
 
-    if (!res.ok) {
-      console.error("Error loading active roles:", res.status)
+    if (!data || typeof data !== "object") {
       return {}
     }
 
-    const data = await res.json()
-
-    if (!data.files || !data.files[ACTIVE_ROLE_FILE]) return {}
-
-    return JSON.parse(data.files[ACTIVE_ROLE_FILE].content || "{}")
+    return data
   } catch (err) {
-    console.error("Error loading active roles:", err)
+    console.error("Error loading active roles from Redis:", err)
     return {}
   }
 }
 
 async function saveActiveRoles(data) {
   try {
-    const res = await fetch(`https://api.github.com/gists/${ACTIVE_ROLE_GIST_ID}`, {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${GITHUB_TOKEN}`,
-        Accept: "application/vnd.github+json",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        files: {
-          [ACTIVE_ROLE_FILE]: {
-            content: JSON.stringify(data, null, 2)
-          }
-        }
-      })
-    })
+    if (!data || typeof data !== "object") return
 
-    if (!res.ok) {
-      throw new Error(`saveActiveRoles failed: ${res.status}`)
+    await redis.del(activeRolesKey())
+
+    if (Object.keys(data).length > 0) {
+      await redis.hset(activeRolesKey(), data)
     }
   } catch (err) {
-    console.error("Error saving active roles:", err)
+    console.error("Error saving active roles to Redis:", err)
   }
 }
 
 
-function loadSchedules(){
-  if(!fs.existsSync(SCHEDULE_FILE)) return {}
-  return JSON.parse(fs.readFileSync(SCHEDULE_FILE))
+async function loadSchedules() {
+  try {
+    const data = await redis.get(schedulesKey())
+    return safeJsonParse(data, {})
+  } catch (err) {
+    console.error("Error loading schedules from Redis:", err)
+    return {}
+  }
 }
 
-function saveSchedules(data){
-  fs.writeFileSync(SCHEDULE_FILE, JSON.stringify(data,null,2))
+async function saveSchedules(data) {
+  try {
+    await redis.set(schedulesKey(), JSON.stringify(data || {}))
+  } catch (err) {
+    console.error("Error saving schedules to Redis:", err)
+  }
 }
 
-async function getUsers(gistId,file){
-  const res = await fetch(`https://api.github.com/gists/${gistId}`)
-  if (!res.ok) throw new Error(`getUsers failed: ${res.status}`)
-  const data = await res.json()
-  return JSON.parse(data.files[file]?.content || "{}")
+async function getUsers(group) {
+  try {
+    if (!GROUP_CONFIG[group]) {
+      console.error("getUsers invalid group:", group)
+      return {}
+    }
+
+    const data = await redis.hgetall(usersKey(group))
+
+    if (!data || typeof data !== "object") {
+      return {}
+    }
+
+    const users = {}
+
+    for (const uid in data) {
+      users[uid] = safeJsonParse(data[uid], {})
+    }
+
+    return users
+  } catch (err) {
+    console.error(`Error loading users from Redis for ${group}:`, err)
+    return {}
+  }
 }
 
-async function saveUsers(users,gistId,file){
-  await fetch(`https://api.github.com/gists/${gistId}`,{
-    method:"PATCH",
-    headers:{
-  Authorization:`Bearer ${GITHUB_TOKEN}`,
-  "Content-Type":"application/json"
-},
-    body:JSON.stringify({
-      files:{[file]:{content:JSON.stringify(users,null,2)}}
-    })
-  })
+async function saveUsers(users, group) {
+  try {
+    if (!GROUP_CONFIG[group]) {
+      console.error("saveUsers invalid group:", group)
+      return false
+    }
+
+    const key = usersKey(group)
+
+    await redis.del(key)
+
+    const payload = {}
+
+    for (const uid in users) {
+      payload[uid] = JSON.stringify(users[uid])
+    }
+
+    if (Object.keys(payload).length > 0) {
+      await redis.hset(key, payload)
+    }
+
+    return true
+  } catch (err) {
+    console.error(`Error saving users to Redis for ${group}:`, err)
+    return false
+  }
 }
 
 async function setOnlineStatus(action, id, group) {
@@ -249,13 +277,8 @@ async function setOnlineStatus(action, id, group) {
   }
 }
 
-async function getOnlineIDs(gistId, file) {
-  const group = Object.keys(GROUP_CONFIG).find(g =>
-    GROUP_CONFIG[g].IDS_GIST_ID === gistId &&
-    GROUP_CONFIG[g].IDS_FILENAME === file
-  )
-
-  if (!group) return []
+async function getOnlineIDs(group) {
+  if (!GROUP_CONFIG[group]) return []
 
   try {
     const ids = await redis.smembers(onlineKey(group))
@@ -266,29 +289,28 @@ async function getOnlineIDs(gistId, file) {
   }
 }
 
-async function addVipID(id,group){
-  const config = GROUP_CONFIG[group]
+async function addVipID(id, group) {
+  try {
+    id = String(id || "").trim()
 
-  const res = await fetch(`https://api.github.com/gists/${config.VIP_GIST_ID}`)
-  const data = await res.json()
+    if (!isValidId(id)) {
+      console.error("Invalid VIP ID:", id)
+      return false
+    }
 
-  let content = data.files[config.VIP_FILENAME]?.content || ""
-  let ids = content.split("\n").filter(Boolean)
+    if (!GROUP_CONFIG[group]) {
+      console.error("Invalid VIP group:", group)
+      return false
+    }
 
-  if(ids.includes(id)) return
+    await redis.sadd(vipKey(group), id)
 
-  ids.push(id)
-
-  await fetch(`https://api.github.com/gists/${config.VIP_GIST_ID}`,{
-    method:"PATCH",
-    headers:{
-  Authorization:`Bearer ${GITHUB_TOKEN}`,
-  "Content-Type":"application/json"
-},
-    body:JSON.stringify({
-      files:{[config.VIP_FILENAME]:{content:ids.join("\n")}}
-    })
-  })
+    console.log(`✅ VIP added to Redis ${group}:`, id)
+    return true
+  } catch (err) {
+    console.error("Error saving VIP to Redis:", err)
+    return false
+  }
 }
 
 // ===== GROUP =====
@@ -308,13 +330,22 @@ async function getUserGroup(interaction) {
   return memberGroups[0];
 }
 /// panel
-function loadPanelData(){
-  if(!fs.existsSync(PANEL_DATA_FILE)) return {}
-  return JSON.parse(fs.readFileSync(PANEL_DATA_FILE))
+async function loadPanelData() {
+  try {
+    const data = await redis.get(panelDataKey())
+    return safeJsonParse(data, {})
+  } catch (err) {
+    console.error("Error loading panel data from Redis:", err)
+    return {}
+  }
 }
 
-function savePanelData(data){
-  fs.writeFileSync(PANEL_DATA_FILE, JSON.stringify(data,null,2))
+async function savePanelData(data) {
+  try {
+    await redis.set(panelDataKey(), JSON.stringify(data || {}))
+  } catch (err) {
+    console.error("Error saving panel data to Redis:", err)
+  }
 }
 
 
@@ -323,7 +354,7 @@ function savePanelData(data){
 function startScheduler(){
   setInterval(async () => {
     try {
-      const schedules = loadSchedules()
+      const schedules = await loadSchedules()
       const now = new Date()
 
       const hour = now.getUTCHours()
@@ -366,7 +397,7 @@ function startScheduler(){
         }
       }
 
-      if (changed) saveSchedules(schedules)
+      if (changed) await saveSchedules(schedules)
 
     } catch (err) {
       console.error("Scheduler error:", err)
@@ -378,7 +409,7 @@ function startScheduler(){
 
 async function sendPanel(channel){
 
-  const panelData = loadPanelData()
+  const panelData = await loadPanelData()
 
   const embed = new EmbedBuilder()
     .setTitle("🎮 PANEL CONTROL")
@@ -434,7 +465,7 @@ async function sendPanel(channel){
   const newMsg = await channel.send(panelPayload)
 
   panelData.messageId = newMsg.id
-  savePanelData(panelData)
+  await savePanelData(panelData)
 
   console.log("✅ Panel creado y guardado")
 }
@@ -593,7 +624,7 @@ client.on("interactionCreate", async interaction => {
       }
 
       if (interaction.customId === "online") {
-        const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+        const users = await getUsers(group)
         const userData = users[interaction.user.id]
 
         if (!userData?.main_id) return interaction.editReply("❌ Register first")
@@ -608,7 +639,7 @@ return interaction.editReply("🟢 ONLINE. It now appears in Online List.")
       }
 
       if (interaction.customId === "online_sec") {
-        const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+        const users = await getUsers(group)
         const userData = users[interaction.user.id]
 
         if (!userData?.sec_id) return interaction.editReply("❌ No secondary ID")
@@ -623,7 +654,7 @@ return interaction.editReply("🟢 SEC ONLINE. It now appears in Online List.")
       }
 
 if (interaction.customId === "offline") {
-  const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+  const users = await getUsers(group)
   const userData = users[interaction.user.id]
 
   if (!userData) return interaction.editReply("❌ Not registered")
@@ -647,7 +678,7 @@ if (interaction.customId === "offline") {
 }
 
       if (interaction.customId === "list") {
-        const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+        const users = await getUsers(group)
 
         if (Object.keys(users).length === 0) {
           return interaction.editReply("📭 No users")
@@ -664,8 +695,8 @@ if (interaction.customId === "offline") {
       }
 
 if (interaction.customId === "online_list") {
-  const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
-  const ids = await getOnlineIDs(config.IDS_GIST_ID, config.IDS_FILENAME)
+  const users = await getUsers(group)
+  const ids = await getOnlineIDs(group)
 
   if (!ids.length) return interaction.editReply("⚫ No online")
 
@@ -797,7 +828,7 @@ if (interaction.customId === "change_role") {
       }
 
       const config = GROUP_CONFIG[group]
-      const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+      const users = await getUsers(group)
 
       if (interaction.customId === "reg_modal") {
         const id = interaction.fields.getTextInputValue("id").trim()
@@ -817,7 +848,7 @@ users[interaction.user.id] = {
   name: interaction.member.displayName
 }
 
-        await saveUsers(users, config.USERS_GIST_ID, config.USERS_FILENAME)
+        await saveUsers(users, group)
         return interaction.reply({
           content: "✅ Registered",
           flags: MessageFlags.Ephemeral
@@ -843,7 +874,7 @@ users[interaction.user.id] = {
 
         users[interaction.user.id].sec_id = id
 
-        await saveUsers(users, config.USERS_GIST_ID, config.USERS_FILENAME)
+        await saveUsers(users, group)
         return interaction.reply({
           content: "✅ Secondary added",
           flags: MessageFlags.Ephemeral
@@ -875,7 +906,7 @@ if (oldMainId && oldMainId !== id) {
 
 users[interaction.user.id].main_id = id
 
-        await saveUsers(users, config.USERS_GIST_ID, config.USERS_FILENAME)
+        await saveUsers(users, group)
         return interaction.reply({
           content: "🔄 Updated",
           flags: MessageFlags.Ephemeral
@@ -915,7 +946,7 @@ users[interaction.user.id].main_id = id
           })
         }
 
-        const schedules = loadSchedules()
+        const schedules = await loadSchedules()
 
         schedules[interaction.user.id] = {
           group,
@@ -926,7 +957,7 @@ users[interaction.user.id].main_id = id
           offline_minute: offMinute
         }
 
-        saveSchedules(schedules)
+        await saveSchedules(schedules)
 
         return interaction.reply({
           content: "✅ Schedule saved",
@@ -996,8 +1027,8 @@ users[interaction.user.id].main_id = id
         const group = interaction.values[0]
         const config = GROUP_CONFIG[group]
 
-        const ids = await getOnlineIDs(config.IDS_GIST_ID, config.IDS_FILENAME)
-        const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+        const ids = await getOnlineIDs(group)
+        const users = await getUsers(group)
 
         if (!ids.length) {
           return interaction.update({
@@ -1076,25 +1107,25 @@ if (interaction.customId === "forced_offline_user_select") {
 }
 
 if (interaction.customId === "role_select") {
-  const selectedRole = interaction.values[0];
+  const selectedRole = interaction.values[0]
 
-  const userGroups = getMemberGroups(interaction.member);
+  const userGroups = getMemberGroups(interaction.member)
 
   if (!userGroups.includes(selectedRole)) {
     return interaction.update({
       content: "❌ Invalid role selection",
       components: []
-    });
+    })
   }
 
-  const activeRoles = await getActiveRoles();
-  activeRoles[interaction.user.id] = selectedRole;
-  await saveActiveRoles(activeRoles);
+  await redis.hset(activeRolesKey(), {
+    [interaction.user.id]: selectedRole
+  })
 
   return interaction.update({
     content: `✅ Active role changed to **${getGroupLabel(selectedRole)}**`,
     components: []
-  });
+  })
 }
     }
   } catch (err) {
