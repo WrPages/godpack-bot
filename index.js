@@ -15,6 +15,7 @@ const {
 
 const fetch = require("node-fetch")
 const fs = require("fs")
+const { Redis } = require("@upstash/redis")
 
 const gpHandler = require("./gpHandler");
 
@@ -30,8 +31,24 @@ const client = new Client({
 
 const TOKEN = process.env.TOKEN
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
-const API_URL = "https://add-ids.netlify.app/.netlify/functions/api"
+//const API_URL = "https://add-ids.netlify.app/.netlify/functions/api"
 const PANEL_CHANNEL_ID = "1494760619985862676"
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN
+})
+
+function onlineKey(group) {
+  return `online:${group}`
+}
+
+function normalizeRedisIds(ids) {
+  if (!Array.isArray(ids)) return []
+
+  return ids
+    .map(id => String(id).trim())
+    .filter(id => /^\d{16}$/.test(id))
+}
 
 // ================= GROUP CONFIG =================
 
@@ -181,18 +198,29 @@ async function setOnlineStatus(action, id, group) {
   try {
     id = String(id || "").trim()
 
-    if (!/^\d{16}$/.test(id)) {
+    if (!["online", "offline"].includes(action)) {
+      console.error("Invalid action:", action)
+      return false
+    }
+
+    if (!isValidId(id)) {
       console.error("Invalid ID:", id)
       return false
     }
 
-    const url = `${API_URL}?action=${action}&id=${id}&group=${group}`
-    const res = await fetch(url)
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => "")
-      console.error(`API ${action} error:`, res.status, text)
+    if (!GROUP_CONFIG[group]) {
+      console.error("Invalid group:", group)
       return false
+    }
+
+    const key = onlineKey(group)
+
+    if (action === "online") {
+      await redis.sadd(key, id)
+    }
+
+    if (action === "offline") {
+      await redis.srem(key, id)
     }
 
     return true
@@ -202,11 +230,21 @@ async function setOnlineStatus(action, id, group) {
   }
 }
 
-async function getOnlineIDs(gistId,file){
-  const res = await fetch(`https://api.github.com/gists/${gistId}`)
-  if (!res.ok) throw new Error(`getOnlineIDs failed: ${res.status}`)
-  const data = await res.json()
-  return (data.files[file]?.content || "").split("\n").filter(Boolean)
+async function getOnlineIDs(gistId, file) {
+  const group = Object.keys(GROUP_CONFIG).find(g =>
+    GROUP_CONFIG[g].IDS_GIST_ID === gistId &&
+    GROUP_CONFIG[g].IDS_FILENAME === file
+  )
+
+  if (!group) return []
+
+  try {
+    const ids = await redis.smembers(onlineKey(group))
+    return normalizeRedisIds(ids)
+  } catch (err) {
+    console.error(`getOnlineIDs Redis error for ${group}:`, err)
+    return []
+  }
 }
 
 async function addVipID(id,group){
@@ -272,26 +310,53 @@ function startScheduler(){
       const schedules = loadSchedules()
       const now = new Date()
 
+      const hour = now.getUTCHours()
+      const min = now.getUTCMinutes()
+      const todayUTC = now.toISOString().slice(0, 10)
+
+      let changed = false
+
       for (const uid in schedules) {
         const s = schedules[uid]
 
-        const hour = now.getUTCHours()
-        const min = now.getUTCMinutes()
+        if (!s.group || !s.main_id) continue
 
-        if (hour === s.online_hour && min === s.online_minute) {
-          await fetch(`${API_URL}?action=online&id=${s.main_id}&group=${s.group}`)
+        if (
+          hour === s.online_hour &&
+          min === s.online_minute &&
+          s.last_online !== todayUTC
+        ) {
+          const ok = await setOnlineStatus("online", s.main_id, s.group)
+
+          if (ok) {
+            s.last_online = todayUTC
+            changed = true
+            console.log("🟢 Scheduled online:", s.main_id, s.group)
+          }
         }
 
-        if (hour === s.offline_hour && min === s.offline_minute) {
-          await fetch(`${API_URL}?action=offline&id=${s.main_id}&group=${s.group}`)
+        if (
+          hour === s.offline_hour &&
+          min === s.offline_minute &&
+          s.last_offline !== todayUTC
+        ) {
+          const ok = await setOnlineStatus("offline", s.main_id, s.group)
+
+          if (ok) {
+            s.last_offline = todayUTC
+            changed = true
+            console.log("🔴 Scheduled offline:", s.main_id, s.group)
+          }
         }
       }
+
+      if (changed) saveSchedules(schedules)
+
     } catch (err) {
       console.error("Scheduler error:", err)
     }
   }, 60000)
 }
-
 
 // ================= PANEL =================
 
@@ -517,8 +582,13 @@ client.on("interactionCreate", async interaction => {
 
         if (!userData?.main_id) return interaction.editReply("❌ Register first")
 
-        await setOnlineStatus("online", userData.main_id, group)
-        return interaction.editReply("🟢 ONLINE")
+const ok = await setOnlineStatus("online", userData.main_id, group)
+
+if (!ok) {
+  return interaction.editReply("❌ Could not set online")
+}
+
+return interaction.editReply("🟢 ONLINE. It now appears in Online List.")
       }
 
       if (interaction.customId === "online_sec") {
@@ -527,8 +597,13 @@ client.on("interactionCreate", async interaction => {
 
         if (!userData?.sec_id) return interaction.editReply("❌ No secondary ID")
 
-        await setOnlineStatus("online", userData.sec_id, group)
-        return interaction.editReply("🟢 SEC ONLINE")
+const ok = await setOnlineStatus("online", userData.sec_id, group)
+
+if (!ok) {
+  return interaction.editReply("❌ Could not set secondary online")
+}
+
+return interaction.editReply("🟢 SEC ONLINE. It now appears in Online List.")
       }
 
       if (interaction.customId === "offline") {
@@ -538,13 +613,22 @@ client.on("interactionCreate", async interaction => {
         if (!userData) return interaction.editReply("❌ Not registered")
 
  if (userData.main_id) {
-  await setOnlineStatus("offline", userData.main_id, group)
+let okMain = true
+let okSec = true
+
+if (userData.main_id) {
+  okMain = await setOnlineStatus("offline", userData.main_id, group)
 }
 
 if (userData.sec_id) {
-  await setOnlineStatus("offline", userData.sec_id, group)
+  okSec = await setOnlineStatus("offline", userData.sec_id, group)
 }
-        return interaction.editReply("🔴 OFFLINE")
+
+if (!okMain || !okSec) {
+  return interaction.editReply("❌ Some IDs could not be set offline")
+}
+
+return interaction.editReply("🔴 OFFLINE")
       }
 
       if (interaction.customId === "list") {
@@ -564,24 +648,39 @@ if (userData.sec_id) {
         return interaction.editReply(msg)
       }
 
-      if (interaction.customId === "online_list") {
-        const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
-        const ids = await getOnlineIDs(config.IDS_GIST_ID, config.IDS_FILENAME)
+if (interaction.customId === "online_list") {
+  const users = await getUsers(config.USERS_GIST_ID, config.USERS_FILENAME)
+  const ids = await getOnlineIDs(config.IDS_GIST_ID, config.IDS_FILENAME)
 
-        if (!ids.length) return interaction.editReply("⚫ No online")
+  if (!ids.length) return interaction.editReply("⚫ No online")
 
-        let msg = "🟢 Online:\n\n"
+  let msg = "🟢 Online:\n\n"
+  let found = false
 
-        for (const uid in users) {
-          const u = users[uid]
+  for (const uid in users) {
+    const u = users[uid]
 
-          if (ids.includes(u.main_id) || ids.includes(u.sec_id)) {
-            msg += `👤 ${u.name}\n`
-          }
-        }
+    const mainId = String(u.main_id || "").trim()
+    const secId = String(u.sec_id || "").trim()
 
-        return interaction.editReply(msg)
-      }
+    const mainOnline = mainId && ids.includes(mainId)
+    const secOnline = secId && ids.includes(secId)
+
+    if (mainOnline || secOnline) {
+      const shownIds = []
+
+      if (mainOnline) shownIds.push(`Main: ${mainId}`)
+      if (secOnline) shownIds.push(`Sec: ${secId}`)
+
+      msg += `👤 ${u.name} → ${shownIds.join(" | ")}\n`
+      found = true
+    }
+  }
+
+  if (!found) msg += "⚫ No registered users online\n"
+
+  return interaction.editReply(msg)
+}
 
       if (interaction.customId === "schedule") {
         const modal = new ModalBuilder()
@@ -932,24 +1031,31 @@ users[interaction.user.id].main_id = id
         })
       }
 
-      if (interaction.customId === "forced_offline_user_select") {
-        if (!isChampion(interaction)) {
-          return interaction.update({
-            content: "❌ Only Champion can use this function",
-            components: []
-          })
-        }
+if (interaction.customId === "forced_offline_user_select") {
+  if (!isChampion(interaction)) {
+    return interaction.update({
+      content: "❌ Only Champion can use this function",
+      components: []
+    })
+  }
 
-        const raw = interaction.values[0]
-        const [group, id] = raw.split("|")
+  const raw = interaction.values[0]
+  const [group, id] = raw.split("|")
 
-        await fetch(`${API_URL}?action=offline&id=${id}&group=${group}`)
+  const ok = await setOnlineStatus("offline", id, group)
 
-        return interaction.update({
-          content: `🔴 User forced offline in ${getGroupLabel(group)}`,
-          components: []
-        })
-      }
+  if (!ok) {
+    return interaction.update({
+      content: "❌ Could not force this user offline",
+      components: []
+    })
+  }
+
+  return interaction.update({
+    content: `🔴 User forced offline in ${getGroupLabel(group)}`,
+    components: []
+  })
+}
 
       if (interaction.customId === "role_select") {
         const selectedRole = interaction.values[0]
