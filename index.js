@@ -22,6 +22,7 @@ const gpHandler = require("./gpHandler");
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent
   ]
@@ -108,6 +109,24 @@ function buildGroupOptions() {
     { label: "Gym Leader", value: "Gym_Leader" },
     { label: "Elite Four", value: "Elite_Four" }
   ];
+}
+function normalizeGroupRoleName(roleName) {
+  const map = {
+    "Trainer": "Trainer",
+    "Gym_Leader": "Gym_Leader",
+    "Gym Leader": "Gym_Leader",
+    "Elite_Four": "Elite_Four",
+    "Elite Four": "Elite_Four"
+  };
+
+  return map[roleName] || null;
+}
+
+function getMemberGroups(member) {
+  return member.roles.cache
+    .map(role => normalizeGroupRoleName(role.name))
+    .filter(Boolean)
+    .filter((group, index, arr) => arr.indexOf(group) === index);
 }
 function isValidId(id) {
   return /^\d{16}$/.test(String(id).trim())
@@ -274,22 +293,19 @@ async function addVipID(id,group){
 
 // ===== GROUP =====
 async function getUserGroup(interaction) {
-  const allowedGroups = Object.keys(GROUP_CONFIG)
-  const activeRoles = await getActiveRoles()
+  const activeRoles = await getActiveRoles();
 
-  const memberGroups = interaction.member.roles.cache
-    .filter(r => allowedGroups.includes(r.name))
-    .map(r => r.name)
+  const memberGroups = getMemberGroups(interaction.member);
 
-  if (!memberGroups.length) return null
+  if (!memberGroups.length) return null;
 
-  const savedRole = activeRoles[interaction.user.id]
+  const savedRole = activeRoles[interaction.user.id];
 
   if (savedRole && memberGroups.includes(savedRole)) {
-    return savedRole
+    return savedRole;
   }
 
-  return memberGroups[0]
+  return memberGroups[0];
 }
 /// panel
 function loadPanelData(){
@@ -704,27 +720,30 @@ if (interaction.customId === "online_list") {
         return interaction.showModal(modal)
       }
 
-      if (interaction.customId === "change_role") {
-        const roles = interaction.member.roles.cache
-          .filter(r => Object.keys(GROUP_CONFIG).includes(r.name))
-          .map(r => ({ label: r.name, value: r.name }))
+if (interaction.customId === "change_role") {
+  const memberGroups = getMemberGroups(interaction.member);
 
-        if (roles.length < 2) {
-          return interaction.editReply("❌ You need at least 2 group roles")
-        }
+  if (memberGroups.length < 2) {
+    return interaction.editReply("❌ You need at least 2 group roles to switch.");
+  }
 
-        const currentRole = await getUserGroup(interaction)
+  const currentRole = await getUserGroup(interaction);
 
-        const menu = new StringSelectMenuBuilder()
-          .setCustomId("role_select")
-          .setPlaceholder("Select your active role")
-          .addOptions(roles)
+  const roles = memberGroups.map(group => ({
+    label: getGroupLabel(group),
+    value: group
+  }));
 
-        return interaction.editReply({
-          content: `Current active role: ${currentRole}\nSelect your new active role`,
-          components: [new ActionRowBuilder().addComponents(menu)]
-        })
-      }
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId("role_select")
+    .setPlaceholder("Select your active role")
+    .addOptions(roles);
+
+  return interaction.editReply({
+    content: `Current active role: **${getGroupLabel(currentRole)}**\nSelect your new active role:`,
+    components: [new ActionRowBuilder().addComponents(menu)]
+  });
+}
 
       if (interaction.customId === "set_offline") {
         if (!isChampion(interaction)) {
@@ -1056,29 +1075,27 @@ if (interaction.customId === "forced_offline_user_select") {
   })
 }
 
-      if (interaction.customId === "role_select") {
-        const selectedRole = interaction.values[0]
+if (interaction.customId === "role_select") {
+  const selectedRole = interaction.values[0];
 
-        const userRoles = interaction.member.roles.cache
-          .filter(r => Object.keys(GROUP_CONFIG).includes(r.name))
-          .map(r => r.name)
+  const userGroups = getMemberGroups(interaction.member);
 
-        if (!userRoles.includes(selectedRole)) {
-          return interaction.update({
-            content: "❌ Invalid role selection",
-            components: []
-          })
-        }
+  if (!userGroups.includes(selectedRole)) {
+    return interaction.update({
+      content: "❌ Invalid role selection",
+      components: []
+    });
+  }
 
-        const activeRoles = await getActiveRoles()
-        activeRoles[interaction.user.id] = selectedRole
-        await saveActiveRoles(activeRoles)
+  const activeRoles = await getActiveRoles();
+  activeRoles[interaction.user.id] = selectedRole;
+  await saveActiveRoles(activeRoles);
 
-        return interaction.update({
-          content: `✅ Active role changed to ${selectedRole}`,
-          components: []
-        })
-      }
+  return interaction.update({
+    content: `✅ Active role changed to **${getGroupLabel(selectedRole)}**`,
+    components: []
+  });
+}
     }
   } catch (err) {
     console.error("INDEX interaction error:", err)
