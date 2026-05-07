@@ -77,6 +77,46 @@ function safeJsonParse(value, fallback = {}) {
     return fallback
   }
 }
+function uniqueList(arr) {
+  return [...new Set(
+    arr
+      .map(x => String(x || "").trim())
+      .filter(Boolean)
+  )]
+}
+
+function buildUserData(oldData, interaction, updates = {}) {
+  const discordName =
+    interaction.member?.displayName ||
+    interaction.user?.username ||
+    "Unknown"
+
+  const oldAliases = Array.isArray(oldData.aliases) ? oldData.aliases : []
+
+  const name = oldData.name || discordName
+
+  const heartbeatName =
+    oldData.heartbeatName ||
+    oldData.name ||
+    discordName
+
+  const aliases = uniqueList([
+    ...oldAliases,
+    oldData.name,
+    oldData.heartbeatName,
+    discordName,
+    name,
+    heartbeatName
+  ])
+
+  return {
+    ...oldData,
+    name,
+    heartbeatName,
+    aliases,
+    ...updates
+  }
+}
 
 // ================= GROUP CONFIG =================
 
@@ -438,10 +478,10 @@ async function sendPanel(channel){
     new ButtonBuilder().setCustomId("set_offline").setLabel("Force Offline").setStyle(ButtonStyle.Danger)
   )
 
-  const row5 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId("gp").setLabel("Add VIP").setStyle(ButtonStyle.Success)
-  )
-
+const row5 = new ActionRowBuilder().addComponents(
+  new ButtonBuilder().setCustomId("gp").setLabel("Add VIP").setStyle(ButtonStyle.Success),
+  new ButtonBuilder().setCustomId("heartbeat_name").setLabel("Heartbeat Name").setStyle(ButtonStyle.Secondary)
+)
   const panelPayload = {
     embeds:[embed],
     components:[row1,row2,row3,row4,row5]
@@ -500,7 +540,8 @@ const OWN_BUTTONS = new Set([
   "schedule",
   "change_role",
   "set_offline",
-  "gp"
+  "gp",
+  "heartbeat_name"
 ]);
 
 const OWN_MODALS = new Set([
@@ -508,7 +549,8 @@ const OWN_MODALS = new Set([
   "sec_modal",
   "change_modal",
   "schedule_modal",
-  "gp_modal"
+  "gp_modal",
+  "heartbeat_modal"
 ]);
 
 const OWN_SELECTS = new Set([
@@ -558,7 +600,7 @@ client.on("interactionCreate", async interaction => {
         })
       }
 
-      const isModalButton = ["register", "add_sec", "change", "schedule", "gp"].includes(interaction.customId)
+      const isModalButton = ["register", "add_sec", "change", "schedule", "gp", "heartbeat_name"].includes(interaction.customId)
 
       if (!isModalButton) {
         if (interaction.deferred || interaction.replied) {
@@ -622,6 +664,23 @@ client.on("interactionCreate", async interaction => {
 
         return interaction.showModal(modal)
       }
+      if (interaction.customId === "heartbeat_name") {
+  const modal = new ModalBuilder()
+    .setCustomId("heartbeat_modal")
+    .setTitle("Heartbeat Name")
+
+  modal.addComponents(
+    new ActionRowBuilder().addComponents(
+      new TextInputBuilder()
+        .setCustomId("name")
+        .setLabel("Exact name shown in heartbeat")
+        .setStyle(TextInputStyle.Short)
+        .setRequired(true)
+    )
+  )
+
+  return interaction.showModal(modal)
+}
 
       if (interaction.customId === "online") {
         const users = await getUsers(group)
@@ -688,7 +747,7 @@ if (interaction.customId === "offline") {
 
         for (const uid in users) {
           const u = users[uid]
-          msg += `👤 ${u.name} → ${u.main_id}\n`
+          msg += `👤 ${u.name} | 📡 ${u.heartbeatName || u.name} → ${u.main_id}\n`
         }
 
         return interaction.editReply(msg)
@@ -718,7 +777,7 @@ if (interaction.customId === "online_list") {
       if (mainOnline) shownIds.push(`Main: ${mainId}`)
       if (secOnline) shownIds.push(`Sec: ${secId}`)
 
-      msg += `👤 ${u.name} → ${shownIds.join(" | ")}\n`
+      msg += `👤 ${u.name} | 📡 ${u.heartbeatName || u.name} → ${shownIds.join(" | ")}\n`
       found = true
     }
   }
@@ -840,17 +899,19 @@ if (interaction.customId === "change_role") {
           })
         }
 
-const oldData = users[interaction.user.id]
+const oldData = users[interaction.user.id] || {}
 
-users[interaction.user.id] = {
+users[interaction.user.id] = buildUserData(oldData, interaction, {
   main_id: id,
-  sec_id: oldData?.sec_id || null,
-  name: interaction.member.displayName
-}
+  sec_id: oldData.sec_id || null
+})
 
-        await saveUsers(users, group)
+await saveUsers(users, group)
         return interaction.reply({
-          content: "✅ Registered",
+          content:
+  `✅ Registered\n` +
+  `👤 Display name: **${users[interaction.user.id].name}**\n` +
+  `📡 Heartbeat name: **${users[interaction.user.id].heartbeatName}**`,
           flags: MessageFlags.Ephemeral
         })
       }
@@ -872,9 +933,11 @@ users[interaction.user.id] = {
           })
         }
 
-        users[interaction.user.id].sec_id = id
+users[interaction.user.id] = buildUserData(users[interaction.user.id], interaction, {
+  sec_id: id
+})
 
-        await saveUsers(users, group)
+await saveUsers(users, group)
         return interaction.reply({
           content: "✅ Secondary added",
           flags: MessageFlags.Ephemeral
@@ -904,14 +967,56 @@ if (oldMainId && oldMainId !== id) {
   await setOnlineStatus("offline", oldMainId, group)
 }
 
-users[interaction.user.id].main_id = id
+users[interaction.user.id] = buildUserData(users[interaction.user.id], interaction, {
+  main_id: id
+})
 
-        await saveUsers(users, group)
+await saveUsers(users, group)
         return interaction.reply({
           content: "🔄 Updated",
           flags: MessageFlags.Ephemeral
         })
       }
+
+      if (interaction.customId === "heartbeat_modal") {
+  const heartbeatName = interaction.fields.getTextInputValue("name").trim()
+
+  if (!heartbeatName) {
+    return interaction.reply({
+      content: "❌ Invalid heartbeat name.",
+      flags: MessageFlags.Ephemeral
+    })
+  }
+
+  const oldData = users[interaction.user.id]
+
+  if (!oldData?.main_id) {
+    return interaction.reply({
+      content: "❌ Register first.",
+      flags: MessageFlags.Ephemeral
+    })
+  }
+
+  users[interaction.user.id] = buildUserData(oldData, interaction, {
+    heartbeatName,
+    aliases: uniqueList([
+      ...(Array.isArray(oldData.aliases) ? oldData.aliases : []),
+      oldData.name,
+      oldData.heartbeatName,
+      heartbeatName
+    ])
+  })
+
+  await saveUsers(users, group)
+
+  return interaction.reply({
+    content:
+      `✅ Heartbeat name updated.\n` +
+      `👤 Display name: **${users[interaction.user.id].name}**\n` +
+      `📡 Heartbeat name: **${users[interaction.user.id].heartbeatName}**`,
+    flags: MessageFlags.Ephemeral
+  })
+}
 
       if (interaction.customId === "schedule_modal") {
         const onRaw = interaction.fields.getTextInputValue("on").trim()
