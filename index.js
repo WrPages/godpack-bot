@@ -553,10 +553,25 @@ async function changeRivalDuoGameId(discordId, newGameId) {
     }
   }
 
-  if (oldGameId && isValidGameId(oldGameId)) {
-    await redis.srem("online:Elite_Four", oldGameId)
+if (oldGameId && isValidGameId(oldGameId)) {
+  await redis.srem("online:Elite_Four", oldGameId)
+
+  if (typeof redis.hdel === "function") {
     await redis.hdel(RIVAL_DUO_BY_GAMEID_KEY, oldGameId)
+  } else {
+    const indexes = await redis.hgetall(RIVAL_DUO_BY_GAMEID_KEY)
+
+    if (indexes && typeof indexes === "object") {
+      delete indexes[oldGameId]
+
+      await redis.del(RIVAL_DUO_BY_GAMEID_KEY)
+
+      if (Object.keys(indexes).length > 0) {
+        await redis.hset(RIVAL_DUO_BY_GAMEID_KEY, indexes)
+      }
+    }
   }
+}
 
   member.gameId = newGameId
   member.updatedAt = rivalNow()
@@ -1069,17 +1084,84 @@ client.on("interactionCreate", async interaction => {
     }
 
     // ================= BOTONES =================
-    if (interaction.isButton()) {
-      const group = await getUserGroup(interaction)
-      if (!group) {
-        return interaction.reply({
-          content: "❌ No group",
-          flags: MessageFlags.Ephemeral
-        })
-      }
+if (interaction.isButton()) {
 
-      const isModalButton = ["register", "add_sec", "change", "schedule", "gp", "heartbeat_name", "register_duo"].includes(interaction.customId)
+  if (interaction.customId === "register_duo") {
+    const hasRole = interaction.member.roles.cache.some(r => r.name === "Rival_Duo")
 
+    if (!hasRole) {
+      return interaction.reply({
+        content: "❌ You need the Rival_Duo role to register here.",
+        flags: MessageFlags.Ephemeral
+      })
+    }
+
+    const modal = new ModalBuilder()
+      .setCustomId("rival_duo_register_modal")
+      .setTitle("Register Rival Duo")
+
+    modal.addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId("game_id")
+          .setLabel("Your 16 digit game ID")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId("heartbeat_name")
+          .setLabel("Your exact heartbeat name")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+      )
+    )
+
+    return interaction.showModal(modal)
+  }
+if (interaction.customId === "change" && interaction.member.roles.cache.some(r => r.name === "Rival_Duo")) {
+  const modal = new ModalBuilder()
+    .setCustomId("change_modal")
+    .setTitle("Change Rival Duo ID")
+
+  modal.addComponents(
+    new ActionRowBuilder().addComponents(
+      new TextInputBuilder()
+        .setCustomId("id")
+        .setLabel("New 16 digit ID")
+        .setStyle(TextInputStyle.Short)
+        .setRequired(true)
+    )
+  )
+
+  return interaction.showModal(modal)
+}
+  const isRivalDuoButton = ["online", "offline"].includes(interaction.customId) &&
+    interaction.member.roles.cache.some(r => r.name === "Rival_Duo")
+
+  if (isRivalDuoButton) {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral })
+
+    if (interaction.customId === "online") {
+      const result = await setRivalDuoOnline(interaction.user.id)
+      return interaction.editReply(result.message)
+    }
+
+    if (interaction.customId === "offline") {
+      const result = await setRivalDuoOffline(interaction.user.id, "manual_offline")
+      return interaction.editReply(result.message)
+    }
+  }
+
+  const group = await getUserGroup(interaction)
+  if (!group) {
+    return interaction.reply({
+      content: "❌ No group",
+      flags: MessageFlags.Ephemeral
+    })
+  }
+
+  const isModalButton = ["register", "add_sec", "change", "schedule", "gp", "heartbeat_name"].includes(interaction.customId)
       if (!isModalButton) {
         if (interaction.deferred || interaction.replied) {
           console.warn("Duplicate ack prevented in index:", interaction.customId, interaction.user.id)
@@ -1092,39 +1174,7 @@ client.on("interactionCreate", async interaction => {
 
       const config = GROUP_CONFIG[group]
 
-      if (interaction.customId === "register_duo") {
-  const hasRole = interaction.member.roles.cache.some(r => r.name === "Rival_Duo")
 
-  if (!hasRole) {
-    return interaction.reply({
-      content: "❌ You need the Rival_Duo role to register here.",
-      flags: MessageFlags.Ephemeral
-    })
-  }
-
-  const modal = new ModalBuilder()
-    .setCustomId("rival_duo_register_modal")
-    .setTitle("Register Rival Duo")
-
-  modal.addComponents(
-    new ActionRowBuilder().addComponents(
-      new TextInputBuilder()
-        .setCustomId("game_id")
-        .setLabel("Your 16 digit game ID")
-        .setStyle(TextInputStyle.Short)
-        .setRequired(true)
-    ),
-    new ActionRowBuilder().addComponents(
-      new TextInputBuilder()
-        .setCustomId("heartbeat_name")
-        .setLabel("Your exact heartbeat name")
-        .setStyle(TextInputStyle.Short)
-        .setRequired(true)
-    )
-  )
-
-  return interaction.showModal(modal)
-}
       if (interaction.customId === "register") {
         const modal = new ModalBuilder()
           .setCustomId("reg_modal")
@@ -1194,12 +1244,6 @@ client.on("interactionCreate", async interaction => {
 }
 
 if (interaction.customId === "online") {
-  const hasRivalDuoRole = interaction.member.roles.cache.some(r => r.name === "Rival_Duo")
-
-  if (hasRivalDuoRole) {
-    const result = await setRivalDuoOnline(interaction.user.id)
-    return interaction.editReply(result.message)
-  }
 
   const users = await getUsers(group)
   const userData = users[interaction.user.id]
@@ -1231,12 +1275,6 @@ return interaction.editReply("🟢 SEC ONLINE. It now appears in Online List.")
       }
 
 if (interaction.customId === "offline") {
-  const hasRivalDuoRole = interaction.member.roles.cache.some(r => r.name === "Rival_Duo")
-
-  if (hasRivalDuoRole) {
-    const result = await setRivalDuoOffline(interaction.user.id, "manual_offline")
-    return interaction.editReply(result.message)
-  }
 
   const users = await getUsers(group)
   const userData = users[interaction.user.id]
@@ -1403,16 +1441,6 @@ if (interaction.customId === "change_role") {
 
     // ================= MODALES =================
     if (interaction.isModalSubmit()) {
-      const group = await getUserGroup(interaction)
-      if (!group) {
-        return interaction.reply({
-          content: "❌ No group",
-          flags: MessageFlags.Ephemeral
-        })
-      }
-
-      const config = GROUP_CONFIG[group]
-      const users = await getUsers(group)
 
       if (interaction.customId === "rival_duo_register_modal") {
   const hasRole = interaction.member.roles.cache.some(r => r.name === "Rival_Duo")
@@ -1474,6 +1502,36 @@ if (interaction.customId === "change_role") {
     flags: MessageFlags.Ephemeral
   })
 }
+
+      if (interaction.customId === "change_modal" && interaction.member.roles.cache.some(r => r.name === "Rival_Duo")) {
+  const id = interaction.fields.getTextInputValue("id").trim()
+
+  if (!isValidId(id)) {
+    return interaction.reply({
+      content: "❌ ID must be exactly 16 digits",
+      flags: MessageFlags.Ephemeral
+    })
+  }
+
+  const result = await changeRivalDuoGameId(interaction.user.id, id)
+
+  return interaction.reply({
+    content: result.message,
+    flags: MessageFlags.Ephemeral
+  })
+}
+      
+      const group = await getUserGroup(interaction)
+      if (!group) {
+        return interaction.reply({
+          content: "❌ No group",
+          flags: MessageFlags.Ephemeral
+        })
+      }
+
+      const config = GROUP_CONFIG[group]
+      const users = await getUsers(group)
+
       if (interaction.customId === "reg_modal") {
         const id = interaction.fields.getTextInputValue("id").trim()
 
@@ -1539,16 +1597,6 @@ if (interaction.customId === "change_modal") {
     })
   }
 
-  const hasRivalDuoRole = interaction.member.roles.cache.some(r => r.name === "Rival_Duo")
-
-  if (hasRivalDuoRole) {
-    const result = await changeRivalDuoGameId(interaction.user.id, id)
-
-    return interaction.reply({
-      content: result.message,
-      flags: MessageFlags.Ephemeral
-    })
-  }
 
   if (!users[interaction.user.id]) {
     return interaction.reply({
