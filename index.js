@@ -515,6 +515,74 @@ async function tickRivalDuoRotation() {
     await activateRivalDuoId(duo, false)
   }
 }
+async function changeRivalDuoGameId(discordId, newGameId) {
+  discordId = String(discordId)
+  newGameId = String(newGameId || "").trim()
+
+  if (!isValidGameId(newGameId)) {
+    return {
+      ok: false,
+      message: "❌ ID must be exactly 16 digits."
+    }
+  }
+
+  const duo = await getRivalDuoByUser(discordId)
+
+  if (!duo) {
+    return {
+      ok: false,
+      message: "❌ You are not registered in a Rival Duo."
+    }
+  }
+
+  const member = getRivalDuoMember(duo, discordId)
+
+  if (!member) {
+    return {
+      ok: false,
+      message: "❌ Rival Duo member data was not found."
+    }
+  }
+
+  const oldGameId = String(member.gameId || "").trim()
+
+  if (oldGameId === newGameId) {
+    return {
+      ok: true,
+      message: `✅ Your Rival Duo ID is already **${newGameId}**.`
+    }
+  }
+
+  if (oldGameId && isValidGameId(oldGameId)) {
+    await redis.srem("online:Elite_Four", oldGameId)
+    await redis.hdel(RIVAL_DUO_BY_GAMEID_KEY, oldGameId)
+  }
+
+  member.gameId = newGameId
+  member.updatedAt = rivalNow()
+
+  duo.members[discordId] = member
+
+  if (String(duo.activeDiscordId || "") === discordId) {
+    duo.activeGameId = newGameId
+    duo.lastRotationAt = rivalNow()
+
+    if (duo.status === "online") {
+      await redis.sadd("online:Elite_Four", newGameId)
+    }
+  }
+
+  await saveRivalDuo(duo)
+  await saveRivalDuoIndexes(duo)
+
+  return {
+    ok: true,
+    message:
+      `🔄 Rival Duo ID updated.\n` +
+      `Old ID: ${oldGameId || "None"}\n` +
+      `New ID: ${newGameId}`
+  }
+}
 // ================= GROUP CONFIG =================
 
 const GROUP_CONFIG = {
@@ -1461,39 +1529,51 @@ await saveUsers(users, group)
         })
       }
 
-      if (interaction.customId === "change_modal") {
-        const id = interaction.fields.getTextInputValue("id").trim()
+if (interaction.customId === "change_modal") {
+  const id = interaction.fields.getTextInputValue("id").trim()
 
-        if (!isValidId(id)) {
-          return interaction.reply({
-            content: "❌ ID must be exactly 16 digits",
-            flags: MessageFlags.Ephemeral
-          })
-        }
+  if (!isValidId(id)) {
+    return interaction.reply({
+      content: "❌ ID must be exactly 16 digits",
+      flags: MessageFlags.Ephemeral
+    })
+  }
 
-        if (!users[interaction.user.id]) {
-          return interaction.reply({
-            content: "❌ Register first",
-            flags: MessageFlags.Ephemeral
-          })
-        }
+  const hasRivalDuoRole = interaction.member.roles.cache.some(r => r.name === "Rival_Duo")
 
-const oldMainId = users[interaction.user.id].main_id
+  if (hasRivalDuoRole) {
+    const result = await changeRivalDuoGameId(interaction.user.id, id)
 
-if (oldMainId && oldMainId !== id) {
-  await setOnlineStatus("offline", oldMainId, group)
+    return interaction.reply({
+      content: result.message,
+      flags: MessageFlags.Ephemeral
+    })
+  }
+
+  if (!users[interaction.user.id]) {
+    return interaction.reply({
+      content: "❌ Register first",
+      flags: MessageFlags.Ephemeral
+    })
+  }
+
+  const oldMainId = users[interaction.user.id].main_id
+
+  if (oldMainId && oldMainId !== id) {
+    await setOnlineStatus("offline", oldMainId, group)
+  }
+
+  users[interaction.user.id] = buildUserData(users[interaction.user.id], interaction, {
+    main_id: id
+  })
+
+  await saveUsers(users, group)
+
+  return interaction.reply({
+    content: "🔄 Updated",
+    flags: MessageFlags.Ephemeral
+  })
 }
-
-users[interaction.user.id] = buildUserData(users[interaction.user.id], interaction, {
-  main_id: id
-})
-
-await saveUsers(users, group)
-        return interaction.reply({
-          content: "🔄 Updated",
-          flags: MessageFlags.Ephemeral
-        })
-      }
 
       if (interaction.customId === "heartbeat_modal") {
   const heartbeatName = interaction.fields.getTextInputValue("name").trim()
