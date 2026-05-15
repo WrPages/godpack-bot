@@ -1010,7 +1010,7 @@ client.on("interactionCreate", async interaction => {
         })
       }
 
-      cconst isModalButton = ["register", "add_sec", "change", "schedule", "gp", "heartbeat_name", "register_duo"].includes(interaction.customId)
+      const isModalButton = ["register", "add_sec", "change", "schedule", "gp", "heartbeat_name", "register_duo"].includes(interaction.customId)
 
       if (!isModalButton) {
         if (interaction.deferred || interaction.replied) {
