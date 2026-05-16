@@ -984,6 +984,16 @@ async function getUserGroup(interaction) {
 
   return memberGroups[0];
 }
+async function isActiveRivalDuo(interaction) {
+  const activeRoles = await getActiveRoles()
+  const selected = activeRoles[interaction.user.id]
+
+  const hasRivalDuoRole = interaction.member.roles.cache.some(role =>
+    role.name === "Rival_Duo" || role.name === "Rival Duo"
+  )
+
+  return hasRivalDuoRole && selected === "Rival_Duo"
+}
 /// panel
 async function loadPanelData() {
   try {
