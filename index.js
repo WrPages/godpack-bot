@@ -1,4 +1,4 @@
-//429 cambio tiempo
+//125, 1160 cambio tiempo
 const {
   Client,
   GatewayIntentBits,
@@ -122,6 +122,8 @@ function buildUserData(oldData, interaction, updates = {}) {
 const RIVAL_DUOS_KEY = "rival_duos"
 const RIVAL_DUO_BY_USER_KEY = "rival_duo_by_user"
 const RIVAL_DUO_BY_GAMEID_KEY = "rival_duo_by_gameid"
+const RIVAL_DUO_ROTATION_MS = 2 * 60 * 1000
+//const RIVAL_DUO_ROTATION_MS = 60 * 60 * 1000
 
 function rivalDuoPendingKey(discordId) {
   return `rival_duo_pending:${discordId}`
@@ -426,7 +428,7 @@ async function activateRivalDuoId(duo, force = false) {
     force ||
     !duo.lastRotationAt ||
     //now - Number(duo.lastRotationAt || 0) >= 60 * 60 * 1000
-    now - Number(duo.lastRotationAt || 0) >= 60 * 60 * 1000
+    now - Number(duo.lastRotationAt || 0) >= RIVAL_DUO_ROTATION_MS
 
   if (!duo.activeGameId || shouldRotate) {
     const index = Number(duo.activeIndex || 0) % members.length
@@ -644,7 +646,7 @@ async function buildRivalDuoListMessage() {
     return "📭 No Rival Duos registered."
   }
 
-  const rotationMs = 60 * 60 * 1000
+  const rotationMs = RIVAL_DUO_ROTATION_MS
 
   let msg = "🤝 **Rival Duo List**\n\n"
 
@@ -1155,7 +1157,8 @@ client.once("clientReady", async () => {
       } catch (err) {
         console.error("Rival Duo rotation error:", err)
       }
-    }, 60 * 1000)
+    }, 10 * 1000)
+    // }, 60 * 1000)
 
     await gpHandler(client)
   } catch (err) {
