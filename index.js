@@ -1289,6 +1289,13 @@ if (interaction.isButton()) {
 
   return interaction.editReply(message)
 }
+
+  const modalButtonIds = ["register", "add_sec", "change", "schedule", "gp", "heartbeat_name"]
+const willOpenModal = modalButtonIds.includes(interaction.customId)
+
+if (!willOpenModal && !interaction.deferred && !interaction.replied) {
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral })
+}
 if (interaction.customId === "change" && await isActiveRivalDuo(interaction)) {
   const modal = new ModalBuilder()
     .setCustomId("change_modal")
@@ -1331,16 +1338,12 @@ if (isRivalDuoButton) {
     })
   }
 
-  const isModalButton = ["register", "add_sec", "change", "schedule", "gp", "heartbeat_name"].includes(interaction.customId)
-      if (!isModalButton) {
-        if (interaction.deferred || interaction.replied) {
-          console.warn("Duplicate ack prevented in index:", interaction.customId, interaction.user.id)
-          return
-        }
+const isModalButton = modalButtonIds.includes(interaction.customId)
 
-        console.log("Index handling button:", interaction.customId, "user:", interaction.user.id)
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral })
-      }
+if (!isModalButton && !interaction.deferred && !interaction.replied) {
+  console.log("Index handling button:", interaction.customId, "user:", interaction.user.id)
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral })
+}
 
       const config = GROUP_CONFIG[group]
 
@@ -1674,7 +1677,8 @@ if (interaction.customId === "change_role") {
   })
 }
 
-      if (interaction.customId === "change_modal" && await isActiveRivalDuo(interaction)) {
+      if (interaction.customId === "change_modal") {
+  if (await isActiveRivalDuo(interaction)) {
   const id = interaction.fields.getTextInputValue("id").trim()
 
   if (!isValidId(id)) {
@@ -1691,7 +1695,7 @@ if (interaction.customId === "change_role") {
     flags: MessageFlags.Ephemeral
   })
 }
-      
+}    
       const group = await getUserGroup(interaction)
       if (!group) {
         return interaction.reply({
