@@ -433,7 +433,14 @@ async function activateRivalDuoId(duo, force = false) {
   if (!duo.activeGameId || shouldRotate) {
     const index = Number(duo.activeIndex || 0) % members.length
     const activeMember = members[index]
-
+    
+if (!activeMember || !isValidGameId(activeMember.gameId)) {
+  return {
+    ok: false,
+    waiting: true,
+    message: "❌ Rival Duo active member has an invalid or missing game ID."
+  }
+}
     await removeRivalDuoIdsFromElite(duo)
 
     duo.activeGameId = activeMember.gameId
@@ -442,7 +449,7 @@ async function activateRivalDuoId(duo, force = false) {
     duo.activeIndex = (index + 1) % members.length
     duo.status = "online"
 
-    await redis.sadd("online:Elite_Four", activeMember.gameId)
+    await redis.sadd("online:Elite_Four", String(activeMember.gameId))
     await saveRivalDuo(duo)
 
     return {
@@ -452,8 +459,16 @@ async function activateRivalDuoId(duo, force = false) {
     }
   }
 
-  await redis.sadd("online:Elite_Four", duo.activeGameId)
-  await saveRivalDuo(duo)
+if (!isValidGameId(duo.activeGameId)) {
+  return {
+    ok: false,
+    waiting: true,
+    message: "❌ Rival Duo activeGameId is invalid or missing."
+  }
+}
+
+await redis.sadd("online:Elite_Four", String(duo.activeGameId))
+await saveRivalDuo(duo)
 
   return {
     ok: true,
@@ -463,22 +478,56 @@ async function activateRivalDuoId(duo, force = false) {
 }
 
 async function setRivalDuoOnline(discordId) {
-  const duo = await getRivalDuoByUser(discordId)
+  try {
+    const duo = await getRivalDuoByUser(discordId)
 
-  if (!duo) {
+    if (!duo) {
+      return {
+        ok: false,
+        message: "❌ You are not registered in a Rival Duo."
+      }
+    }
+
+    if (!duo.members || typeof duo.members !== "object") {
+      return {
+        ok: false,
+        message: "❌ Rival Duo data is corrupted: missing members."
+      }
+    }
+
+    const member = getRivalDuoMember(duo, discordId)
+
+    if (!member) {
+      return {
+        ok: false,
+        message: "❌ Your user was not found inside this Rival Duo."
+      }
+    }
+
+    if (!isValidGameId(member.gameId)) {
+      return {
+        ok: false,
+        message: `❌ Your Rival Duo ID is invalid or missing: ${member.gameId || "None"}`
+      }
+    }
+
+    if (!duo.onlineUsers || typeof duo.onlineUsers !== "object") {
+      duo.onlineUsers = {}
+    }
+
+    duo.onlineUsers[String(discordId)] = true
+
+    await saveRivalDuo(duo)
+
+    return await activateRivalDuoId(duo, false)
+  } catch (err) {
+    console.error("setRivalDuoOnline error:", err)
+
     return {
       ok: false,
-      message: "❌ You are not registered in a Rival Duo."
+      message: `❌ setRivalDuoOnline error: ${err.message || "Unknown error"}`
     }
   }
-
-  if (!duo.onlineUsers) duo.onlineUsers = {}
-
-  duo.onlineUsers[String(discordId)] = true
-
-  await saveRivalDuo(duo)
-
-  return await activateRivalDuoId(duo, false)
 }
 
 async function setRivalDuoOffline(discordId, reason = "offline") {
@@ -1319,14 +1368,28 @@ const isRivalDuoButton = ["online", "offline"].includes(interaction.customId) &&
 if (isRivalDuoButton) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral })
 
-  if (interaction.customId === "online") {
-    const result = await setRivalDuoOnline(interaction.user.id)
-    return interaction.editReply(result.message)
-  }
+  try {
+    if (interaction.customId === "online") {
+      const result = await setRivalDuoOnline(interaction.user.id)
 
-  if (interaction.customId === "offline") {
-    const result = await setRivalDuoOffline(interaction.user.id, "manual_offline")
-    return interaction.editReply(result.message)
+      return interaction.editReply(
+        result?.message || "❌ Rival Duo online failed without response."
+      )
+    }
+
+    if (interaction.customId === "offline") {
+      const result = await setRivalDuoOffline(interaction.user.id, "manual_offline")
+
+      return interaction.editReply(
+        result?.message || "❌ Rival Duo offline failed without response."
+      )
+    }
+  } catch (err) {
+    console.error("RIVAL DUO BUTTON ERROR:", err)
+
+    return interaction.editReply(
+      `❌ Rival Duo error: ${err.message || "Unknown error"}`
+    )
   }
 }
 
