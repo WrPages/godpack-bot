@@ -1,4 +1,4 @@
-
+//429 cambio tiempo
 const {
   Client,
   GatewayIntentBits,
@@ -425,6 +425,7 @@ async function activateRivalDuoId(duo, force = false) {
   const shouldRotate =
     force ||
     !duo.lastRotationAt ||
+    //now - Number(duo.lastRotationAt || 0) >= 60 * 60 * 1000
     now - Number(duo.lastRotationAt || 0) >= 60 * 60 * 1000
 
   if (!duo.activeGameId || shouldRotate) {
