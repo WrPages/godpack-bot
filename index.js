@@ -1366,8 +1366,6 @@ const isRivalDuoButton = ["online", "offline"].includes(interaction.customId) &&
   await isActiveRivalDuo(interaction)
 
 if (isRivalDuoButton) {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral })
-
   try {
     if (interaction.customId === "online") {
       const result = await setRivalDuoOnline(interaction.user.id)
