@@ -1285,7 +1285,7 @@ if (interaction.isButton()) {
 
   return interaction.editReply(message)
 }
-if (interaction.customId === "change" && interaction.member.roles.cache.some(r => r.name === "Rival_Duo")) {
+if (interaction.customId === "change" && await isActiveRivalDuo(interaction)) {
   const modal = new ModalBuilder()
     .setCustomId("change_modal")
     .setTitle("Change Rival Duo ID")
@@ -1302,22 +1302,22 @@ if (interaction.customId === "change" && interaction.member.roles.cache.some(r =
 
   return interaction.showModal(modal)
 }
-  const isRivalDuoButton = ["online", "offline"].includes(interaction.customId) &&
-    interaction.member.roles.cache.some(r => r.name === "Rival_Duo")
+const isRivalDuoButton = ["online", "offline"].includes(interaction.customId) &&
+  await isActiveRivalDuo(interaction)
 
-  if (isRivalDuoButton) {
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral })
+if (isRivalDuoButton) {
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral })
 
-    if (interaction.customId === "online") {
-      const result = await setRivalDuoOnline(interaction.user.id)
-      return interaction.editReply(result.message)
-    }
-
-    if (interaction.customId === "offline") {
-      const result = await setRivalDuoOffline(interaction.user.id, "manual_offline")
-      return interaction.editReply(result.message)
-    }
+  if (interaction.customId === "online") {
+    const result = await setRivalDuoOnline(interaction.user.id)
+    return interaction.editReply(result.message)
   }
+
+  if (interaction.customId === "offline") {
+    const result = await setRivalDuoOffline(interaction.user.id, "manual_offline")
+    return interaction.editReply(result.message)
+  }
+}
 
   const group = await getUserGroup(interaction)
   if (!group) {
@@ -1670,7 +1670,7 @@ if (interaction.customId === "change_role") {
   })
 }
 
-      if (interaction.customId === "change_modal" && interaction.member.roles.cache.some(r => r.name === "Rival_Duo")) {
+      if (interaction.customId === "change_modal" && await isActiveRivalDuo(interaction)) {
   const id = interaction.fields.getTextInputValue("id").trim()
 
   if (!isValidId(id)) {
