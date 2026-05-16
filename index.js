@@ -598,6 +598,118 @@ if (oldGameId && isValidGameId(oldGameId)) {
       `New ID: ${newGameId}`
   }
 }
+function formatRivalDuoTime(ms) {
+  ms = Math.max(0, Number(ms) || 0)
+
+  const totalSeconds = Math.floor(ms / 1000)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+
+  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`
+  if (minutes > 0) return `${minutes}m ${seconds}s`
+  return `${seconds}s`
+}
+
+function getRivalDuoStatusLabel(duo) {
+  const members = getRivalDuoMembers(duo)
+
+  if (members.length < 2) return "⏳ Waiting Partner"
+
+  const bothOnline = members.every(member => {
+    return duo.onlineUsers?.[member.discordId] === true
+  })
+
+  if (duo.status === "online" && bothOnline && duo.activeGameId) {
+    return "🟢 Online"
+  }
+
+  if (!bothOnline) {
+    return "⏳ Waiting Both Online"
+  }
+
+  if (duo.status === "offline") {
+    return "🔴 Offline"
+  }
+
+  return "⚫ Offline"
+}
+
+async function buildRivalDuoListMessage() {
+  const duos = await loadAllRivalDuos()
+  const list = Object.values(duos).filter(Boolean)
+
+  if (!list.length) {
+    return "📭 No Rival Duos registered."
+  }
+
+  const rotationMs = 60 * 60 * 1000
+
+  let msg = "🤝 **Rival Duo List**\n\n"
+
+  let index = 1
+
+  for (const duo of list) {
+    const members = getRivalDuoMembers(duo)
+    const status = getRivalDuoStatusLabel(duo)
+
+    const activeMember = members.find(m => {
+      return String(m.discordId) === String(duo.activeDiscordId)
+    })
+
+    const nextMember = members.find(m => {
+      return String(m.discordId) !== String(duo.activeDiscordId)
+    })
+
+    let elapsedText = "0s"
+    let remainingText = "Not active"
+
+    if (duo.status === "online" && duo.activeGameId && duo.lastRotationAt) {
+      const elapsed = Date.now() - Number(duo.lastRotationAt || 0)
+      const remaining = Math.max(0, rotationMs - elapsed)
+
+      elapsedText = formatRivalDuoTime(elapsed)
+      remainingText = formatRivalDuoTime(remaining)
+    }
+
+    msg += `**#${index} — ${displayRivalDuoName(duo)}**\n`
+    msg += `Status: ${status}\n`
+
+    if (members[0]) {
+      const onlineIcon = duo.onlineUsers?.[members[0].discordId] ? "🟢" : "🔴"
+      msg += `${onlineIcon} User A: <@${members[0].discordId}> | ID: \`${members[0].gameId}\`\n`
+    } else {
+      msg += `⚫ User A: Empty\n`
+    }
+
+    if (members[1]) {
+      const onlineIcon = duo.onlineUsers?.[members[1].discordId] ? "🟢" : "🔴"
+      msg += `${onlineIcon} User B: <@${members[1].discordId}> | ID: \`${members[1].gameId}\`\n`
+    } else {
+      msg += `⚫ User B: Empty\n`
+    }
+
+    if (duo.activeGameId) {
+      msg += `Active ID: \`${duo.activeGameId}\`\n`
+      msg += `Active user: ${activeMember ? `<@${activeMember.discordId}>` : "Unknown"}\n`
+      msg += `Active time: **${elapsedText}**\n`
+      msg += `Time left: **${remainingText}**\n`
+      msg += `Next: ${nextMember ? `<@${nextMember.discordId}> | \`${nextMember.gameId}\`` : "Unknown"}\n`
+    } else {
+      msg += `Active ID: None\n`
+      msg += `Time left: Not active\n`
+    }
+
+    msg += "\n"
+    index++
+  }
+
+  if (msg.length > 1900) {
+    msg = msg.slice(0, 1850) + "\n\n⚠️ List truncated because Discord messages have a size limit."
+  }
+
+  return msg
+}
 // ================= GROUP CONFIG =================
 
 const GROUP_CONFIG = {
@@ -961,7 +1073,8 @@ async function sendPanel(channel){
 const row5 = new ActionRowBuilder().addComponents(
   new ButtonBuilder().setCustomId("gp").setLabel("Add VIP").setStyle(ButtonStyle.Success),
   new ButtonBuilder().setCustomId("heartbeat_name").setLabel("Heartbeat Name").setStyle(ButtonStyle.Secondary),
-  new ButtonBuilder().setCustomId("register_duo").setLabel("Register Duo").setStyle(ButtonStyle.Primary)
+  new ButtonBuilder().setCustomId("register_duo").setLabel("Register Duo").setStyle(ButtonStyle.Primary),
+  new ButtonBuilder().setCustomId("duo_list").setLabel("Duo List").setStyle(ButtonStyle.Secondary)
 )
   const panelPayload = {
     embeds:[embed],
@@ -1032,7 +1145,8 @@ const OWN_BUTTONS = new Set([
   "set_offline",
   "gp",
   "heartbeat_name",
-  "register_duo"
+  "register_duo",
+"duo_list"
 ]);
 
 const OWN_MODALS = new Set([
@@ -1119,6 +1233,25 @@ if (interaction.isButton()) {
 
     return interaction.showModal(modal)
   }
+
+  if (interaction.customId === "duo_list") {
+  const hasRole =
+    interaction.member.roles.cache.some(r => r.name === "Rival_Duo") ||
+    interaction.member.roles.cache.some(r => r.name === "Champion")
+
+  if (!hasRole) {
+    return interaction.reply({
+      content: "❌ You need the Rival_Duo or Champion role to use this.",
+      flags: MessageFlags.Ephemeral
+    })
+  }
+
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral })
+
+  const message = await buildRivalDuoListMessage()
+
+  return interaction.editReply(message)
+}
 if (interaction.customId === "change" && interaction.member.roles.cache.some(r => r.name === "Rival_Duo")) {
   const modal = new ModalBuilder()
     .setCustomId("change_modal")
