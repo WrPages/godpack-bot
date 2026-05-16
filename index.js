@@ -767,6 +767,29 @@ function getMemberGroups(member) {
     .filter(Boolean)
     .filter((group, index, arr) => arr.indexOf(group) === index);
 }
+function normalizeSelectableRoleName(roleName) {
+  const normalGroup = normalizeGroupRoleName(roleName)
+
+  if (normalGroup) return normalGroup
+
+  if (roleName === "Rival_Duo" || roleName === "Rival Duo") {
+    return "Rival_Duo"
+  }
+
+  return null
+}
+
+function getMemberSelectableRoles(member) {
+  return member.roles.cache
+    .map(role => normalizeSelectableRoleName(role.name))
+    .filter(Boolean)
+    .filter((group, index, arr) => arr.indexOf(group) === index)
+}
+
+function getSelectableRoleLabel(group) {
+  if (group === "Rival_Duo") return "Rival Duo"
+  return getGroupLabel(group)
+}
 function isValidId(id) {
   return /^\d{16}$/.test(String(id).trim())
 }
@@ -1507,28 +1530,29 @@ if (interaction.customId === "online_list") {
       }
 
 if (interaction.customId === "change_role") {
-  const memberGroups = getMemberGroups(interaction.member);
+  const memberGroups = getMemberSelectableRoles(interaction.member)
 
   if (memberGroups.length < 2) {
-    return interaction.editReply("❌ You need at least 2 group roles to switch.");
+    return interaction.editReply("❌ You need at least 2 group roles to switch.")
   }
 
-  const currentRole = await getUserGroup(interaction);
+  const activeRoles = await getActiveRoles()
+  const currentRole = activeRoles[interaction.user.id] || await getUserGroup(interaction)
 
   const roles = memberGroups.map(group => ({
-    label: getGroupLabel(group),
+    label: getSelectableRoleLabel(group),
     value: group
-  }));
+  }))
 
   const menu = new StringSelectMenuBuilder()
     .setCustomId("role_select")
     .setPlaceholder("Select your active role")
-    .addOptions(roles);
+    .addOptions(roles)
 
   return interaction.editReply({
-    content: `Current active role: **${getGroupLabel(currentRole)}**\nSelect your new active role:`,
+    content: `Current active role: **${getSelectableRoleLabel(currentRole)}**\nSelect your new active role:`,
     components: [new ActionRowBuilder().addComponents(menu)]
-  });
+  })
 }
 
       if (interaction.customId === "set_offline") {
@@ -2023,23 +2047,14 @@ if (interaction.customId === "forced_offline_user_select") {
 }
 
 if (interaction.customId === "role_select") {
-  const selectedRole = interaction.values[0]
-
-  const userGroups = getMemberGroups(interaction.member)
-
-  if (!userGroups.includes(selectedRole)) {
-    return interaction.update({
-      content: "❌ Invalid role selection",
-      components: []
-    })
-  }
+  const selected = interaction.values[0]
 
   await redis.hset(activeRolesKey(), {
-    [interaction.user.id]: selectedRole
+    [interaction.user.id]: selected
   })
 
   return interaction.update({
-    content: `✅ Active role changed to **${getGroupLabel(selectedRole)}**`,
+    content: `✅ Active role set to **${getSelectableRoleLabel(selected)}**`,
     components: []
   })
 }
